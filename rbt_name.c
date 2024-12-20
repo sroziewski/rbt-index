@@ -10,7 +10,7 @@ typedef enum { RED, BLACK } NodeColor;
 
 typedef struct FileInfo {
     char *filename;
-    ssize_t filesize;
+    size_t filesize;
     char *filepath;
     char *filetype;
 } FileInfo;
@@ -48,6 +48,7 @@ Node* load_rbt_from_file(const char *filename);
 Node *deserialize_node(char *buffer, size_t *currentOffset);
 size_t deserialize_file_info(FileInfo *fileInfo, const char *buffer);
 void serialize_node_to_file(Node *node, FILE *file);
+static Node* deserialize_node_from_file(FILE *file);
 // Use macros to simplify rotation operations
 #define ROTATE_LEFT(root, n)              \
     do {                                  \
@@ -107,11 +108,11 @@ int main(int argc, char *argv[]) {
 
     if (argc == 3 && strcmp(argv[1], "--load") == 0) {
         // Handle the --load command
-        // finalRoot = load_rbt_from_file(argv[2]);
-        // if (!finalRoot) {
-            // fprintf(stderr, "Failed to load Red-Black Tree from file: %s\n", argv[2]);
-            // return EXIT_FAILURE;
-        // }
+        finalRoot = load_rbt_from_file(argv[2]);
+        if (!finalRoot) {
+            fprintf(stderr, "Failed to load Red-Black Tree from file: %s\n", argv[2]);
+            return EXIT_FAILURE;
+        }
 
         printf("Red-Black Tree successfully loaded from file: %s\n", argv[2]);
         printf("Files stored in Red-Black Tree in sorted order by filename:\n");
@@ -211,23 +212,23 @@ void write_tree_to_shared_memory(Node *finalRoot) {
     size_t requiredSize = calc_tree_size(finalRoot);
 
     // Align size to system page size
-    long pageSize = sysconf(_SC_PAGE_SIZE);
+    const long pageSize = sysconf(_SC_PAGE_SIZE);
     if (pageSize <= 0) {
         perror("Failed to get page size");
         exit(EXIT_FAILURE);
     }
 
-    size_t alignedSize = ((requiredSize + pageSize - 1) / pageSize) * pageSize; // Align to page size
+    const size_t alignedSize = ((requiredSize + pageSize - 1) / pageSize) * pageSize; // Align to page size
 
     // Create buffer for serialized tree (ensure it's still aligned)
-    char *buffer = (char *)aligned_alloc(pageSize, alignedSize);
+    char *buffer = aligned_alloc(pageSize, alignedSize);
     if (buffer == NULL) {
         perror("Failed to allocate aligned buffer");
         exit(EXIT_FAILURE);
     }
 
     // Serialize the tree into the buffer
-    size_t usedSize = serialize_node(finalRoot, buffer);
+    const size_t usedSize = serialize_node(finalRoot, buffer);
 
     if (usedSize > alignedSize) {
         fprintf(stderr, "Serialized size exceeds aligned size!\n");
@@ -621,4 +622,124 @@ void serialize_node_to_file(Node *node, FILE *file) {
 
     if (node->left) serialize_node_to_file(node->left, file);
     if (node->right) serialize_node_to_file(node->right, file);
+}
+
+Node* load_rbt_from_file(const char *filename) {
+    printf("Attempting to open file: %s\n", filename);
+    FILE *file = fopen(filename, "rb");
+    if (!file) {
+        perror("Error opening file for reading");
+        return NULL;
+    }
+
+    // Attempt to deserialize the root node
+    printf("File opened successfully. Starting deserialization...\n");
+    Node *root = deserialize_node_from_file(file);
+
+    if (!root) {
+        printf("Deserialization failed! File may be corrupted.\n");
+        fclose(file);
+        return NULL;
+    }
+
+    printf("Tree deserialized successfully.\n");
+    fclose(file);
+    return root;
+}
+
+// Helper function to deserialize a single node (recursive function to rebuild the tree structure)
+static Node* deserialize_node_from_file(FILE *file) {
+    // Declare buffer to read serialized data
+    char buffer[8 * 1024];
+
+    // Read the serialized FileInfo structure
+    FileInfo key;
+    const size_t bytesRead = fread(buffer, 1, sizeof(buffer), file);
+    if (bytesRead == 0 || deserialize_file_info(&key, buffer) == 0) {
+        return NULL; // Stop recursion on end-of-file or error
+    }
+
+    // Read the node's color
+    NodeColor color;
+    if (fread(&color, sizeof(NodeColor), 1, file) != 1) {
+        return NULL;
+    }
+
+    // Read flags indicating existence of children
+    int hasLeft, hasRight;
+    if (fread(&hasLeft, sizeof(int), 1, file) != 1 || fread(&hasRight, sizeof(int), 1, file) != 1) {
+        return NULL;
+    }
+
+    // Create the node using the read data
+    Node *node = createNode(key, color, NULL);
+
+    // Recursively deserialize child nodes
+    if (hasLeft) {
+        node->left = deserialize_node_from_file(file);
+        if (node->left) {
+            node->left->parent = node; // Set parent
+        }
+    }
+    if (hasRight) {
+        node->right = deserialize_node_from_file(file);
+        if (node->right) {
+            node->right->parent = node; // Set parent
+        }
+    }
+
+    return node;
+}
+
+size_t deserialize_file_info(FileInfo *fileInfo, const char *buffer) {
+    if (!fileInfo || !buffer) {
+        printf("Error: null FileInfo or buffer.\n");
+        return 0;
+    }
+
+    size_t offset = 0;
+
+    // Deserialize and debug filename
+    printf("Deserializing filename...\n");
+    size_t filenameLength = strlen(buffer + offset);
+    fileInfo->filename = (char *)malloc(filenameLength + 1);
+    if (!fileInfo->filename) {
+        printf("Error: malloc failed for filename.\n");
+        return 0;
+    }
+    strcpy(fileInfo->filename, buffer + offset);
+    offset += filenameLength + 1;
+
+    // Deserialize and debug filesize
+    printf("Deserializing filesize...\n");
+    memcpy(&fileInfo->filesize, buffer + offset, sizeof(fileInfo->filesize));
+    offset += sizeof(fileInfo->filesize);
+
+    // Deserialize and debug filepath
+    printf("Deserializing filepath...\n");
+    size_t filepathLength = strlen(buffer + offset);
+    fileInfo->filepath = (char *)malloc(filepathLength + 1);
+    if (!fileInfo->filepath) {
+        printf("Error: malloc failed for filepath.\n");
+        free(fileInfo->filename); // Free previously allocated memory
+        return 0;
+    }
+    strcpy(fileInfo->filepath, buffer + offset);
+    offset += filepathLength + 1;
+
+    // Deserialize and debug filetype
+    printf("Deserializing filetype...\n");
+    size_t filetypeLength = strlen(buffer + offset);
+    fileInfo->filetype = (char *)malloc(filetypeLength + 1);
+    if (!fileInfo->filetype) {
+        printf("Error: malloc failed for filetype.\n");
+        free(fileInfo->filename); // Free previously allocated memory
+        free(fileInfo->filepath);
+        return 0;
+    }
+    strcpy(fileInfo->filetype, buffer + offset);
+    offset += filetypeLength + 1;
+
+    printf("Deserialization complete. Total bytes read: %zu\n", offset);
+    return offset;
 }
