@@ -10,7 +10,7 @@ typedef enum { RED, BLACK } NodeColor;
 
 typedef struct FileInfo {
     char *filename;
-    size_t filesize;
+    ssize_t filesize;
     char *filepath;
     char *filetype;
 } FileInfo;
@@ -45,8 +45,9 @@ size_t serialize_node(Node *node, char *buffer);
 void write_tree_to_shared_memory(Node *finalRoot);
 char* getFileSizeAsString(double fileSizeBytes);
 Node* load_rbt_from_file(const char *filename);
-Node* deserialize_node_from_file(FILE *file);
-
+Node *deserialize_node(char *buffer, size_t *currentOffset);
+size_t deserialize_file_info(FileInfo *fileInfo, const char *buffer);
+void serialize_node_to_file(Node *node, FILE *file);
 // Use macros to simplify rotation operations
 #define ROTATE_LEFT(root, n)              \
     do {                                  \
@@ -106,11 +107,11 @@ int main(int argc, char *argv[]) {
 
     if (argc == 3 && strcmp(argv[1], "--load") == 0) {
         // Handle the --load command
-        finalRoot = load_rbt_from_file(argv[2]);
-        if (!finalRoot) {
-            fprintf(stderr, "Failed to load Red-Black Tree from file: %s\n", argv[2]);
-            return EXIT_FAILURE;
-        }
+        // finalRoot = load_rbt_from_file(argv[2]);
+        // if (!finalRoot) {
+            // fprintf(stderr, "Failed to load Red-Black Tree from file: %s\n", argv[2]);
+            // return EXIT_FAILURE;
+        // }
 
         printf("Red-Black Tree successfully loaded from file: %s\n", argv[2]);
         printf("Files stored in Red-Black Tree in sorted order by filename:\n");
@@ -558,8 +559,8 @@ void freeTree(Node *node) {
  * Add the .rbt extension to the filename if it does not already have it.
  */
 char* add_rbt_extension(const char *filename) {
-    size_t len = strlen(filename);
-    size_t extLen = strlen(EXTENSION);
+    const size_t len = strlen(filename);
+    const size_t extLen = strlen(EXTENSION);
 
     // Check if the filename already ends with '.rbt'
     if (len >= extLen && strcmp(filename + len - extLen, EXTENSION) == 0) {
@@ -580,94 +581,44 @@ char* add_rbt_extension(const char *filename) {
     return newFilename;
 }
 
-/**
- * Store the Red-Black Tree in a file.
- */
 void store_rbt_to_file(Node *root, const char *filename) {
+    if (!root) {
+        fprintf(stderr, "Error: Tree is empty. Nothing to store.\n");
+        return;
+    }
+
+    // Open the file for writing
     FILE *file = fopen(filename, "wb");
     if (!file) {
         perror("Error opening file for writing");
-        exit(EXIT_FAILURE);
+        return;
     }
 
-    void serialize_node_to_file(Node *node) {
-        if (!node) return;
+    // Serialize the entire tree starting from the root
+    serialize_node_to_file(root, file);
 
-        char buffer[8 * 1024];
-
-        // Serialize the key
-        size_t size = serialize_file_info(&node->key, buffer);
-        fwrite(buffer, 1, size, file);
-
-        // Write the node's color
-        fwrite(&node->color, sizeof(NodeColor), 1, file);
-
-        // Write flags for children
-        int hasLeft = node->left != NULL;
-        int hasRight = node->right != NULL;
-        fwrite(&hasLeft, sizeof(int), 1, file);
-        fwrite(&hasRight, sizeof(int), 1, file);
-
-        // Serialize subtrees
-        serialize_node_to_file(node->left);
-        serialize_node_to_file(node->right);
+    // Close the file
+    if (fclose(file) != 0) {
+        perror("Error closing file");
     }
-
-    serialize_node_to_file(root);
-    fclose(file);
 }
 
-/**
- * Load the Red-Black Tree from a file.
- */
-Node* load_rbt_from_file(const char *filename) {
-    FILE *file = fopen(filename, "rb");
-    if (!file) {
-        perror("Error opening file for reading");
-        return NULL;
-    }
+// Helper function moved outside of main function
+void serialize_node_to_file(Node *node, FILE *file) {
+    if (!node) return;
 
-    // Deserialize the tree
-    Node *root = deserialize_node_from_file(file);
-    fclose(file);
-    return root;
-}
-
-/**
- * Deserialize a node (and its subtree) from a file.
- */
-Node* deserialize_node_from_file(FILE *file) {
     char buffer[8 * 1024];
-    FileInfo key;
+    const size_t size = serialize_file_info(&node->key, buffer);
+    fwrite(buffer, 1, size, file);
 
-    // Deserialize the key
-    size_t size = fread(buffer, 1, sizeof(FileInfo), file);
-    if (size == 0) return NULL;  // End of file reached
+    fwrite(&node->color, sizeof(NodeColor), 1, file);
 
-    deserialize_file_info(&key, buffer);
+    const int hasLeft = node->left != NULL;
+    const int hasRight = node->right != NULL;
 
-    // Deserialize the node's color
-    NodeColor color;
-    fread(&color, sizeof(NodeColor), 1, file);
+    fwrite(&hasLeft, sizeof(int), 1, file);
+    fwrite(&hasRight, sizeof(int), 1, file);
 
-    // Read child flags
-    int hasLeft, hasRight;
-    fread(&hasLeft, sizeof(int), 1, file);
-    fread(&hasRight, sizeof(int), 1, file);
-
-    // Create the node
-    Node *node = createNode(key);
-    node->color = color;
-
-    // Deserialize left and right subtrees
-    if (hasLeft) {
-        node->left = deserialize_node_from_file(file);
-        if (node->left) node->left->parent = node;
-    }
-    if (hasRight) {
-        node->right = deserialize_node_from_file(file);
-        if (node->right) node->right->parent = node;
-    }
-
-    return node;
+    if (node->left) serialize_node_to_file(node->left, file);
+    if (node->right) serialize_node_to_file(node->right, file);
 }
