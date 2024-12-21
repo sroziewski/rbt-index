@@ -49,6 +49,7 @@ Node *deserialize_node(char *buffer, size_t *currentOffset);
 size_t deserialize_file_info(FileInfo *fileInfo, const char *buffer);
 void serialize_node_to_file(Node *node, FILE *file);
 static Node* deserialize_node_from_file(FILE *file);
+void write_tree_to_file(Node *finalRoot, const char *filename);
 // Use macros to simplify rotation operations
 #define ROTATE_LEFT(root, n)              \
     do {                                  \
@@ -171,8 +172,9 @@ int main(int argc, char *argv[]) {
         // Check if the program is run with the --store option
         if (argc == 3 && strcmp(argv[2], "--store") == 0) {
             char *storeFilename = add_rbt_extension(argv[1]);  // Use the input file's name as the base and append `.rbt`
-            store_rbt_to_file(finalRoot, storeFilename);
-            printf("Red-Black Tree has been stored in file: %s\n", storeFilename);
+            write_tree_to_file(finalRoot, storeFilename);
+            // store_rbt_to_file(finalRoot, storeFilename);
+            // printf("Red-Black Tree has been stored in file: %s\n", storeFilename);
             free(storeFilename);
         }
         else {
@@ -209,7 +211,7 @@ void write_tree_to_shared_memory(Node *finalRoot) {
     const char *name = "shared_memory_fname_rb_tree";
 
     // Calculate the size needed for serialization
-    size_t requiredSize = calc_tree_size(finalRoot);
+    const size_t requiredSize = calc_tree_size(finalRoot);
 
     // Align size to system page size
     const long pageSize = sysconf(_SC_PAGE_SIZE);
@@ -237,7 +239,7 @@ void write_tree_to_shared_memory(Node *finalRoot) {
     }
 
     // Create shared memory
-    int shm_fd = shm_open(name, O_CREAT | O_RDWR, 0666); // Read-write permissions
+    const int shm_fd = shm_open(name, O_CREAT | O_RDWR, 0666); // Read-write permissions
     if (shm_fd == -1) {
         perror("Failed to create shared memory object");
         free(buffer);
@@ -742,4 +744,49 @@ size_t deserialize_file_info(FileInfo *fileInfo, const char *buffer) {
 
     printf("Deserialization complete. Total bytes read: %zu\n", offset);
     return offset;
+}
+
+void write_tree_to_file(Node *finalRoot, const char *filename) {
+    // Calculate the size needed for serialization
+    const size_t requiredSize = calc_tree_size(finalRoot);
+
+    // Open the file for writing in binary mode
+    FILE *file = fopen(filename, "wb");
+    if (!file) {
+        perror("Error: Failed to open file for writing");
+        exit(EXIT_FAILURE);
+    }
+
+    // Create a buffer to hold the serialized tree data
+    char *buffer = malloc(requiredSize);
+    if (!buffer) {
+        perror("Error: Failed to allocate memory for serialization buffer");
+        fclose(file);
+        exit(EXIT_FAILURE);
+    }
+
+    // Serialize the tree into the buffer
+    const size_t usedSize = serialize_node(finalRoot, buffer);
+
+    // Ensure the serialized size does not exceed the calculated size
+    if (usedSize > requiredSize) {
+        fprintf(stderr, "Error: Serialized size (%zu bytes) exceeds expected size (%zu bytes)!\n", usedSize, requiredSize);
+        free(buffer);
+        fclose(file);
+        exit(EXIT_FAILURE);
+    }
+
+    // Write the serialized data to the file
+    if (fwrite(buffer, 1, usedSize, file) != usedSize) {
+        perror("Error: Failed to write serialized data to file");
+        free(buffer);
+        fclose(file);
+        exit(EXIT_FAILURE);
+    }
+
+    // Cleanup resources
+    free(buffer);
+    fclose(file);
+
+    printf("Red-black tree successfully written to file '%s', size: %zu bytes\n", filename, usedSize);
 }
