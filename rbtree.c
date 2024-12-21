@@ -16,10 +16,12 @@ void remove_trailing_newline(char *str) {
     }
 }
 
+// Function to get file name from path
 char* get_filename_from_path(const char* path) {
-    const char *slash = strrchr(path, '/');
-    return slash ? strdup(slash + 1) : strdup(path);
+    const char *slash = strrchr(path, '/');  // Find the last '/' in the path
+    return slash ? strdup(slash + 1) : strdup(path);  // Duplicate the file name
 }
+
 
 // File parsing into FileInfo
 FileInfo parseFileData(const char *inputLine) {

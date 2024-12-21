@@ -117,5 +117,4 @@ char* add_rbt_extension(const char *filename);
 char* getFileSizeAsString(double fileSizeBytes);
 char* get_filename_from_path(const char* path);
 
-
 #endif // RBTREE_H
