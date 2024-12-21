@@ -105,10 +105,10 @@ size_t serialize_file_info(FileInfo *fileInfo, char *buffer);
 void store_rbt_to_file(Node *root, const char *filename);
 void write_tree_to_file(Node *finalRoot, const char *filename);
 Node* load_rbt_from_file(const char *filename);
-void read_tree_from_file_to_shared_memory(const char *filename, const char *sharedMemoryName);
+void read_tree_from_file_to_shared_memory(char *filename, const char *prefix);
 
 // Shared Memory Operations
-void write_tree_to_shared_memory(Node *finalRoot);
+void write_tree_to_shared_memory(Node *finalRoot, const char *filePath, const char *prefix);
 
 // Utility Functions
 void remove_trailing_newline(char *str);

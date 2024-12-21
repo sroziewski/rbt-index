@@ -256,9 +256,19 @@ size_t deserialize_file_info(FileInfo *fileInfo, const char *buffer) {
     return offset;
 }
 
-void write_tree_to_shared_memory(Node *finalRoot) {
-        const char *name = "shared_memory_fname_rb_tree";
-
+void write_tree_to_shared_memory(Node *finalRoot, const char *filePath, const char *prefix) {
+    // Extract file name from the file path
+    char *fileName = get_filename_from_path(filePath);
+    // Allocate memory for the full shared memory name
+    size_t sharedMemoryNameLength = strlen(prefix) + strlen(fileName) + strlen(EXTENSION) + 1;
+    char *sharedMemoryName = malloc(sharedMemoryNameLength);
+    if (!sharedMemoryName) {
+        perror("Failed to allocate memory for shared memory name");
+        free(fileName);
+        return;
+    }
+    // Construct the shared memory name
+    snprintf(sharedMemoryName, sharedMemoryNameLength, "%s%s%s", prefix, fileName, EXTENSION);
     // Calculate the size needed for serialization
     const size_t requiredSize = calc_tree_size(finalRoot);
 
@@ -288,7 +298,7 @@ void write_tree_to_shared_memory(Node *finalRoot) {
     }
 
     // Create shared memory
-    const int shm_fd = shm_open(name, O_CREAT | O_RDWR, 0666); // Read-write permissions
+    const int shm_fd = shm_open(sharedMemoryName, O_CREAT | O_RDWR, 0666); // Read-write permissions
     if (shm_fd == -1) {
         perror("Failed to create shared memory object");
         free(buffer);
@@ -322,7 +332,9 @@ void write_tree_to_shared_memory(Node *finalRoot) {
     close(shm_fd);
     free(buffer);
 
-    printf("Red-black tree written to shared memory, size: %s (%zu bytes) %s\n", getFileSizeAsString(usedSize), usedSize, name);
+    printf("Red-black tree written to shared memory, size: %s (%zu bytes) %s\n", getFileSizeAsString(usedSize), usedSize, sharedMemoryName);
+    free(fileName);
+    free(sharedMemoryName);
 }
 
 Node* parent(Node* n) {
@@ -477,9 +489,29 @@ size_t serialize_node(Node *node, char *buffer) {
     return offset;
 }
 
-void read_tree_from_file_to_shared_memory(const char *filename, const char *sharedMemoryName) {
+void read_tree_from_file_to_shared_memory(char *filePath, const char *prefix) {
     // Open the file for reading in binary mode
-    FILE *file = fopen(filename, "rb");
+    char *fileName = get_filename_from_path(filePath);
+    // Allocate memory for the full shared memory name
+    const size_t fileNameLen = strlen(fileName);
+    const size_t extensionLen = strlen(EXTENSION);
+    const int hasExtension = (fileNameLen >= extensionLen) && (strcmp(&fileName[fileNameLen - extensionLen], EXTENSION) == 0);
+    // Allocate memory for the full shared memory name
+    const size_t sharedMemoryNameLength = strlen(prefix) + strlen(fileName) + (hasExtension ? 0 : extensionLen) + 1;
+    char *sharedMemoryName = malloc(sharedMemoryNameLength);
+    if (!sharedMemoryName) {
+        perror("Failed to allocate memory for shared memory name");
+        free(fileName);
+        return;
+    }
+    // Construct the shared memory name
+    if (hasExtension) {
+        snprintf(sharedMemoryName, sharedMemoryNameLength, "%s%s", prefix, fileName); // Don't append .rbt
+    } else {
+        snprintf(sharedMemoryName, sharedMemoryNameLength, "%s%s%s", prefix, fileName, EXTENSION); // Append .rbt
+    }
+
+    FILE *file = fopen(filePath, "rb");
     if (!file) {
         perror("Error: Failed to open file for reading");
         exit(EXIT_FAILURE);
@@ -495,7 +527,7 @@ void read_tree_from_file_to_shared_memory(const char *filename, const char *shar
     }
     rewind(file);
 
-    printf("Reading serialized data from file '%s', size: %zu bytes\n", filename, fileSize);
+    printf("Reading serialized data from file '%s', size: %zu bytes\n", filePath, fileSize);
 
     // Allocate a buffer to hold the serialized data
     char *buffer = malloc(fileSize);
@@ -550,4 +582,6 @@ void read_tree_from_file_to_shared_memory(const char *filename, const char *shar
     munmap(sharedMemoryPtr, fileSize); // Unmap shared memory
     close(shm_fd); // Close shared memory file descriptor
     free(buffer); // Free the temporary buffer
+    free(fileName);
+    free(sharedMemoryName);
 }

@@ -5,13 +5,13 @@ int main(const int argc, char *argv[]) {
         fprintf(stderr, "Usage: %s <file> [--save] [--load filename]\n", argv[0]);
         return EXIT_FAILURE;
     }
-
+    const char *prefix = "shared_memory_fname_";
     Node *finalRoot = NULL;
 
     if (argc == 3 && strcmp(argv[1], "--load") == 0) {
         // Handle the --load command
 
-        read_tree_from_file_to_shared_memory(argv[2], "shared_memory_fname_rb_tree2");
+        read_tree_from_file_to_shared_memory(argv[2], prefix);
 
         // finalRoot = load_rbt_from_file(argv[2]);
         // if (!finalRoot) {
@@ -82,7 +82,7 @@ int main(const int argc, char *argv[]) {
             free(storeFilename);
         }
         else {
-            write_tree_to_shared_memory(finalRoot);
+            write_tree_to_shared_memory(finalRoot, argv[1], prefix);
         }
     }
 
