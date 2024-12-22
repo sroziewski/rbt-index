@@ -4,7 +4,7 @@ DEFINE_COMPARATOR_BY_FIELD(filename, strcmp)
 
 int main(const int argc, char *argv[]) {
     if (argc < 2) {
-        fprintf(stderr, "Usage: %s <file> [--save] [--load filename] [--clean filename]\n", argv[0]);
+        fprintf(stderr, "Usage: %s <file> [--save] [--load filename.rbt] [--clean file]\n", argv[0]);
         return EXIT_FAILURE;
     }
     const char *prefix = "shared_memory_fname_";

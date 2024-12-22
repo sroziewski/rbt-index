@@ -583,7 +583,7 @@ void read_tree_from_file_to_shared_memory(char *filePath, const char *prefix) {
     memcpy(sharedMemoryPtr, buffer, fileSize);
 
     // Cleanup
-    printf("Serialized data successfully stored in shared memory '%s' (size: %zu bytes)\n", sharedMemoryName, fileSize);
+    printf("Serialized red-black tree successfully stored in shared memory %s, size: %s (%zu bytes)\n", sharedMemoryName, getFileSizeAsString(fileSize), fileSize);
     munmap(sharedMemoryPtr, fileSize); // Unmap shared memory
     close(shm_fd); // Close shared memory file descriptor
     free(buffer); // Free the temporary buffer
@@ -598,7 +598,7 @@ int remove_shared_memory_object(char **argv, const char *prefix) {
     const size_t extensionLen = strlen(extension);
 
     // Check if the file already has the ".rbt" extension
-    int hasExtension = (fileNameLen >= extensionLen) &&
+    const int hasExtension = (fileNameLen >= extensionLen) &&
                        (strcmp(&fileName[fileNameLen - extensionLen], extension) == 0);
 
     // Allocate shared memory name
@@ -618,9 +618,28 @@ int remove_shared_memory_object(char **argv, const char *prefix) {
         snprintf(sharedMemoryName, sharedMemoryNameLength, "%s%s%s", prefix, fileName, extension);
     }
 
+    // Open the shared memory object to get its size
+    const int shm_fd = shm_open(sharedMemoryName, O_RDONLY, 0);
+    if (shm_fd == -1) {
+        perror("Failed to open shared memory object");
+        free(sharedMemoryName);
+        free(fileName);
+        return EXIT_FAILURE;
+    }
+
+    struct stat shm_stat;
+    if (fstat(shm_fd, &shm_stat) == -1) {
+        perror("Failed to get shared memory object size");
+        close(shm_fd);
+        free(sharedMemoryName);
+        free(fileName);
+        return EXIT_FAILURE;
+    }
+    const size_t fileSize = shm_stat.st_size; // Shared memory size
+
     // Remove the shared memory object
     if (shm_unlink(sharedMemoryName) == 0) {
-        printf("Shared memory object '%s' successfully removed.\n", sharedMemoryName);
+        printf("Shared memory object %s successfully removed, size: %s (%zu bytes)\n", sharedMemoryName, getFileSizeAsString(fileSize), fileSize);
     } else {
         perror("Error removing shared memory object");
     }
