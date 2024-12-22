@@ -32,7 +32,7 @@ endif()
 # Add your source files for list_files
 add_executable(list_files
         list_files.c  # Your main entry point for list_files
-        lfiles.c      # File containing the implementation for list_files
+        flib/lfiles.c      # File containing the implementation for list_files
 )
 
 # Link libraries: libmagic and OpenMP for list_files
@@ -46,7 +46,7 @@ set_target_properties(list_files PROPERTIES
 # Add another executable: rbt_name_create
 add_executable(rbt_name_create
         rbt_name_create.c
-        rbtree.c  # Your main entry point for rbt_name_create
+        rbtlib/rbtree.c  # Your main entry point for rbt_name_create
 )
 
 # Add arguments to the rbt_name_create executable for IDEs/debugging (optional)
@@ -57,5 +57,5 @@ set_target_properties(rbt_name_create PROPERTIES
 # Add another executable: rbt_search
 add_executable(rbt_search
         rbt_search.c
-        rbtree.c  # Your main entry point for rbt_search
+        rbtlib/rbtree.c  # Your main entry point for rbt_search
 )
