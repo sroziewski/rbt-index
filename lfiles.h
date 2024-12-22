@@ -79,6 +79,10 @@ int isSqlFile(const char *filePath);
 
 int isCalcFile(const char *filePath);
 
+int isCsvFile(const char* filePath);
+
+int isCssFile(const char* filePath);
+
 // File type categorization
 const char *getFileTypeCategory(const char *mimeType, const char *filePath);
 
@@ -130,6 +134,8 @@ void processDirectory(TaskQueue *taskQueue, FileEntry **entries, int *count, int
                       int *calcFiles, long long *calcSize,
                       int *texFiles, long long *texSize,
                       int *sqlFiles, long long *sqlSize,
+                      int *csvFiles, long long *csvSize,
+                      int *cssFiles, long long *cssSize,
                       int skipDirs, long long sizeThreshold);
 
 // File size string utility

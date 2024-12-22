@@ -3,7 +3,7 @@
 int main(int argc, char *argv[]) {
     const char *name = "shared_memory_fname_playground.list.rbt";
     size_t targetSize = 75988048;  // Example size to search for
-    const char *targetType = "T_BINARY";  // Example file type to search for
+    const char *targetType = "T_CSV";  // Example file type to search for
 
     // Parse command line arguments
     int shouldClose = 0;
@@ -14,7 +14,7 @@ int main(int argc, char *argv[]) {
     }
 
     // Open shared memory
-    int shm_fd = shm_open(name, O_RDONLY, 0666);
+    const int shm_fd = shm_open(name, O_RDONLY, 0666);
     if (shm_fd == -1) {
         perror("Failed to open shared memory");
         exit(EXIT_FAILURE);
@@ -38,11 +38,11 @@ int main(int argc, char *argv[]) {
 
     // Deserialize the tree from shared memory
     size_t offset = 0;
-    Node *root = deserialize_node((char *)ptr, &offset);
+    Node *root = deserialize_node(ptr, &offset);
 
     // Search for files with the specified size and type
     search_tree_for_size_and_type(root, targetSize, targetType);
-    const char *targetName = "lib.*.so";
+    const char *targetName = "domainBlacklist.csv";
     search_tree_for_name_and_type(root, targetName, targetType);
 
     // Clean up
@@ -57,9 +57,8 @@ int main(int argc, char *argv[]) {
         if (shm_unlink(name) == -1) {
             perror("Failed to remove shared memory");
             exit(EXIT_FAILURE);
-        } else {
-            printf("Shared memory successfully removed.\n");
         }
+        printf("Shared memory successfully removed.\n");
     }
 
     return 0;
