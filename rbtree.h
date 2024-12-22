@@ -9,6 +9,7 @@
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <regex.h>
 
 // Enum to represent node colors
 typedef enum { RED, BLACK } NodeColor;
@@ -88,6 +89,12 @@ void freeTree(Node *node);
 
 void freeFileInfo(FileInfo *fileInfo);
 
+Node *deserialize_node(char *buffer, size_t *currentOffset);
+
+void free_node(Node *node);
+
+void search_tree_for_size_and_type(Node *root, size_t targetSize, const char *targetType);
+
 static inline Node *grandparent(Node *n) {
     return (n && n->parent) ? n->parent->parent : NULL;
 }
@@ -111,6 +118,8 @@ int compareByFilename(const FileInfo *a, const FileInfo *b);
 
 int compareByFilesize(const FileInfo *a, const FileInfo *b);
 
+void search_tree_for_name_and_type(Node *root, const char *namePattern, const char *targetType);
+
 // Rotation Operations
 void rotate_left(Node **root, Node *n);
 
@@ -119,15 +128,13 @@ void rotate_right(Node **root, Node *n);
 // Serialization and Deserialization
 size_t serialize_file_info(FileInfo *fileInfo, char *buffer);
 
-size_t deserialize_file_info(FileInfo *fileInfo, const char *buffer);
+size_t deserialize_file_info(FileInfo *fileInfo, char *buffer);
 
 size_t serialize_node(Node *node, char *buffer);
 
 size_t calc_file_info_size(const FileInfo *fileInfo);
 
 size_t calc_tree_size(Node *node);
-
-Node *deserialize_node(char *buffer, size_t *currentOffset);
 
 size_t serialize_file_info(FileInfo *fileInfo, char *buffer);
 

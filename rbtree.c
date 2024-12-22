@@ -195,56 +195,32 @@ size_t serialize_file_info(FileInfo *fileInfo, char *buffer) {
     return offset;
 }
 
-size_t deserialize_file_info(FileInfo *fileInfo, const char *buffer) {
-    if (!fileInfo || !buffer) {
-        printf("Error: null FileInfo or buffer.\n");
-        return 0;
-    }
-
+// Deserialize a FileInfo from the buffer
+size_t deserialize_file_info(FileInfo *fileInfo, char *buffer) {
     size_t offset = 0;
+    size_t length;
 
-    // Deserialize and debug filename
-    printf("Deserializing filename...\n");
-    size_t filenameLength = strlen(buffer + offset);
-    fileInfo->filename = (char *) malloc(filenameLength + 1);
-    if (!fileInfo->filename) {
-        printf("Error: malloc failed for filename.\n");
-        return 0;
-    }
-    strcpy(fileInfo->filename, buffer + offset);
-    offset += filenameLength + 1;
+    memcpy(&length, buffer + offset, sizeof(size_t));
+    offset += sizeof(size_t);
+    fileInfo->filename = (char *)malloc(length);
+    memcpy(fileInfo->filename, buffer + offset, length);
+    offset += length;
 
-    // Deserialize and debug filesize
-    printf("Deserializing filesize...\n");
-    memcpy(&fileInfo->filesize, buffer + offset, sizeof(fileInfo->filesize));
-    offset += sizeof(fileInfo->filesize);
+    memcpy(&fileInfo->filesize, buffer + offset, sizeof(size_t));
+    offset += sizeof(size_t);
 
-    // Deserialize and debug filepath
-    printf("Deserializing filepath...\n");
-    size_t filepathLength = strlen(buffer + offset);
-    fileInfo->filepath = (char *) malloc(filepathLength + 1);
-    if (!fileInfo->filepath) {
-        printf("Error: malloc failed for filepath.\n");
-        free(fileInfo->filename); // Free previously allocated memory
-        return 0;
-    }
-    strcpy(fileInfo->filepath, buffer + offset);
-    offset += filepathLength + 1;
+    memcpy(&length, buffer + offset, sizeof(size_t));
+    offset += sizeof(size_t);
+    fileInfo->filepath = (char *)malloc(length);
+    memcpy(fileInfo->filepath, buffer + offset, length);
+    offset += length;
 
-    // Deserialize and debug filetype
-    printf("Deserializing filetype...\n");
-    size_t filetypeLength = strlen(buffer + offset);
-    fileInfo->filetype = (char *) malloc(filetypeLength + 1);
-    if (!fileInfo->filetype) {
-        printf("Error: malloc failed for filetype.\n");
-        free(fileInfo->filename); // Free previously allocated memory
-        free(fileInfo->filepath);
-        return 0;
-    }
-    strcpy(fileInfo->filetype, buffer + offset);
-    offset += filetypeLength + 1;
+    memcpy(&length, buffer + offset, sizeof(size_t));
+    offset += sizeof(size_t);
+    fileInfo->filetype = (char *)malloc(length);
+    memcpy(fileInfo->filetype, buffer + offset, length);
+    offset += length;
 
-    printf("Deserialization complete. Total bytes read: %zu\n", offset);
     return offset;
 }
 
@@ -653,4 +629,92 @@ int compareByFilename(const FileInfo *a, const FileInfo *b) {
 
 int compareByFilesize(const FileInfo *a, const FileInfo *b) {
     return (a->filesize > b->filesize) - (a->filesize < b->filesize);
+}
+
+// Deserialize a node from the buffer
+Node *deserialize_node(char *buffer, size_t *currentOffset) {
+    Node *node = (Node *)malloc(sizeof(Node));
+    if (node == NULL) return NULL;
+
+    size_t offset = deserialize_file_info(&node->key, buffer + *currentOffset);
+    *currentOffset += offset;
+
+    memcpy(&node->color, buffer + *currentOffset, sizeof(NodeColor));
+    *currentOffset += sizeof(NodeColor);
+
+    int hasLeft, hasRight;
+    memcpy(&hasLeft, buffer + *currentOffset, sizeof(int));
+    *currentOffset += sizeof(int);
+    memcpy(&hasRight, buffer + *currentOffset, sizeof(int));
+    *currentOffset += sizeof(int);
+
+    if (hasLeft) {
+        node->left = deserialize_node(buffer, currentOffset);
+        node->left->parent = node;
+    } else {
+        node->left = NULL;
+    }
+
+    if (hasRight) {
+        node->right = deserialize_node(buffer, currentOffset);
+        node->right->parent = node;
+    } else {
+        node->right = NULL;
+    }
+
+    return node;
+}
+
+// Recursive function to free allocated nodes
+void free_node(Node *node) {
+    if (node == NULL) return;
+    free_node(node->left);
+    free_node(node->right);
+    free(node->key.filename);
+    free(node->key.filepath);
+    free(node->key.filetype);
+    free(node);
+}
+
+// Function to search and print files with a given size and type
+void search_tree_for_size_and_type(Node *root, size_t targetSize, const char *targetType) {
+    if (root == NULL) {
+        return;
+    }
+
+    if (root->key.filesize == targetSize && strcmp(root->key.filetype, targetType) == 0) {
+        printf("Found file: %s (Size: %zu, Type: %s)\n", root->key.filename, root->key.filesize, root->key.filetype);
+    }
+
+    search_tree_for_size_and_type(root->left, targetSize, targetType);
+    search_tree_for_size_and_type(root->right, targetSize, targetType);
+}
+
+void search_tree_for_name_and_type(Node *root, const char *namePattern, const char *targetType) {
+    if (root == NULL) {
+        return;
+    }
+
+    // Compile the regular expression for the name pattern
+    regex_t regex;
+    int ret = regcomp(&regex, namePattern, REG_EXTENDED | REG_NOSUB);
+    if (ret != 0) {
+        char errbuf[128];
+        regerror(ret, &regex, errbuf, sizeof(errbuf));
+        fprintf(stderr, "Regex compilation error: %s\n", errbuf);
+        return;
+    }
+
+    // Check if the current node matches the name regex and file type
+    if (regexec(&regex, root->key.filename, 0, NULL, 0) == 0 && strcmp(root->key.filetype, targetType) == 0) {
+        printf("Found file: %s (Type: %s, Size: %zu, Path: %s)\n",
+               root->key.filename, root->key.filetype, root->key.filesize, root->key.filepath);
+    }
+
+    // Free the regex memory after usage
+    regfree(&regex);
+
+    // Traverse the left and right subtrees
+    search_tree_for_name_and_type(root->left, namePattern, targetType);
+    search_tree_for_name_and_type(root->right, namePattern, targetType);
 }

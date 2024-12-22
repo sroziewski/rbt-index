@@ -53,3 +53,9 @@ add_executable(rbt_name_create
 set_target_properties(rbt_name_create PROPERTIES
         VS_DEBUGGER_COMMAND_ARGUMENTS "/home/simon/playground/playground.list"
 )
+
+# Add another executable: rbt_search
+add_executable(rbt_search
+        rbt_search.c
+        rbtree.c  # Your main entry point for rbt_search
+)
