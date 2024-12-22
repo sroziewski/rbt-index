@@ -103,7 +103,7 @@ static inline Node *uncle(Node *n) {
 // Red-Black Tree Operations
 void insert(Node **root, const FileInfo key, int (*comparator)(const FileInfo *, const FileInfo *));
 
-void inorder(Node *node);
+void inorder(const Node *node);
 
 void insert_rebalance(Node **root, Node *n);
 
@@ -123,7 +123,7 @@ size_t deserialize_file_info(FileInfo *fileInfo, const char *buffer);
 
 size_t serialize_node(Node *node, char *buffer);
 
-size_t calc_file_info_size(FileInfo *fileInfo);
+size_t calc_file_info_size(const FileInfo *fileInfo);
 
 size_t calc_tree_size(Node *node);
 

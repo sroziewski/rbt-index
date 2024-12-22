@@ -344,7 +344,7 @@ Node *parent(Node *n) {
 }
 
 // Function to calculate the serialized size of a single FileInfo
-size_t calc_file_info_size(FileInfo *fileInfo) {
+size_t calc_file_info_size(const FileInfo *fileInfo) {
     return sizeof(size_t) + (strlen(fileInfo->filename) + 1) +
            sizeof(size_t) +
            sizeof(size_t) + (strlen(fileInfo->filepath) + 1) +
@@ -380,7 +380,7 @@ char *getFileSizeAsString(const size_t fileSizeBytesIn) {
     return result;
 }
 
-void inorder(Node *node) {
+void inorder(const Node *node) {
     if (node != NULL) {
         inorder(node->left);
         printf("Filename: %s, Size: %zu bytes, Path: %s, Type: %s\n",
