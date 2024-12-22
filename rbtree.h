@@ -87,7 +87,7 @@ Node *createNode(FileInfo key, NodeColor color, Node *parent);
 
 void freeTree(Node *node);
 
-void freeFileInfo(FileInfo *fileInfo);
+void freeFileInfo(const FileInfo *fileInfo);
 
 Node *deserialize_node(char *buffer, size_t *currentOffset);
 
@@ -126,17 +126,17 @@ void rotate_left(Node **root, Node *n);
 void rotate_right(Node **root, Node *n);
 
 // Serialization and Deserialization
-size_t serialize_file_info(FileInfo *fileInfo, char *buffer);
+size_t serialize_file_info(const FileInfo *fileInfo, char *buffer);
 
-size_t deserialize_file_info(FileInfo *fileInfo, char *buffer);
+size_t deserialize_file_info(FileInfo *fileInfo, const char *buffer);
 
 size_t serialize_node(Node *node, char *buffer);
 
 size_t calc_file_info_size(const FileInfo *fileInfo);
 
-size_t calc_tree_size(Node *node);
+size_t calc_tree_size(const Node *node);
 
-size_t serialize_file_info(FileInfo *fileInfo, char *buffer);
+size_t serialize_file_info(const FileInfo *fileInfo, char *buffer);
 
 // File Operations
 void store_rbt_to_file(Node *root, const char *filename);

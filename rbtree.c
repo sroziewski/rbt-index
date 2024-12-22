@@ -2,7 +2,7 @@
 
 // Utility Functions
 void remove_trailing_newline(char *str) {
-    size_t len = strlen(str);
+    const size_t len = strlen(str);
     if (len > 0 && str[len - 1] == '\n') {
         str[len - 1] = '\0';
     }
@@ -26,11 +26,10 @@ FileInfo parseFileData(const char *inputLine) {
         exit(EXIT_FAILURE);
     }
 
-    char *start = lineCopy;
-    char *sepPos;
+    const char *start = lineCopy;
 
     // Extract filepath
-    sepPos = strstr(start, separator);
+    char *sepPos = strstr(start, separator);
     if (sepPos) {
         *sepPos = '\0';
         result.filepath = strdup(start);
@@ -56,7 +55,7 @@ FileInfo parseFileData(const char *inputLine) {
 }
 
 // Tree Node Allocation
-Node *createNode(FileInfo key, NodeColor color, Node *parent) {
+Node *createNode(const FileInfo key, const NodeColor color, Node *parent) {
     Node *node = (Node *) malloc(sizeof(Node));
     if (!node) {
         fprintf(stderr, "Memory allocation error\n");
@@ -70,7 +69,7 @@ Node *createNode(FileInfo key, NodeColor color, Node *parent) {
 }
 
 // Free FileInfo
-void freeFileInfo(FileInfo *fileInfo) {
+void freeFileInfo(const FileInfo *fileInfo) {
     free(fileInfo->filename);
     free(fileInfo->filepath);
     free(fileInfo->filetype);
@@ -167,7 +166,7 @@ void insert_rebalance(Node **root, Node *n) {
 }
 
 // Serializing and Deserializing implementations
-size_t serialize_file_info(FileInfo *fileInfo, char *buffer) {
+size_t serialize_file_info(const FileInfo *fileInfo, char *buffer) {
     size_t offset = 0;
     size_t length;
 
@@ -196,13 +195,13 @@ size_t serialize_file_info(FileInfo *fileInfo, char *buffer) {
 }
 
 // Deserialize a FileInfo from the buffer
-size_t deserialize_file_info(FileInfo *fileInfo, char *buffer) {
+size_t deserialize_file_info(FileInfo *fileInfo, const char *buffer) {
     size_t offset = 0;
     size_t length;
 
     memcpy(&length, buffer + offset, sizeof(size_t));
     offset += sizeof(size_t);
-    fileInfo->filename = (char *)malloc(length);
+    fileInfo->filename = (char *) malloc(length);
     memcpy(fileInfo->filename, buffer + offset, length);
     offset += length;
 
@@ -211,13 +210,13 @@ size_t deserialize_file_info(FileInfo *fileInfo, char *buffer) {
 
     memcpy(&length, buffer + offset, sizeof(size_t));
     offset += sizeof(size_t);
-    fileInfo->filepath = (char *)malloc(length);
+    fileInfo->filepath = (char *) malloc(length);
     memcpy(fileInfo->filepath, buffer + offset, length);
     offset += length;
 
     memcpy(&length, buffer + offset, sizeof(size_t));
     offset += sizeof(size_t);
-    fileInfo->filetype = (char *)malloc(length);
+    fileInfo->filetype = (char *) malloc(length);
     memcpy(fileInfo->filetype, buffer + offset, length);
     offset += length;
 
@@ -228,7 +227,7 @@ void write_tree_to_shared_memory(Node *finalRoot, const char *filePath, const ch
     // Extract file name from the file path
     char *fileName = get_filename_from_path(filePath);
     // Allocate memory for the full shared memory name
-    size_t sharedMemoryNameLength = strlen(prefix) + strlen(fileName) + strlen(EXTENSION) + 1;
+    const size_t sharedMemoryNameLength = strlen(prefix) + strlen(fileName) + strlen(EXTENSION) + 1;
     char *sharedMemoryName = malloc(sharedMemoryNameLength);
     if (!sharedMemoryName) {
         perror("Failed to allocate memory for shared memory name");
@@ -274,7 +273,7 @@ void write_tree_to_shared_memory(Node *finalRoot, const char *filePath, const ch
     }
 
     // Set the size of shared memory to the aligned size
-    if (ftruncate(shm_fd, alignedSize) == -1) {
+    if (ftruncate(shm_fd, (long long) alignedSize) == -1) {
         perror("Failed to set shared memory size");
         free(buffer);
         close(shm_fd);
@@ -307,7 +306,7 @@ void write_tree_to_shared_memory(Node *finalRoot, const char *filePath, const ch
     free(sizeStr);
 }
 
-Node *parent(Node *n) {
+Node *parent(const Node *n) {
     return n ? n->parent : NULL;
 }
 
@@ -320,11 +319,11 @@ size_t calc_file_info_size(const FileInfo *fileInfo) {
 }
 
 // Function to calculate serialized size of the whole tree
-size_t calc_tree_size(Node *node) {
+size_t calc_tree_size(const Node *node) {
     if (node == NULL) {
         return 0;
     }
-    size_t size = calc_file_info_size(&node->key) + sizeof(NodeColor) + 2 * sizeof(int);
+    const size_t size = calc_file_info_size(&node->key) + sizeof(NodeColor) + 2 * sizeof(int);
     return size + calc_tree_size(node->left) + calc_tree_size(node->right);
 }
 
@@ -444,8 +443,8 @@ size_t serialize_node(Node *node, char *buffer) {
     offset += sizeof(NodeColor);
 
     // Mark non-null nodes
-    int hasLeft = node->left != NULL;
-    int hasRight = node->right != NULL;
+    const int hasLeft = node->left != NULL;
+    const int hasRight = node->right != NULL;
     memcpy(buffer + offset, &hasLeft, sizeof(int));
     offset += sizeof(int);
     memcpy(buffer + offset, &hasRight, sizeof(int));
@@ -530,7 +529,7 @@ void read_tree_from_file_to_shared_memory(char *filePath, const char *prefix) {
     }
 
     // Resize the shared memory to hold the serialized data
-    if (ftruncate(shm_fd, fileSize) == -1) {
+    if (ftruncate(shm_fd, (long long) fileSize) == -1) {
         perror("Error: Failed to resize shared memory");
         free(buffer);
         close(shm_fd);
@@ -553,7 +552,8 @@ void read_tree_from_file_to_shared_memory(char *filePath, const char *prefix) {
 
     // Cleanup
     char *sizeStr = getFileSizeAsString(fileSize);
-    printf("Serialized red-black tree successfully stored in shared memory %s, size: %s (%zu bytes)\n", sharedMemoryName, sizeStr, fileSize);
+    printf("Serialized red-black tree successfully stored in shared memory %s, size: %s (%zu bytes)\n",
+           sharedMemoryName, sizeStr, fileSize);
     munmap(sharedMemoryPtr, fileSize); // Unmap shared memory
     close(shm_fd); // Close shared memory file descriptor
     free(buffer); // Free the temporary buffer
@@ -570,7 +570,7 @@ int remove_shared_memory_object(char **argv, const char *prefix) {
 
     // Check if the file already has the ".rbt" extension
     const int hasExtension = (fileNameLen >= extensionLen) &&
-                       (strcmp(&fileName[fileNameLen - extensionLen], extension) == 0);
+                             (strcmp(&fileName[fileNameLen - extensionLen], extension) == 0);
 
     // Allocate shared memory name
     const size_t sharedMemoryNameLength = strlen(prefix) + strlen(fileName) + (hasExtension ? 0 : extensionLen) + 1;
@@ -611,7 +611,8 @@ int remove_shared_memory_object(char **argv, const char *prefix) {
     // Remove the shared memory object
     char *sizeStr = getFileSizeAsString(fileSize);
     if (shm_unlink(sharedMemoryName) == 0) {
-        printf("Shared memory object %s successfully removed, size: %s (%zu bytes)\n", sharedMemoryName, sizeStr, fileSize);
+        printf("Shared memory object %s successfully removed, size: %s (%zu bytes)\n", sharedMemoryName, sizeStr,
+               fileSize);
     } else {
         perror("Error removing shared memory object");
     }
@@ -633,10 +634,10 @@ int compareByFilesize(const FileInfo *a, const FileInfo *b) {
 
 // Deserialize a node from the buffer
 Node *deserialize_node(char *buffer, size_t *currentOffset) {
-    Node *node = (Node *)malloc(sizeof(Node));
+    Node *node = malloc(sizeof(Node));
     if (node == NULL) return NULL;
 
-    size_t offset = deserialize_file_info(&node->key, buffer + *currentOffset);
+    const size_t offset = deserialize_file_info(&node->key, buffer + *currentOffset);
     *currentOffset += offset;
 
     memcpy(&node->color, buffer + *currentOffset, sizeof(NodeColor));
@@ -697,7 +698,7 @@ void search_tree_for_name_and_type(Node *root, const char *namePattern, const ch
 
     // Compile the regular expression for the name pattern
     regex_t regex;
-    int ret = regcomp(&regex, namePattern, REG_EXTENDED | REG_NOSUB);
+    const int ret = regcomp(&regex, namePattern, REG_EXTENDED | REG_NOSUB);
     if (ret != 0) {
         char errbuf[128];
         regerror(ret, &regex, errbuf, sizeof(errbuf));
