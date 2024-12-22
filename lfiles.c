@@ -341,8 +341,8 @@ void processDirectory(TaskQueue *taskQueue, FileEntry **entries, int *count, int
                       int *calcFiles, long long *calcSize,
                       int *texFiles, long long *texSize,
                       int *sqlFiles, long long *sqlSize,
-                      int skipDirs, int sizeThreshold)  {
-    char **dirEntries = (char **)malloc(INITIAL_CAPACITY * sizeof(char *));
+                      int skipDirs, long long sizeThreshold)  {
+    char **dirEntries = malloc(INITIAL_CAPACITY * sizeof(char *));
     if (!dirEntries) {
         perror("malloc");
        exit(EXIT_FAILURE);

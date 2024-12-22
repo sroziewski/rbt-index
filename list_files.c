@@ -48,7 +48,7 @@ int main(int argc, char *argv[]) {
 
     int capacity = INITIAL_CAPACITY;
     int count = 0;
-    FileEntry *entries = (FileEntry *)malloc(capacity * sizeof(FileEntry));
+    FileEntry *entries = malloc(capacity * sizeof(FileEntry));
     if (!entries) {
         perror("malloc");
         if (outputFile != stdout) fclose(outputFile);

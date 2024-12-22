@@ -36,26 +36,47 @@ typedef struct TaskQueue {
 
 // File type detection functions
 int isJsonFile(const char *filePath);
+
 int isYamlFile(const char *filePath);
+
 int isExeFile(const char *filePath);
+
 int isCFile(const char *filePath);
+
 int isPythonFile(const char *filePath);
+
 int isJavaFile(const char *filePath);
+
 int isCompressedFile(const char *filePath);
+
 int isPackageFile(const char *filePath);
+
 int isLogFile(const char *filePath);
+
 int isClassFile(const char *filePath);
+
 int isTemplateFile(const char *filePath);
+
 int isPdfFile(const char *filePath);
+
 int isJarFile(const char *filePath);
+
 int isHtmlFile(const char *filePath);
+
 int isXmlFile(const char *filePath);
+
 int isXhtmlFile(const char *filePath);
+
 int isTsFile(const char *filePath);
+
 int isJsFile(const char *filePath);
+
 int isTexFile(const char *filePath);
+
 int isDocFile(const char *filePath);
+
 int isSqlFile(const char *filePath);
+
 int isCalcFile(const char *filePath);
 
 // File type categorization
@@ -69,9 +90,13 @@ int compareFileEntries(const void *a, const void *b);
 
 // Task queue manipulation functions
 void initQueue(TaskQueue *queue, int capacity);
+
 void resizeQueue(TaskQueue *queue);
+
 void enqueue(TaskQueue *queue, const char *path);
+
 char *dequeue(TaskQueue *queue);
+
 void freeQueue(TaskQueue *queue);
 
 // Directory processing function
@@ -105,7 +130,7 @@ void processDirectory(TaskQueue *taskQueue, FileEntry **entries, int *count, int
                       int *calcFiles, long long *calcSize,
                       int *texFiles, long long *texSize,
                       int *sqlFiles, long long *sqlSize,
-                      int skipDirs, int sizeThreshold);
+                      int skipDirs, long long sizeThreshold);
 
 // File size string utility
 char *getFileSizeAsString(double fileSizeBytes);
