@@ -332,10 +332,11 @@ void write_tree_to_shared_memory(Node *finalRoot, const char *filePath, const ch
     close(shm_fd);
     free(buffer);
 
-    printf("Red-black tree written to shared memory, size: %s (%zu bytes) %s\n", getFileSizeAsString(usedSize),
-           usedSize, sharedMemoryName);
+    char *sizeStr = getFileSizeAsString(usedSize);
+    printf("Red-black tree written to shared memory, size: %s (%zu bytes) %s\n", sizeStr, usedSize, sharedMemoryName);
     free(fileName);
     free(sharedMemoryName);
+    free(sizeStr);
 }
 
 Node *parent(Node *n) {
@@ -359,11 +360,12 @@ size_t calc_tree_size(Node *node) {
     return size + calc_tree_size(node->left) + calc_tree_size(node->right);
 }
 
-char *getFileSizeAsString(double fileSizeBytes) {
+char *getFileSizeAsString(const size_t fileSizeBytesIn) {
+    const double fileSizeBytes = (double) fileSizeBytesIn;
     const double kB = 1024.0;
     const double MB = 1024.0 * 1024.0;
     const double GB = 1024.0 * 1024.0 * 1024.0;
-    char *result = (char *) malloc(20 * sizeof(char)); // Allocate memory for the result
+    char *result = malloc(20 * sizeof(char)); // Allocate memory for the result
 
     if (fileSizeBytes >= GB) {
         snprintf(result, 20, "%.2f GB", fileSizeBytes / GB);
@@ -456,10 +458,9 @@ void write_tree_to_file(Node *finalRoot, const char *filename) {
     // Cleanup resources
     free(buffer);
     fclose(file);
-
-    printf("Red-black tree successfully written to file '%s', size: %s (%zu bytes)\n", filename,
-           getFileSizeAsString(usedSize),
-           usedSize);
+    char *sizeStr = getFileSizeAsString(usedSize);
+    printf("Red-black tree successfully written to file '%s', size: %s (%zu bytes)\n", filename, sizeStr, usedSize);
+    free(sizeStr); // Free after use
 }
 
 // Function to serialize a single node
@@ -583,12 +584,14 @@ void read_tree_from_file_to_shared_memory(char *filePath, const char *prefix) {
     memcpy(sharedMemoryPtr, buffer, fileSize);
 
     // Cleanup
-    printf("Serialized red-black tree successfully stored in shared memory %s, size: %s (%zu bytes)\n", sharedMemoryName, getFileSizeAsString(fileSize), fileSize);
+    char *sizeStr = getFileSizeAsString(fileSize);
+    printf("Serialized red-black tree successfully stored in shared memory %s, size: %s (%zu bytes)\n", sharedMemoryName, sizeStr, fileSize);
     munmap(sharedMemoryPtr, fileSize); // Unmap shared memory
     close(shm_fd); // Close shared memory file descriptor
     free(buffer); // Free the temporary buffer
     free(fileName);
     free(sharedMemoryName);
+    free(sizeStr);
 }
 
 int remove_shared_memory_object(char **argv, const char *prefix) {
@@ -638,8 +641,9 @@ int remove_shared_memory_object(char **argv, const char *prefix) {
     const size_t fileSize = shm_stat.st_size; // Shared memory size
 
     // Remove the shared memory object
+    char *sizeStr = getFileSizeAsString(fileSize);
     if (shm_unlink(sharedMemoryName) == 0) {
-        printf("Shared memory object %s successfully removed, size: %s (%zu bytes)\n", sharedMemoryName, getFileSizeAsString(fileSize), fileSize);
+        printf("Shared memory object %s successfully removed, size: %s (%zu bytes)\n", sharedMemoryName, sizeStr, fileSize);
     } else {
         perror("Error removing shared memory object");
     }
@@ -647,6 +651,7 @@ int remove_shared_memory_object(char **argv, const char *prefix) {
     // Cleanup
     free(sharedMemoryName);
     free(fileName);
+    free(sizeStr);
     return EXIT_SUCCESS;
 }
 
