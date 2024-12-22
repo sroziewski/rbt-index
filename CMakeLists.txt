@@ -29,16 +29,27 @@ else()
     message(STATUS "Found libmagic library: ${MAGIC_LIB}")
 endif()
 
-# Add your source files
+# Add your source files for list_files
 add_executable(list_files
-        list_files.c  # Your main entry point
-        lfiles.c      # File containing the implementation
+        list_files.c  # Your main entry point for list_files
+        lfiles.c      # File containing the implementation for list_files
 )
 
-# Link libraries: libmagic and OpenMP
+# Link libraries: libmagic and OpenMP for list_files
 target_link_libraries(list_files PRIVATE ${MAGIC_LIB} OpenMP::OpenMP_C)
 
-# Add arguments to the executable for IDEs/debugging (optional)
+# Add arguments to the list_files executable for IDEs/debugging (optional)
 set_target_properties(list_files PROPERTIES
         VS_DEBUGGER_COMMAND_ARGUMENTS "/home/simon/playground -o /home/simon/playground/playground.list"
+)
+
+# Add another executable: rbt_name_create
+add_executable(rbt_name_create
+        rbt_name_create.c
+        rbtree.c  # Your main entry point for rbt_name_create
+)
+
+# Add arguments to the rbt_name_create executable for IDEs/debugging (optional)
+set_target_properties(rbt_name_create PROPERTIES
+        VS_DEBUGGER_COMMAND_ARGUMENTS "/home/simon/playground/playground.list"
 )
