@@ -227,7 +227,7 @@ void write_tree_to_shared_memory(Node *finalRoot, const char *filePath, const ch
     // Extract file name from the file path
     char *fileName = get_filename_from_path(filePath);
     // Allocate memory for the full shared memory name
-    const size_t sharedMemoryNameLength = strlen(prefix) + strlen(fileName) + strlen(EXTENSION) + 1;
+    const size_t sharedMemoryNameLength = strlen(prefix) + strlen(fileName) + strlen(EXTENSION_RBT) + strlen(EXTENSION_MEM) + 1;
     char *sharedMemoryName = malloc(sharedMemoryNameLength);
     if (!sharedMemoryName) {
         perror("Failed to allocate memory for shared memory name");
@@ -235,7 +235,7 @@ void write_tree_to_shared_memory(Node *finalRoot, const char *filePath, const ch
         return;
     }
     // Construct the shared memory name
-    snprintf(sharedMemoryName, sharedMemoryNameLength, "%s%s%s", prefix, fileName, EXTENSION);
+    snprintf(sharedMemoryName, sharedMemoryNameLength, "%s%s%s%s", prefix, fileName, EXTENSION_RBT, EXTENSION_MEM);
     // Calculate the size needed for serialization
     const size_t requiredSize = calc_tree_size(finalRoot);
 
@@ -362,10 +362,10 @@ void inorder(const Node *node) {
  */
 char *add_rbt_extension(const char *filename) {
     const size_t len = strlen(filename);
-    const size_t extLen = strlen(EXTENSION);
+    const size_t extLen = strlen(EXTENSION_RBT);
 
     // Check if the filename already ends with '.rbt'
-    if (len >= extLen && strcmp(filename + len - extLen, EXTENSION) == 0) {
+    if (len >= extLen && strcmp(filename + len - extLen, EXTENSION_RBT) == 0) {
         return strdup(filename); // Return a copy of the original filename
     }
 
@@ -378,7 +378,7 @@ char *add_rbt_extension(const char *filename) {
 
     // Append the ".rbt" extension
     strcpy(newFilename, filename);
-    strcat(newFilename, EXTENSION);
+    strcat(newFilename, EXTENSION_RBT);
 
     return newFilename;
 }
@@ -466,11 +466,11 @@ void read_tree_from_file_to_shared_memory(char *filePath, const char *prefix) {
     char *fileName = get_filename_from_path(filePath);
     // Allocate memory for the full shared memory name
     const size_t fileNameLen = strlen(fileName);
-    const size_t extensionLen = strlen(EXTENSION);
+    const size_t extensionLen = strlen(EXTENSION_RBT);
     const int hasExtension = (fileNameLen >= extensionLen) && (
-                                 strcmp(&fileName[fileNameLen - extensionLen], EXTENSION) == 0);
+                                 strcmp(&fileName[fileNameLen - extensionLen], EXTENSION_RBT) == 0);
     // Allocate memory for the full shared memory name
-    const size_t sharedMemoryNameLength = strlen(prefix) + strlen(fileName) + (hasExtension ? 0 : extensionLen) + 1;
+    const size_t sharedMemoryNameLength = strlen(prefix) + strlen(fileName) + (hasExtension ? 0 : extensionLen) + strlen(EXTENSION_MEM) + 1;
     char *sharedMemoryName = malloc(sharedMemoryNameLength);
     if (!sharedMemoryName) {
         perror("Failed to allocate memory for shared memory name");
@@ -479,9 +479,9 @@ void read_tree_from_file_to_shared_memory(char *filePath, const char *prefix) {
     }
     // Construct the shared memory name
     if (hasExtension) {
-        snprintf(sharedMemoryName, sharedMemoryNameLength, "%s%s", prefix, fileName); // Don't append .rbt
+        snprintf(sharedMemoryName, sharedMemoryNameLength, "%s%s%s", prefix, fileName, EXTENSION_MEM); // Don't append .rbt
     } else {
-        snprintf(sharedMemoryName, sharedMemoryNameLength, "%s%s%s", prefix, fileName, EXTENSION); // Append .rbt
+        snprintf(sharedMemoryName, sharedMemoryNameLength, "%s%s%s%s", prefix, fileName, EXTENSION_RBT, EXTENSION_MEM); // Append .rbt
     }
 
     FILE *file = fopen(filePath, "rb");
@@ -564,16 +564,15 @@ void read_tree_from_file_to_shared_memory(char *filePath, const char *prefix) {
 
 int remove_shared_memory_object(char **argv, const char *prefix) {
     char *fileName = get_filename_from_path(argv[2]);
-    const char *extension = ".rbt";
     const size_t fileNameLen = strlen(fileName);
-    const size_t extensionLen = strlen(extension);
+    const size_t extensionLen = strlen(EXTENSION_RBT);
 
     // Check if the file already has the ".rbt" extension
     const int hasExtension = (fileNameLen >= extensionLen) &&
-                             (strcmp(&fileName[fileNameLen - extensionLen], extension) == 0);
+                             (strcmp(&fileName[fileNameLen - extensionLen], EXTENSION_RBT) == 0);
 
     // Allocate shared memory name
-    const size_t sharedMemoryNameLength = strlen(prefix) + strlen(fileName) + (hasExtension ? 0 : extensionLen) + 1;
+    const size_t sharedMemoryNameLength = strlen(prefix) + strlen(fileName) + (hasExtension ? 0 : extensionLen) + strlen(EXTENSION_MEM) + 1;
     char *sharedMemoryName = malloc(sharedMemoryNameLength);
 
     if (!sharedMemoryName) {
@@ -584,9 +583,9 @@ int remove_shared_memory_object(char **argv, const char *prefix) {
 
     // Construct the shared memory name
     if (hasExtension) {
-        snprintf(sharedMemoryName, sharedMemoryNameLength, "%s%s", prefix, fileName);
+        snprintf(sharedMemoryName, sharedMemoryNameLength, "%s%s%s", prefix, fileName, EXTENSION_MEM);
     } else {
-        snprintf(sharedMemoryName, sharedMemoryNameLength, "%s%s%s", prefix, fileName, extension);
+        snprintf(sharedMemoryName, sharedMemoryNameLength, "%s%s%s%s", prefix, fileName, EXTENSION_RBT, EXTENSION_MEM);
     }
 
     // Open the shared memory object to get its size

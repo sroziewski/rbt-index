@@ -29,7 +29,8 @@ typedef struct Node {
     struct Node *left, *right, *parent;
 } Node;
 
-#define EXTENSION ".rbt"
+#define EXTENSION_RBT ".rbt"
+#define EXTENSION_MEM ".mem"
 
 #define ROTATE_LEFT(root, n)              \
     do {                                  \
