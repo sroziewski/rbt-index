@@ -10,21 +10,10 @@ int main(const int argc, char *argv[]) {
 
     if (argc == 3 && strcmp(argv[1], "--load") == 0) {
         // Handle the --load command
-
         read_tree_from_file_to_shared_memory(argv[2], prefix);
-
-        // finalRoot = load_rbt_from_file(argv[2]);
-        // if (!finalRoot) {
-        //     fprintf(stderr, "Failed to load Red-Black Tree from file: %s\n", argv[2]);
-        //     return EXIT_FAILURE;
-        // }
-        //
-        // printf("Red-Black Tree successfully loaded from file: %s\n", argv[2]);
-        // printf("Files stored in Red-Black Tree in sorted order by filename:\n");
-        // write_tree_to_shared_memory(finalRoot);
     }
-    // Handle the --clean command
     else if (argc == 3 && strcmp(argv[1], "--clean") == 0) {
+        // Handle the --clean command
         return remove_shared_memory_object(argv, prefix);
     }
     else {
@@ -82,15 +71,12 @@ int main(const int argc, char *argv[]) {
         if (argc == 3 && strcmp(argv[2], "--save") == 0) {
             char *storeFilename = add_rbt_extension(argv[1]);  // Use the input file's name as the base and append `.rbt`
             write_tree_to_file(finalRoot, storeFilename);
-            // store_rbt_to_file(finalRoot, storeFilename);
-            // printf("Red-Black Tree has been stored in file: %s\n", storeFilename);
             free(storeFilename);
         }
         else {
             write_tree_to_shared_memory(finalRoot, argv[1], prefix);
         }
     }
-
     // Free the tree if it was loaded or created
     freeTree(finalRoot);
 
