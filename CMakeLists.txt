@@ -15,12 +15,12 @@ set(CMAKE_BUILD_TYPE Debug)
 include_directories(${CMAKE_SOURCE_DIR})
 
 # Add your source files
-add_executable(rbt_name_create
-        rbt_name_create.c      # Your main entry point
+add_executable(rbt_size_create
+        rbt_size_create.c      # Your main entry point
         rbtree.c    # Implementation of Red-Black Tree
 )
 
 # Add arguments to the executable for IDEs/debugging
-set_target_properties(rbt_name_create PROPERTIES
+set_target_properties(rbt_size_create PROPERTIES
         VS_DEBUGGER_COMMAND_ARGUMENTS "/home/simon/playground/test.out.abc"
 )

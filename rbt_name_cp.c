@@ -50,6 +50,7 @@ size_t deserialize_file_info(FileInfo *fileInfo, const char *buffer);
 void serialize_node_to_file(Node *node, FILE *file);
 static Node* deserialize_node_from_file(FILE *file);
 void write_tree_to_file(Node *finalRoot, const char *filename);
+void read_tree_from_file_to_shared_memory(const char *filename, const char *sharedMemoryName);
 // Use macros to simplify rotation operations
 #define ROTATE_LEFT(root, n)              \
     do {                                  \
@@ -109,15 +110,18 @@ int main(int argc, char *argv[]) {
 
     if (argc == 3 && strcmp(argv[1], "--load") == 0) {
         // Handle the --load command
-        finalRoot = load_rbt_from_file(argv[2]);
-        if (!finalRoot) {
-            fprintf(stderr, "Failed to load Red-Black Tree from file: %s\n", argv[2]);
-            return EXIT_FAILURE;
-        }
 
-        printf("Red-Black Tree successfully loaded from file: %s\n", argv[2]);
-        printf("Files stored in Red-Black Tree in sorted order by filename:\n");
-        write_tree_to_shared_memory(finalRoot);
+        read_tree_from_file_to_shared_memory(argv[2], "shared_memory_fname_rb_tree2");
+
+        // finalRoot = load_rbt_from_file(argv[2]);
+        // if (!finalRoot) {
+        //     fprintf(stderr, "Failed to load Red-Black Tree from file: %s\n", argv[2]);
+        //     return EXIT_FAILURE;
+        // }
+        //
+        // printf("Red-Black Tree successfully loaded from file: %s\n", argv[2]);
+        // printf("Files stored in Red-Black Tree in sorted order by filename:\n");
+        // write_tree_to_shared_memory(finalRoot);
     } else {
         // Handle the normal processing and storing workflow
         FILE *file = fopen(argv[1], "r");
@@ -207,7 +211,8 @@ char* getFileSizeAsString(double fileSizeBytes) {
     return result;
 }
 
-void write_tree_to_shared_memory(Node *finalRoot) {
+void write_tree_to_shared_memory(Node *finalRoot, const char *filePath) {
+    const char *prefix = "shared_memory_fname_rbt_";
     const char *name = "shared_memory_fname_rb_tree";
 
     // Calculate the size needed for serialization
@@ -789,4 +794,93 @@ void write_tree_to_file(Node *finalRoot, const char *filename) {
     fclose(file);
 
     printf("Red-black tree successfully written to file '%s', size: %zu bytes\n", filename, usedSize);
+}
+
+void read_tree_from_file_to_shared_memory(const char *filePath) {
+    // Base prefix for shared memory name
+    const char *prefix = "shared_memory_fname_rbt_";
+    // Open the file for reading in binary mode
+    char *fileName = get_filename_from_path(filePath);
+    // Allocate memory for the full shared memory name
+    const size_t sharedMemoryNameLength = strlen(prefix) + strlen(fileName) + 1;
+    char *sharedMemoryName = malloc(sharedMemoryNameLength);
+    if (!sharedMemoryName) {
+        perror("Failed to allocate memory for shared memory name");
+        free(fileName);
+        return;
+    }
+
+    FILE *file = fopen(filePath, "rb");
+    if (!file) {
+        perror("Error: Failed to open file for reading");
+        exit(EXIT_FAILURE);
+    }
+
+    // Determine the size of the serialized data
+    fseek(file, 0, SEEK_END);
+    const size_t fileSize = ftell(file); // Total size of the file
+    if (fileSize == 0) {
+        fprintf(stderr, "Error: File is empty.\n");
+        fclose(file);
+        exit(EXIT_FAILURE);
+    }
+    rewind(file);
+
+    printf("Reading serialized data from file '%s', size: %zu bytes\n", filePath, fileSize);
+
+    // Allocate a buffer to hold the serialized data
+    char *buffer = malloc(fileSize);
+    if (!buffer) {
+        perror("Error: Failed to allocate memory for serialized data buffer");
+        fclose(file);
+        exit(EXIT_FAILURE);
+    }
+
+    // Read the serialized data into the buffer
+    if (fread(buffer, 1, fileSize, file) != fileSize) {
+        perror("Error: Failed to read serialized data from file");
+        free(buffer);
+        fclose(file);
+        exit(EXIT_FAILURE);
+    }
+
+    fclose(file); // File read is complete
+
+    // Set up shared memory
+    const int shm_fd = shm_open(sharedMemoryName, O_CREAT | O_RDWR, 0666); // Open shared memory
+    if (shm_fd == -1) {
+        perror("Error: Failed to create shared memory object");
+        free(buffer);
+        exit(EXIT_FAILURE);
+    }
+
+    // Resize the shared memory to hold the serialized data
+    if (ftruncate(shm_fd, fileSize) == -1) {
+        perror("Error: Failed to resize shared memory");
+        free(buffer);
+        close(shm_fd);
+        shm_unlink(sharedMemoryName); // Cleanup the shared memory object
+        exit(EXIT_FAILURE);
+    }
+
+    // Memory map the shared memory object
+    void *sharedMemoryPtr = mmap(0, fileSize, PROT_WRITE, MAP_SHARED, shm_fd, 0);
+    if (sharedMemoryPtr == MAP_FAILED) {
+        perror("Error: Failed to map shared memory");
+        free(buffer);
+        close(shm_fd);
+        shm_unlink(sharedMemoryName); // Cleanup the shared memory object
+        exit(EXIT_FAILURE);
+    }
+
+    // Copy serialized data from the buffer into shared memory
+    memcpy(sharedMemoryPtr, buffer, fileSize);
+
+    // Cleanup
+    printf("Serialized data successfully stored in shared memory '%s' (size: %zu bytes)\n", sharedMemoryName, fileSize);
+    munmap(sharedMemoryPtr, fileSize); // Unmap shared memory
+    close(shm_fd); // Close shared memory file descriptor
+    free(buffer); // Free the temporary buffer
+    free(fileName);
+    free(sharedMemoryName);
 }

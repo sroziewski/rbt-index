@@ -457,7 +457,9 @@ void write_tree_to_file(Node *finalRoot, const char *filename) {
     free(buffer);
     fclose(file);
 
-    printf("Red-black tree successfully written to file '%s', size: %zu bytes\n", filename, usedSize);
+    printf("Red-black tree successfully written to file '%s', size: %s (%zu bytes)\n", filename,
+           getFileSizeAsString(usedSize),
+           usedSize);
 }
 
 // Function to serialize a single node
