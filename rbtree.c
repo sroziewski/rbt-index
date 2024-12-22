@@ -585,3 +585,43 @@ void read_tree_from_file_to_shared_memory(char *filePath, const char *prefix) {
     free(fileName);
     free(sharedMemoryName);
 }
+
+int remove_shared_memory_object(char **argv, const char *prefix) {
+    char *fileName = get_filename_from_path(argv[2]);
+    const char *extension = ".rbt";
+    const size_t fileNameLen = strlen(fileName);
+    const size_t extensionLen = strlen(extension);
+
+    // Check if the file already has the ".rbt" extension
+    int hasExtension = (fileNameLen >= extensionLen) &&
+                       (strcmp(&fileName[fileNameLen - extensionLen], extension) == 0);
+
+    // Allocate shared memory name
+    const size_t sharedMemoryNameLength = strlen(prefix) + strlen(fileName) + (hasExtension ? 0 : extensionLen) + 1;
+    char *sharedMemoryName = malloc(sharedMemoryNameLength);
+
+    if (!sharedMemoryName) {
+        perror("Failed to allocate memory for shared memory name");
+        free(fileName);
+        return EXIT_FAILURE;
+    }
+
+    // Construct the shared memory name
+    if (hasExtension) {
+        snprintf(sharedMemoryName, sharedMemoryNameLength, "%s%s", prefix, fileName);
+    } else {
+        snprintf(sharedMemoryName, sharedMemoryNameLength, "%s%s%s", prefix, fileName, extension);
+    }
+
+    // Remove the shared memory object
+    if (shm_unlink(sharedMemoryName) == 0) {
+        printf("Shared memory object '%s' successfully removed.\n", sharedMemoryName);
+    } else {
+        perror("Error removing shared memory object");
+    }
+
+    // Cleanup
+    free(sharedMemoryName);
+    free(fileName);
+    return EXIT_SUCCESS;
+}

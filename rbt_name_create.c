@@ -2,7 +2,7 @@
 
 int main(const int argc, char *argv[]) {
     if (argc < 2) {
-        fprintf(stderr, "Usage: %s <file> [--save] [--load filename]\n", argv[0]);
+        fprintf(stderr, "Usage: %s <file> [--save] [--load filename] [--clean filename]\n", argv[0]);
         return EXIT_FAILURE;
     }
     const char *prefix = "shared_memory_fname_";
@@ -22,7 +22,12 @@ int main(const int argc, char *argv[]) {
         // printf("Red-Black Tree successfully loaded from file: %s\n", argv[2]);
         // printf("Files stored in Red-Black Tree in sorted order by filename:\n");
         // write_tree_to_shared_memory(finalRoot);
-    } else {
+    }
+    // Handle the --clean command
+    else if (argc == 3 && strcmp(argv[1], "--clean") == 0) {
+        return remove_shared_memory_object(argv, prefix);
+    }
+    else {
         // Handle the normal processing and storing workflow
         FILE *file = fopen(argv[1], "r");
         if (!file) {

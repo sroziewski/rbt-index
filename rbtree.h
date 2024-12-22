@@ -109,7 +109,7 @@ void read_tree_from_file_to_shared_memory(char *filename, const char *prefix);
 
 // Shared Memory Operations
 void write_tree_to_shared_memory(Node *finalRoot, const char *filePath, const char *prefix);
-
+int remove_shared_memory_object(char **argv, const char *prefix);
 // Utility Functions
 void remove_trailing_newline(char *str);
 FileInfo parseFileData(const char *inputLine);
