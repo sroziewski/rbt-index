@@ -261,7 +261,7 @@ const char *getFileTypeCategory(const char *mimeType, const char *filePath) {
 
 const char *getFileName(const char *path) {
     char *pathCopy = strdup(path); // Strdup to avoid modifying the input path
-    char *baseName = basename(pathCopy);
+    const char *baseName = basename(pathCopy);
     const char *result = strdup(baseName);
     free(pathCopy);
     return result;
@@ -269,12 +269,12 @@ const char *getFileName(const char *path) {
 
 
 int compareFileEntries(const void *a, const void *b) {
-    FileEntry *entryA = (FileEntry *) a;
-    FileEntry *entryB = (FileEntry *) b;
+    const FileEntry *entryA = (FileEntry *) a;
+    const FileEntry *entryB = (FileEntry *) b;
     return strcasecmp(entryA->path, entryB->path); // Case-insensitive comparison
 }
 
-void initQueue(TaskQueue *queue, int capacity) {
+void initQueue(TaskQueue *queue, const int capacity) {
     queue->tasks = (char **) malloc(capacity * sizeof(char *));
     if (!queue->tasks) {
         fprintf(stderr, "Failed to allocate memory for task queue\n");
@@ -287,8 +287,8 @@ void initQueue(TaskQueue *queue, int capacity) {
 }
 
 void resizeQueue(TaskQueue *queue) {
-    int new_capacity = queue->capacity * RESIZE_FACTOR;
-    char **new_tasks = (char **) realloc(queue->tasks, new_capacity * sizeof(char *));
+    const int new_capacity = queue->capacity * RESIZE_FACTOR;
+    char **new_tasks = realloc(queue->tasks, new_capacity * sizeof(char *));
     if (!new_tasks) {
         fprintf(stderr, "Queue resize failed\n");
         exit(EXIT_FAILURE);

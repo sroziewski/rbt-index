@@ -139,7 +139,7 @@ void processDirectory(TaskQueue *taskQueue, FileEntry **entries, int *count, int
                       int skipDirs, long long sizeThreshold);
 
 // File size string utility
-char *getFileSizeAsString(double fileSizeBytes);
+char *getFileSizeAsString(long long fileSizeBytes);
 
 // Print size details
 void printSizeDetails(FILE *outputFile, const char *type, int count, long long size);
