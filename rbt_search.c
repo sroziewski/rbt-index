@@ -1,9 +1,9 @@
 #include "rbtree.h"
 
 int main(int argc, char *argv[]) {
-    const char *name = "shared_memory_fname_playground.list.rbt";
+    const char *name = "shared_memory_fname_playground.lst.rbt.mem";
     size_t targetSize = 75988048;  // Example size to search for
-    const char *targetType = "T_CSV";  // Example file type to search for
+    const char *targetType = "T_DIR";  // Example file type to search for
 
     // Parse command line arguments
     int shouldClose = 0;
@@ -42,7 +42,7 @@ int main(int argc, char *argv[]) {
 
     // Search for files with the specified size and type
     search_tree_for_size_and_type(root, targetSize, targetType);
-    const char *targetName = "domainBlacklist.csv";
+    const char *targetName = "externalsites";
     search_tree_for_name_and_type(root, targetName, targetType);
 
     // Clean up
