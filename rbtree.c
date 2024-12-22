@@ -17,9 +17,9 @@ void remove_trailing_newline(char *str) {
 }
 
 // Function to get file name from path
-char* get_filename_from_path(const char* path) {
-    const char *slash = strrchr(path, '/');  // Find the last '/' in the path
-    return slash ? strdup(slash + 1) : strdup(path);  // Duplicate the file name
+char *get_filename_from_path(const char *path) {
+    const char *slash = strrchr(path, '/'); // Find the last '/' in the path
+    return slash ? strdup(slash + 1) : strdup(path); // Duplicate the file name
 }
 
 
@@ -64,8 +64,8 @@ FileInfo parseFileData(const char *inputLine) {
 }
 
 // Tree Node Allocation
-Node* createNode(FileInfo key, NodeColor color, Node* parent) {
-    Node* node = (Node*)malloc(sizeof(Node));
+Node *createNode(FileInfo key, NodeColor color, Node *parent) {
+    Node *node = (Node *) malloc(sizeof(Node));
     if (!node) {
         fprintf(stderr, "Memory allocation error\n");
         exit(EXIT_FAILURE);
@@ -94,9 +94,9 @@ void freeTree(Node *node) {
     free(node);
 }
 
-void insert(Node **root, FileInfo key) {
+void insert(Node **root, const FileInfo key, int (*comparator)(const FileInfo *, const FileInfo *)) {
     // Allocate and initialize the new node
-    Node *n = (Node *)malloc(sizeof(Node));
+    Node *n = malloc(sizeof(Node));
     if (!n) {
         fprintf(stderr, "Memory allocation error\n");
         exit(EXIT_FAILURE);
@@ -112,7 +112,7 @@ void insert(Node **root, FileInfo key) {
 
     while (x != NULL) {
         y = x;
-        if (strcmp(n->key.filename, x->key.filename) < 0)
+        if (comparator(&n->key, &x->key) < 0) // Use comparator to determine order
             x = x->left;
         else
             x = x->right;
@@ -214,7 +214,7 @@ size_t deserialize_file_info(FileInfo *fileInfo, const char *buffer) {
     // Deserialize and debug filename
     printf("Deserializing filename...\n");
     size_t filenameLength = strlen(buffer + offset);
-    fileInfo->filename = (char *)malloc(filenameLength + 1);
+    fileInfo->filename = (char *) malloc(filenameLength + 1);
     if (!fileInfo->filename) {
         printf("Error: malloc failed for filename.\n");
         return 0;
@@ -230,7 +230,7 @@ size_t deserialize_file_info(FileInfo *fileInfo, const char *buffer) {
     // Deserialize and debug filepath
     printf("Deserializing filepath...\n");
     size_t filepathLength = strlen(buffer + offset);
-    fileInfo->filepath = (char *)malloc(filepathLength + 1);
+    fileInfo->filepath = (char *) malloc(filepathLength + 1);
     if (!fileInfo->filepath) {
         printf("Error: malloc failed for filepath.\n");
         free(fileInfo->filename); // Free previously allocated memory
@@ -242,7 +242,7 @@ size_t deserialize_file_info(FileInfo *fileInfo, const char *buffer) {
     // Deserialize and debug filetype
     printf("Deserializing filetype...\n");
     size_t filetypeLength = strlen(buffer + offset);
-    fileInfo->filetype = (char *)malloc(filetypeLength + 1);
+    fileInfo->filetype = (char *) malloc(filetypeLength + 1);
     if (!fileInfo->filetype) {
         printf("Error: malloc failed for filetype.\n");
         free(fileInfo->filename); // Free previously allocated memory
@@ -332,12 +332,13 @@ void write_tree_to_shared_memory(Node *finalRoot, const char *filePath, const ch
     close(shm_fd);
     free(buffer);
 
-    printf("Red-black tree written to shared memory, size: %s (%zu bytes) %s\n", getFileSizeAsString(usedSize), usedSize, sharedMemoryName);
+    printf("Red-black tree written to shared memory, size: %s (%zu bytes) %s\n", getFileSizeAsString(usedSize),
+           usedSize, sharedMemoryName);
     free(fileName);
     free(sharedMemoryName);
 }
 
-Node* parent(Node* n) {
+Node *parent(Node *n) {
     return n ? n->parent : NULL;
 }
 
@@ -358,11 +359,11 @@ size_t calc_tree_size(Node *node) {
     return size + calc_tree_size(node->left) + calc_tree_size(node->right);
 }
 
-char* getFileSizeAsString(double fileSizeBytes) {
+char *getFileSizeAsString(double fileSizeBytes) {
     const double kB = 1024.0;
     const double MB = 1024.0 * 1024.0;
     const double GB = 1024.0 * 1024.0 * 1024.0;
-    char* result = (char*)malloc(20 * sizeof(char));  // Allocate memory for the result
+    char *result = (char *) malloc(20 * sizeof(char)); // Allocate memory for the result
 
     if (fileSizeBytes >= GB) {
         snprintf(result, 20, "%.2f GB", fileSizeBytes / GB);
@@ -377,7 +378,7 @@ char* getFileSizeAsString(double fileSizeBytes) {
     return result;
 }
 
-void inorder(Node* node) {
+void inorder(Node *node) {
     if (node != NULL) {
         inorder(node->left);
         printf("Filename: %s, Size: %zu bytes, Path: %s, Type: %s\n",
@@ -390,13 +391,13 @@ void inorder(Node* node) {
 /**
  * Add the .rbt extension to the filename if it does not already have it.
  */
-char* add_rbt_extension(const char *filename) {
+char *add_rbt_extension(const char *filename) {
     const size_t len = strlen(filename);
     const size_t extLen = strlen(EXTENSION);
 
     // Check if the filename already ends with '.rbt'
     if (len >= extLen && strcmp(filename + len - extLen, EXTENSION) == 0) {
-        return strdup(filename);  // Return a copy of the original filename
+        return strdup(filename); // Return a copy of the original filename
     }
 
     // Allocate memory for the new filename (original + ".rbt")
@@ -437,7 +438,8 @@ void write_tree_to_file(Node *finalRoot, const char *filename) {
 
     // Ensure the serialized size does not exceed the calculated size
     if (usedSize > requiredSize) {
-        fprintf(stderr, "Error: Serialized size (%zu bytes) exceeds expected size (%zu bytes)!\n", usedSize, requiredSize);
+        fprintf(stderr, "Error: Serialized size (%zu bytes) exceeds expected size (%zu bytes)!\n", usedSize,
+                requiredSize);
         free(buffer);
         fclose(file);
         exit(EXIT_FAILURE);
@@ -495,7 +497,8 @@ void read_tree_from_file_to_shared_memory(char *filePath, const char *prefix) {
     // Allocate memory for the full shared memory name
     const size_t fileNameLen = strlen(fileName);
     const size_t extensionLen = strlen(EXTENSION);
-    const int hasExtension = (fileNameLen >= extensionLen) && (strcmp(&fileName[fileNameLen - extensionLen], EXTENSION) == 0);
+    const int hasExtension = (fileNameLen >= extensionLen) && (
+                                 strcmp(&fileName[fileNameLen - extensionLen], EXTENSION) == 0);
     // Allocate memory for the full shared memory name
     const size_t sharedMemoryNameLength = strlen(prefix) + strlen(fileName) + (hasExtension ? 0 : extensionLen) + 1;
     char *sharedMemoryName = malloc(sharedMemoryNameLength);
@@ -624,4 +627,12 @@ int remove_shared_memory_object(char **argv, const char *prefix) {
     free(sharedMemoryName);
     free(fileName);
     return EXIT_SUCCESS;
+}
+
+int compareByFilename(const FileInfo *a, const FileInfo *b) {
+    return strcmp(a->filename, b->filename);
+}
+
+int compareByFilesize(const FileInfo *a, const FileInfo *b) {
+    return (a->filesize > b->filesize) - (a->filesize < b->filesize);
 }

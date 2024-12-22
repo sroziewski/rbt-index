@@ -64,18 +64,35 @@ typedef struct Node {
         (n)->parent = l;                  \
     } while (0)
 
+#define DEFINE_COMPARATOR_BY_FIELD(FIELD, CMP_FUNC)                       \
+int compareBy##FIELD(const FileInfo *a, const FileInfo *b) {              \
+return CMP_FUNC(a->FIELD, b->FIELD);                                  \
+}                                                                         \
+void insert_##FIELD(Node **root, const FileInfo key) {                    \
+insert(root, key, compareBy##FIELD);                                  \
+}
+
+#define DEFINE_NUMERIC_COMPARATOR(FIELD)                                \
+int compareBy##FIELD(const FileInfo *a, const FileInfo *b) {            \
+return (a->FIELD > b->FIELD) - (a->FIELD < b->FIELD);               \
+}                                                                       \
+void insert_##FIELD(Node **root, const FileInfo key) {                  \
+insert(root, key, compareBy##FIELD);                                \
+}
 // Function declarations
 
 // Memory and Tree Management
-Node* createNode(FileInfo key, NodeColor color, Node* parent);
+Node *createNode(FileInfo key, NodeColor color, Node *parent);
+
 void freeTree(Node *node);
+
 void freeFileInfo(FileInfo *fileInfo);
 
-static inline Node* grandparent(Node *n) {
+static inline Node *grandparent(Node *n) {
     return (n && n->parent) ? n->parent->parent : NULL;
 }
 
-static inline Node* uncle(Node *n) {
+static inline Node *uncle(Node *n) {
     Node *g = grandparent(n);
     if (!g) return NULL;
     if (n->parent == g->left)
@@ -84,37 +101,59 @@ static inline Node* uncle(Node *n) {
 }
 
 // Red-Black Tree Operations
-void insert(Node** root, FileInfo key);
-void inorder(Node* node);
+void insert(Node **root, const FileInfo key, int (*comparator)(const FileInfo *, const FileInfo *));
+
+void inorder(Node *node);
+
 void insert_rebalance(Node **root, Node *n);
 
+int compareByFilename(const FileInfo *a, const FileInfo *b);
+
+int compareByFilesize(const FileInfo *a, const FileInfo *b);
+
 // Rotation Operations
-void rotate_left(Node** root, Node* n);
-void rotate_right(Node** root, Node* n);
+void rotate_left(Node **root, Node *n);
+
+void rotate_right(Node **root, Node *n);
 
 // Serialization and Deserialization
 size_t serialize_file_info(FileInfo *fileInfo, char *buffer);
+
 size_t deserialize_file_info(FileInfo *fileInfo, const char *buffer);
+
 size_t serialize_node(Node *node, char *buffer);
+
 size_t calc_file_info_size(FileInfo *fileInfo);
+
 size_t calc_tree_size(Node *node);
+
 Node *deserialize_node(char *buffer, size_t *currentOffset);
+
 size_t serialize_file_info(FileInfo *fileInfo, char *buffer);
 
 // File Operations
 void store_rbt_to_file(Node *root, const char *filename);
+
 void write_tree_to_file(Node *finalRoot, const char *filename);
-Node* load_rbt_from_file(const char *filename);
+
+Node *load_rbt_from_file(const char *filename);
+
 void read_tree_from_file_to_shared_memory(char *filename, const char *prefix);
 
 // Shared Memory Operations
 void write_tree_to_shared_memory(Node *finalRoot, const char *filePath, const char *prefix);
+
 int remove_shared_memory_object(char **argv, const char *prefix);
+
 // Utility Functions
 void remove_trailing_newline(char *str);
+
 FileInfo parseFileData(const char *inputLine);
-char* add_rbt_extension(const char *filename);
-char* getFileSizeAsString(double fileSizeBytes);
-char* get_filename_from_path(const char* path);
+
+char *add_rbt_extension(const char *filename);
+
+char *getFileSizeAsString(double fileSizeBytes);
+
+char *get_filename_from_path(const char *path);
 
 #endif // RBTREE_H

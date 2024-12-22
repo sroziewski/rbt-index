@@ -1,13 +1,13 @@
 #include "rbtree.h"
 
-DEFINE_COMPARATOR_BY_FIELD(filename, strcmp)
+DEFINE_NUMERIC_COMPARATOR(filesize)
 
 int main(const int argc, char *argv[]) {
     if (argc < 2) {
         fprintf(stderr, "Usage: %s <file> [--save] [--load filename] [--clean filename]\n", argv[0]);
         return EXIT_FAILURE;
     }
-    const char *prefix = "shared_memory_fname_";
+    const char *prefix = "shared_memory_fsize_";
     Node *finalRoot = NULL;
 
     if (argc == 3 && strcmp(argv[1], "--load") == 0) {
@@ -54,7 +54,7 @@ int main(const int argc, char *argv[]) {
         for (size_t i = 0; i < numLines; i++) {
             const FileInfo key = parseFileData(lines[i]);
             if (key.filename && key.filepath && key.filetype) {
-                insert_filename(&finalRoot, key);
+                insert_filesize(&finalRoot, key);
                 totalProcessedCount++;
             }
         }
