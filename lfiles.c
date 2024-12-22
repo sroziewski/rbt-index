@@ -158,6 +158,10 @@ int isCssFile(const char *filePath) {
 }
 
 const char *getFileTypeCategory(const char *mimeType, const char *filePath) {
+    struct stat pathStat;
+    if (stat(filePath, &pathStat) == 0 && S_ISDIR(pathStat.st_mode)) {
+        return "T_DIR"; // Add classification for directories
+    }
     if (strstr(mimeType, "text/") == mimeType) {
         if (isJsonFile(filePath)) {
             return "T_JSON";
@@ -623,10 +627,26 @@ void processDirectory(TaskQueue *taskQueue, FileEntry **entries, int *count, int
                             magic_close(magic);
                         }
                     }
-                } else if (S_ISDIR(fileStat.st_mode) && !skipDirs) {
+                } else if (S_ISDIR(fileStat.st_mode)) {
 #pragma omp critical
                     {
-                        enqueue(taskQueue, fullPath);
+                        if (*count >= *capacity) {
+                            *capacity *= RESIZE_FACTOR;
+                            *entries = (FileEntry *) realloc(*entries, (*capacity) * sizeof(FileEntry));
+                            if (!*entries) {
+                                perror("realloc");
+                                exit(EXIT_FAILURE);
+                            }
+                        }
+                        int current = *count;
+                        (*count)++;
+                        snprintf((*entries)[current].path, sizeof((*entries)[current].path), "%s",
+                                 fullPath);
+                        (*entries)[current].size = 0; // Directories have size 0
+                        snprintf((*entries)[current].type, sizeof((*entries)[current].type), "T_DIR");
+                        if (!skipDirs) { // If directories need to be enqueued for further exploration
+                            enqueue(taskQueue, fullPath);
+                        }
                     }
                 }
             } else {
@@ -660,7 +680,7 @@ char *getFileSizeAsString(const long long fileSizeBytesIn) {
     return result;
 }
 
-void printSizeDetails(FILE *outputFile, const char *type, int count, long long size) {
+void printSizeDetails(FILE *outputFile, const char *type, const int count, const long long size) {
     if (count > 0) {
         printf("Total Number of %s Files: %d\n", type, count);
         char *sizeStr = getFileSizeAsString(size);
