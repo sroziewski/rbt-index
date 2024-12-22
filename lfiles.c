@@ -630,23 +630,7 @@ void processDirectory(TaskQueue *taskQueue, FileEntry **entries, int *count, int
                 } else if (S_ISDIR(fileStat.st_mode)) {
 #pragma omp critical
                     {
-                        if (*count >= *capacity) {
-                            *capacity *= RESIZE_FACTOR;
-                            *entries = (FileEntry *) realloc(*entries, (*capacity) * sizeof(FileEntry));
-                            if (!*entries) {
-                                perror("realloc");
-                                exit(EXIT_FAILURE);
-                            }
-                        }
-                        int current = *count;
-                        (*count)++;
-                        snprintf((*entries)[current].path, sizeof((*entries)[current].path), "%s",
-                                 fullPath);
-                        (*entries)[current].size = 0; // Directories have size 0
-                        snprintf((*entries)[current].type, sizeof((*entries)[current].type), "T_DIR");
-                        if (!skipDirs) { // If directories need to be enqueued for further exploration
-                            enqueue(taskQueue, fullPath);
-                        }
+                        enqueue(taskQueue, fullPath);
                     }
                 }
             } else {

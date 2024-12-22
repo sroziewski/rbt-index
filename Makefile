@@ -1,6 +1,6 @@
 # Compiler and flags
 CC = gcc
-CFLAGS = -Wall -Wextra -g
+CFLAGS = -pedantic -Wall -Wextra -g
 LDFLAGS = -lmagic -fopenmp  # Add -lmagic and OpenMP flag here
 
 # Target executables
@@ -26,9 +26,9 @@ $(TARGET): $(OBJS)
 $(LIST_FILES_TARGET): $(LIST_FILES_OBJS)
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
-# Rule to build object files for rbt_name_create
-%.o: %.c rbtree.h
-	$(CC) $(CFLAGS) -c $<
+# Rule to compile lfiles.c without strict warnings
+lfiles.o: lfiles.c
+	$(CC) -g -c -o $@ $<
 
 # Rule to build object files for list_files
 list_files.o: list_files.c
