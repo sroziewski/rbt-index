@@ -1,13 +1,5 @@
 #include "rbtree.h"
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <fcntl.h>
-#include <sys/mman.h>
-#include <sys/stat.h>
-#include <unistd.h>
-
 // Utility Functions
 void remove_trailing_newline(char *str) {
     size_t len = strlen(str);
