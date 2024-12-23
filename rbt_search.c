@@ -187,7 +187,7 @@ int main(int argc, char *argv[]) {
 }
 
 void initialize_threads() {
-    int cores = sysconf(_SC_NPROCESSORS_ONLN); // Get the number of cores
+    const long cores = sysconf(_SC_NPROCESSORS_ONLN); // Get the number of cores
     if (cores <= 0) {
         perror("Failed to determine the number of processors");
         MAX_THREADS = 1;  // Fallback to a single thread if detection fails
@@ -196,5 +196,5 @@ void initialize_threads() {
     } else {
         MAX_THREADS = 6;  // Otherwise, use up to 8 threads
     }
-    printf("Number of cores available: %d, MAX_THREADS set to: %d\n", cores, MAX_THREADS);
+    printf("Number of cores available: %ld, MAX_THREADS set to: %d\n", cores, MAX_THREADS);
 }
