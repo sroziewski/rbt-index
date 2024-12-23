@@ -5,6 +5,7 @@ CFLAGS = -Wextra -g -lmagic -fopenmp
 # Target executables
 TARGET = rbt_name_create
 LIST_FILES_TARGET = list_files
+RBT_SEARCH_TARGET = rbt_search
 
 RBTLIB_DIR = rbtlib
 FLIB_DIR = flib
@@ -12,13 +13,14 @@ FLIB_DIR = flib
 # Source files
 SRCS = rbt_name_create.c $(RBTLIB_DIR)/rbtree.c
 LIST_FILES_SRCS = list_files.c $(FLIB_DIR)/lfiles.c  # Add the source file for building list_files
+RBT_SEARCH_SRCS = rbt_search.c $(RBTLIB_DIR)/rbtree.c
 
 # Object files
 OBJS = rbt_name_create.o $(RBTLIB_DIR)/rbtree.o
 LIST_FILES_OBJ = list_files.o $(FLIB_DIR)/lfiles.o
-
+RBT_SEARCH_OBJS = rbt_search.o $(RBTLIB_DIR)/rbtree.o
 # Default target (build all executables)
-all: $(TARGET) $(LIST_FILES_TARGET)
+all: $(TARGET) $(LIST_FILES_TARGET) $(RBT_SEARCH_TARGET)
 
 # Rule to build the main target
 $(TARGET): $(OBJS)
@@ -35,6 +37,8 @@ $(FLIB_DIR)/list_files.o: $(FLIB_DIR)/lfiles.c
 $(LIST_FILES_TARGET): $(LIST_FILES_OBJ)
 	$(CC) $(CFLAGS) -o $@ $^ $(CFLAGS)
 
+$(RBT_SEARCH_TARGET): $(RBT_SEARCH_OBJS)
+	$(CC) $(CFLAGS) -o $@ $^
 # Rule to build object files for list_files
 list_files.o: list_files.c
 	$(CC) $(CFLAGS) -c $<
@@ -55,4 +59,4 @@ run_list_files: $(LIST_FILES_TARGET)
 
 # Clean up build files
 clean:
-	rm -f $(OBJS) $(LIST_FILES_OBJS) $(TARGET) $(LIST_FILES_TARGET)
+	rm -f $(OBJS) $(LIST_FILES_OBJ) $(TARGET) $(LIST_FILES_TARGET) $(RBT_SEARCH_OBJS) $(RBT_SEARCH_TARGET)
