@@ -44,8 +44,8 @@ void search_tree_for_name_and_type2(Node *root, const char *namePattern, const c
 
     // Check if the current node matches the name regex and file type
     if (regexec(&regex, root->key.filename, 0, NULL, 0) == 0 && strcmp(root->key.filetype, targetType) == 0) {
-        // printf("Found file: %s (Type: %s, Size: %zu, Path: %s)\n",
-               // root->key.filename, root->key.filetype, root->key.filesize, root->key.filepath);
+        printf("Found file: %s (Type: %s, Size: %zu, Path: %s)\n",
+               root->key.filename, root->key.filetype, root->key.filesize, root->key.filepath);
     }
 
     // Free the regex memory after usage
@@ -108,9 +108,9 @@ void *search_tree_thread(void *args) {
 int main(int argc, char *argv[]) {
     struct timespec start, end;
     initialize_threads();
-    const char *name = "shared_memory_fname_playground.lst.rbt.mem";
-    size_t targetSize = 75988048;  // Example size to search for
-    const char *targetType = "T_DIR";  // Example file type to search for
+    const char *name = "shared_memory_fname_merged.lst.rbt.mem";
+    size_t targetSize = 2340;  // Example size to search for
+    const char *targetType = "T_FILM";  // Example file type to search for
 
     // Parse command line arguments
     int shouldClose = 0;
@@ -150,10 +150,10 @@ int main(int argc, char *argv[]) {
     // Search for files with the specified size and type
     search_tree_for_size_and_type(root, targetSize, targetType);
 
-    const char *targetName = "externalsites";
+    const char *targetName = "zaba.*";
     // Capture start time
     clock_gettime(CLOCK_MONOTONIC, &start);
-    for (int i = 0; i < 300; ++i) {
+    for (int i = 0; i < 1; ++i) {
         search_tree_for_name_and_type2(root, targetName, targetType);
         // Print progress every 100 iterations
         if (i % 100 == 0) {
