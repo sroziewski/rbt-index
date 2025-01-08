@@ -3,12 +3,12 @@
 #include <string.h>
 #include <dirent.h>
 #include <sys/stat.h>
-#include <omp.h>
 #include <magic.h>
 #include <pthread.h>
 #include <errno.h>
 #include <libgen.h>
 #include <ctype.h>
+#include <stdarg.h>
 
 #define INITIAL_CAPACITY 10
 #define RESIZE_FACTOR 2
@@ -687,4 +687,44 @@ void printSizeDetails(FILE *outputFile, const char *type, const int count, const
         printf("Total Size of %s Files: %lld bytes (%s)\n", type, size, sizeStr);
         free(sizeStr);
     }
+}
+
+void printFileEntries(FileEntry *entries, const int count, FILE *outputFile) {
+    for (int i = 0; i < count; i++) {
+        const char *fileName = getFileName(entries[i].path);
+        const int isHidden = (fileName[0] == '.'); // Check if file is hidden
+        fprintf(outputFile, "%s|%ld|%s",
+                entries[i].path, entries[i].size, entries[i].type);
+        char *sizeStr = getFileSizeAsString(entries[i].size);
+        printf("File: %s, Size: %s (%ld bytes), Type: %s",
+               entries[i].path, sizeStr, entries[i].size, entries[i].type);
+        if (isHidden) {
+            fprintf(outputFile, ", F_HIDDEN");
+            printf(", F_HIDDEN");
+        }
+        fprintf(outputFile, "\n");
+        printf("\n");
+        free(sizeStr);
+    }
+}
+
+void release_temporary_resources(char *first, ...) {
+    // Check and free the first argument
+    if (first) {
+        free(first);
+        first = NULL; // Set to NULL after freeing
+    }
+
+    va_list args;
+    char *resource;
+
+    // Start iterating through variable arguments
+    va_start(args, first);
+    while ((resource = va_arg(args, char *)) != NULL) {
+        if (resource) {
+            free(resource);
+            resource = NULL; // Set to NULL after freeing to avoid reuse
+        }
+    }
+    va_end(args);
 }

@@ -79,9 +79,9 @@ int isSqlFile(const char *filePath);
 
 int isCalcFile(const char *filePath);
 
-int isCsvFile(const char* filePath);
+int isCsvFile(const char *filePath);
 
-int isCssFile(const char* filePath);
+int isCssFile(const char *filePath);
 
 // File type categorization
 const char *getFileTypeCategory(const char *mimeType, const char *filePath);
@@ -144,4 +144,6 @@ char *getFileSizeAsString(long long fileSizeBytes);
 // Print size details
 void printSizeDetails(FILE *outputFile, const char *type, int count, long long size);
 
+void printFileEntries(FileEntry *entries, int count, FILE *outputFile);
+void release_temporary_resources(char *first, ...) ;
 #endif // FILE_UTILS_H

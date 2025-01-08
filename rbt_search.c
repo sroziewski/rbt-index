@@ -100,7 +100,7 @@ void search_tree_for_name_and_type2(Node *root, const char *namePattern, const c
 }
 
 void *search_tree_thread(void *args) {
-    SearchArgs *searchArgs = (SearchArgs *)args;
+    const SearchArgs *searchArgs = (SearchArgs *)args;
     search_tree_for_name_and_type2(searchArgs->root, searchArgs->namePattern, searchArgs->targetType);
     return NULL;
 }
@@ -109,7 +109,7 @@ int main(int argc, char *argv[]) {
     struct timespec start, end;
     initialize_threads();
     const char *name = "shared_memory_fname_merged.lst.rbt.mem";
-    size_t targetSize = 2340;  // Example size to search for
+    const size_t targetSize = 2340;  // Example size to search for
     const char *targetType = "T_FILM";  // Example file type to search for
 
     // Parse command line arguments
