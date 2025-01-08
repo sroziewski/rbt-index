@@ -8,25 +8,8 @@
 #include <errno.h>
 #include <libgen.h>
 #include <stdarg.h>
-
-#define INITIAL_CAPACITY 10
-#define RESIZE_FACTOR 2
-#define MAX_LINE_LENGTH 4096
-#define INITIAL_ENTRIES_CAPACITY 400000
-
-typedef struct FileEntry {
-    char path[MAX_LINE_LENGTH];
-    off_t size;
-    char type[128];
-} FileEntry;
-
-typedef struct TaskQueue {
-    char **tasks;
-    int head;
-    int tail;
-    int capacity;
-    pthread_mutex_t mutex;
-} TaskQueue;
+#include <omp.h>
+#include "lconsts.h"
 
 // Check if the file has the .json extension (case insensitive)
 int isJsonFile(const char *filePath) {
@@ -645,7 +628,8 @@ void processDirectory(TaskQueue *taskQueue, FileEntry **entries, int *count, int
                                  fullPath);
                         (*entries)[current].size = 0; // Directories have size 0
                         snprintf((*entries)[current].type, sizeof((*entries)[current].type), "T_DIR");
-                        if (!skipDirs) { // If directories need to be enqueued for further exploration
+                        if (!skipDirs) {
+                            // If directories need to be enqueued for further exploration
                             enqueue(taskQueue, fullPath);
                         }
                     }
@@ -681,30 +665,11 @@ char *getFileSizeAsString(const long long fileSizeBytesIn) {
     return result;
 }
 
-void printSizeDetails(FILE *outputFile, const char *type, const int count, const long long size) {
+void printSizeDetails(const char *type, const int count, const long long size) {
     if (count > 0) {
         printf("Total Number of %s Files: %d\n", type, count);
         char *sizeStr = getFileSizeAsString(size);
         printf("Total Size of %s Files: %lld bytes (%s)\n", type, size, sizeStr);
-        free(sizeStr);
-    }
-}
-
-void printFileEntries(FileEntry *entries, const int count, FILE *outputFile) {
-    for (int i = 0; i < count; i++) {
-        const char *fileName = getFileName(entries[i].path);
-        const int isHidden = (fileName[0] == '.'); // Check if file is hidden
-        fprintf(outputFile, "%s|%ld|%s",
-                entries[i].path, entries[i].size, entries[i].type);
-        char *sizeStr = getFileSizeAsString(entries[i].size);
-        printf("File: %s, Size: %s (%ld bytes), Type: %s",
-               entries[i].path, sizeStr, entries[i].size, entries[i].type);
-        if (isHidden) {
-            fprintf(outputFile, ", F_HIDDEN");
-            printf(", F_HIDDEN");
-        }
-        fprintf(outputFile, "\n");
-        printf("\n");
         free(sizeStr);
     }
 }
@@ -730,7 +695,7 @@ void release_temporary_resources(char *first, ...) {
     va_end(args);
 }
 
-void read_entries(const char *filename, char ***entries, size_t *size, size_t *capacity) {
+void read_entries(const char *filename, FileEntry **entries, const size_t fixed_count) {
     // Open the file for reading
     FILE *file = fopen(filename, "r");
     if (!file) {
@@ -738,17 +703,14 @@ void read_entries(const char *filename, char ***entries, size_t *size, size_t *c
         exit(EXIT_FAILURE);
     }
 
-    // Empty the current entries
-    for (size_t i = 0; i < *size; ++i) {
-        free((*entries)[i]);
+    // Reset the current entries
+    size_t i = 0;
+    if (*entries) {
+        free(*entries);
     }
-    free(*entries);
-    *entries = NULL;
-    *size = 0;
 
-    // Allocate initial memory for entries
-    *capacity = INITIAL_ENTRIES_CAPACITY;
-    *entries = malloc(*capacity * sizeof(char *));
+    // Allocate memory for the fixed amount of entries
+    *entries = malloc(fixed_count * sizeof(FileEntry));
     if (!*entries) {
         perror("Memory allocation failed");
         fclose(file);
@@ -757,29 +719,81 @@ void read_entries(const char *filename, char ***entries, size_t *size, size_t *c
 
     char buffer[MAX_LINE_LENGTH];
     while (fgets(buffer, MAX_LINE_LENGTH, file)) {
-        // Remove the trailing newline character, if present
-        buffer[strcspn(buffer, "\n")] = '\0';
-
-        // Reallocate memory if we've reached capacity
-        if (*size >= *capacity) {
-            *capacity *= 2;
-            *entries = realloc(*entries, *capacity * sizeof(char *));
-            if (!*entries) {
-                perror("Memory reallocation failed");
-                fclose(file);
-                exit(EXIT_FAILURE);
-            }
+        // Stop reading if we've reached the fixed count
+        if (i >= fixed_count) {
+            break;
         }
 
-        // Add each line to entries
-        (*entries)[*size] = strdup(buffer); // Duplicate the line into heap memory
-        if (!(*entries)[*size]) {
-            perror("Memory allocation failed for line");
-            fclose(file);
-            exit(EXIT_FAILURE);
+        // Parse the line using `strtok` for the `|` delimiter
+        FileEntry entry;
+        char *token = strtok(buffer, "|");
+        if (!token) {
+            fprintf(stderr, "Error parsing path in line: %s\n", buffer);
+            continue;
         }
-        ++(*size);
+        strncpy(entry.path, token, sizeof(entry.path) - 1);
+        entry.path[sizeof(entry.path) - 1] = '\0';
+
+        token = strtok(NULL, "|");
+        if (!token) {
+            fprintf(stderr, "Error parsing size in line: %s\n", buffer);
+            continue;
+        }
+        char *endptr;
+        entry.size = strtol(token, &endptr, 10);
+        if (*endptr != '\0' && *endptr != '\n') {
+            fprintf(stderr, "Invalid numeric format for size in line: %s\n", buffer);
+            continue;
+        }
+
+        token = strtok(NULL, "|");
+        if (!token) {
+            fprintf(stderr, "Error parsing type in line: %s\n", buffer);
+            continue;
+        }
+        strncpy(entry.type, token, sizeof(entry.type) - 1);
+        entry.type[sizeof(entry.type) - 1] = '\0';
+
+        // Store the entry in the array
+        (*entries)[i] = entry;
+        ++i;
     }
-
+    printf("Read %ld entries from srt file\n", i);
     fclose(file);
+}
+
+void printToFile(FileEntry *entries, const int count, const char *filename) {
+    FILE *outputFile = fopen(filename, "w");
+    if (!outputFile) {
+        perror("Failed to open file");
+        return; // Exit the function if the file couldn't be opened
+    }
+    for (int i = 0; i < count; i++) {
+        const char *fileName = getFileName(entries[i].path);
+        const int isHidden = (fileName[0] == '.'); // Check if the file is hidden
+        fprintf(outputFile, "%s|%ld|%s", entries[i].path, entries[i].size, entries[i].type);
+        if (isHidden) {
+            fprintf(outputFile, ", F_HIDDEN");
+        }
+        fprintf(outputFile, "\n"); // End the line
+    }
+    fclose(outputFile);
+}
+void printToStdOut(FileEntry *entries, const int count) {
+    for (int i = 0; i < count; i++) {
+        const char *fileName = getFileName(entries[i].path);
+        const int isHidden = (fileName[0] == '.'); // Check if the file is hidden
+        char *sizeStr = getFileSizeAsString(entries[i].size);
+
+        // Print to standard output
+        printf("File: %s, Size: %s (%ld bytes), Type: %s",
+               entries[i].path, sizeStr, entries[i].size, entries[i].type);
+
+        if (isHidden) {
+            printf(", F_HIDDEN");
+        }
+
+        printf("\n"); // End the line
+        free(sizeStr); // Free dynamically allocated string from getFileSizeAsString
+    }
 }

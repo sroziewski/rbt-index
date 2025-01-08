@@ -42,8 +42,7 @@
 int main(int argc, char *argv[]) {
     long long sizeThreshold = 0;
     int skipDirs = 0;
-    FILE *outputFile = NULL; // Initially set to NULL since -o is mandatory
-    FILE *outputFileTmp = NULL; // Initially set to NULL since -o is mandatory
+    char *originalFileName = NULL;
     char *tmpFileName = NULL;
     char *tmpFileNameSrt = NULL;
 
@@ -62,8 +61,7 @@ int main(int argc, char *argv[]) {
             }
         } else if (strcmp(argv[i], "-o") == 0) {
             if (i + 1 < argc) {
-                outputFile = fopen(argv[++i], "w");
-                const char *originalFileName = argv[i];
+                originalFileName = argv[i];
                 tmpFileName = malloc(strlen(originalFileName) + 5); //
                 if (tmpFileName == NULL) {
                     perror("Memory allocation failed (tmpFileName)");
@@ -74,17 +72,6 @@ int main(int argc, char *argv[]) {
                 strcpy(tmpFileNameSrt, tmpFileName);
                 strcat(tmpFileName, "tmp");    // Appends "tmp" to tmpFileName
                 strcat(tmpFileNameSrt, "srt"); // Appends "srt" to tmpFileNameSrt
-                outputFileTmp = fopen(tmpFileName, "w");
-                if (outputFileTmp == NULL) {
-                    perror("Failed to open outputFileTmp");
-                    free(tmpFileName);
-                    exit(1);
-                }
-                if (!outputFile) {
-                    perror("Could not open output file");
-                    release_temporary_resources(tmpFileName, tmpFileNameSrt, NULL);
-                    return EXIT_FAILURE;
-                }
             } else {
                 fprintf(stderr, "Output file name expected after -o\n");
                 release_temporary_resources(tmpFileName, tmpFileNameSrt, NULL);
@@ -94,7 +81,7 @@ int main(int argc, char *argv[]) {
     }
 
     // Ensure -o parameter is used
-    if (!outputFile) {
+    if (!originalFileName) {
         fprintf(stderr, "Error: The -o <outputfile> option is required.\n");
         fprintf(stderr, "Usage: %s <directory_path> [-M maxSizeInMB] [--skip-dirs] -o outputfile\n", argv[0]);
         release_temporary_resources(tmpFileName, tmpFileNameSrt, NULL);
@@ -103,7 +90,7 @@ int main(int argc, char *argv[]) {
 
     int numCores = omp_get_max_threads();
     omp_set_num_threads(numCores);
-    fprintf(stderr, "Using %d cores.\n", numCores);
+    fprintf(stdout, "Using %d cores.\n", numCores);
 
     TaskQueue taskQueue;
     initQueue(&taskQueue, INITIAL_CAPACITY);
@@ -114,7 +101,6 @@ int main(int argc, char *argv[]) {
     FileEntry *entries = malloc(capacity * sizeof(FileEntry));
     if (!entries) {
         perror("malloc");
-        if (outputFile != stdout) fclose(outputFile);
         release_temporary_resources(tmpFileName, tmpFileNameSrt, NULL);
         return EXIT_FAILURE;
     }
@@ -154,15 +140,16 @@ int main(int argc, char *argv[]) {
                      &docFiles, &docSize, &calcFiles, &calcSize,
                      &texFiles, &texSize, &sqlFiles, &sqlSize, &csvFiles, &csvSize, &cssFiles, &cssSize,
                      skipDirs, sizeThreshold);
-
+    totalDirs--; // Exclude the root directory
+    printf("Read %d entries \n", count);
     if (count < INITIAL_ENTRIES_CAPACITY) {
         qsort(entries, count, sizeof(FileEntry), compareFileEntries);
     }
     else {
-        char command[256];
+        char command[MAX_LINE_LENGTH];
+        printToFile(entries, count, tmpFileName);
         snprintf(command, sizeof(command), "sort --parallel=12 -t \"|\" -k1,1 %s -o %s", tmpFileName, tmpFileNameSrt);
         int ret = system(command);
-        // Check the command result
         if (ret == -1) {
             perror("system() failed");
             release_temporary_resources(tmpFileName, tmpFileNameSrt, NULL);
@@ -173,72 +160,53 @@ int main(int argc, char *argv[]) {
             release_temporary_resources(tmpFileName, tmpFileNameSrt, NULL);
             return EXIT_FAILURE;
         }
+        // read_entries(tmpFileNameSrt, &entries, count);
     }
-
-    printFileEntries(entries, count, outputFileTmp);
-
-
-    // sort --parallel=12 -t "|" -k1,1 temp.lst -o merged.lst.srt
-    for (int i = 0; i < count; i++) {
-        const char *fileName = getFileName(entries[i].path);
-        int isHidden = (fileName[0] == '.');
-        fprintf(outputFile, "%s|%ld|%s",
-                entries[i].path, entries[i].size, entries[i].type);
-        char *sizeStr = getFileSizeAsString(entries[i].size);
-        printf("File: %s, Size: %s (%ld bytes), Type: %s",
-               entries[i].path, sizeStr, entries[i].size, entries[i].type);
-        if (isHidden) {
-            fprintf(outputFile, ", F_HIDDEN");
-            printf(", F_HIDDEN");
-        }
-        fprintf(outputFile, "\n");
-        printf("\n");
-        free(sizeStr);
-    }
-
+    printToStdOut(entries, count);
     printf("\nSummary:\n");
-    printf("Total Number of Directories: %d\n", totalDirs);
-    printf("Total Number of Files: %d\n", totalFiles);
-    printf("Total Size of Files: %lld bytes (%s)\n", totalSize, getFileSizeAsString(totalSize));
     if (hiddenFiles > 0) {
         printf("Total Number of Hidden Files: %d\n", hiddenFiles);
         printf("Total Size of Hidden Files: %s (%lld bytes) \n", getFileSizeAsString(hiddenSize), hiddenSize);
     }
 
-    printSizeDetails(outputFile, "Text", textFiles, textSize);
-    printSizeDetails(outputFile, "Music", musicFiles, musicSize);
-    printSizeDetails(outputFile, "Film", filmFiles, filmSize);
-    printSizeDetails(outputFile, "Image", imageFiles, imageSize);
-    printSizeDetails(outputFile, "Compressed", compressedFiles, compressedSize);
-    printSizeDetails(outputFile, "Binary", binaryFiles, binarySize);
-    printSizeDetails(outputFile, "JSON", jsonFiles, jsonSize);
-    printSizeDetails(outputFile, "Csv", csvFiles, csvSize);
-    printSizeDetails(outputFile, "YAML", yamlFiles, yamlSize);
-    printSizeDetails(outputFile, "Python", pythonFiles, pythonSize);
-    printSizeDetails(outputFile, "Java", javaFiles, javaSize);
-    printSizeDetails(outputFile, "Ts", tsFiles, tsSize);
-    printSizeDetails(outputFile, "Js", jsFiles, jsSize);
-    printSizeDetails(outputFile, "Sql", sqlFiles, sqlSize);
-    printSizeDetails(outputFile, "Html", htmlFiles, htmlSize);
-    printSizeDetails(outputFile, "Css", cssFiles, cssSize);
-    printSizeDetails(outputFile, "Xhtml", xhtmlFiles, xhtmlSize);
-    printSizeDetails(outputFile, "Xml", xmlFiles, xmlSize);
-    printSizeDetails(outputFile, "Packages", packageFiles, packageSize);
-    printSizeDetails(outputFile, "Log", logFiles, logSize);
-    printSizeDetails(outputFile, "Class", classFiles, classSize);
-    printSizeDetails(outputFile, "Template", templateFiles, templateSize);
-    printSizeDetails(outputFile, "Pdf", pdfFiles, pdfSize);
-    printSizeDetails(outputFile, "Doc", docFiles, docSize);
-    printSizeDetails(outputFile, "LaTex", texFiles, texSize);
-    printSizeDetails(outputFile, "Calc", calcFiles, calcSize);
-    printSizeDetails(outputFile, "Jar", jarFiles, jarSize);
-    printSizeDetails(outputFile, "C Source", cFiles, cSize);
-    printSizeDetails(outputFile, "EXE", exeFiles, exeSize);
+    printSizeDetails("Text", textFiles, textSize);
+    printSizeDetails("Music", musicFiles, musicSize);
+    printSizeDetails("Film", filmFiles, filmSize);
+    printSizeDetails("Image", imageFiles, imageSize);
+    printSizeDetails("Compressed", compressedFiles, compressedSize);
+    printSizeDetails("Binary", binaryFiles, binarySize);
+    printSizeDetails("JSON", jsonFiles, jsonSize);
+    printSizeDetails("Csv", csvFiles, csvSize);
+    printSizeDetails("YAML", yamlFiles, yamlSize);
+    printSizeDetails("Python", pythonFiles, pythonSize);
+    printSizeDetails("Java", javaFiles, javaSize);
+    printSizeDetails("Ts", tsFiles, tsSize);
+    printSizeDetails("Js", jsFiles, jsSize);
+    printSizeDetails("Sql", sqlFiles, sqlSize);
+    printSizeDetails("Html", htmlFiles, htmlSize);
+    printSizeDetails("Css", cssFiles, cssSize);
+    printSizeDetails("Xhtml", xhtmlFiles, xhtmlSize);
+    printSizeDetails("Xml", xmlFiles, xmlSize);
+    printSizeDetails("Packages", packageFiles, packageSize);
+    printSizeDetails("Log", logFiles, logSize);
+    printSizeDetails("Class", classFiles, classSize);
+    printSizeDetails("Template", templateFiles, templateSize);
+    printSizeDetails("Pdf", pdfFiles, pdfSize);
+    printSizeDetails("Doc", docFiles, docSize);
+    printSizeDetails("LaTex", texFiles, texSize);
+    printSizeDetails("Calc", calcFiles, calcSize);
+    printSizeDetails("Jar", jarFiles, jarSize);
+    printSizeDetails("C Source", cFiles, cSize);
+    printSizeDetails("EXE", exeFiles, exeSize);
+
+    printf("#####################\n");
+    printf("Total Number of Directories: %d\n", totalDirs);
+    printf("Total Number of Files: %d\n", totalFiles);
+    printf("Total Size of Files: %lld bytes (%s)\n", totalSize, getFileSizeAsString(totalSize));
 
     free(entries);
     freeQueue(&taskQueue);
     release_temporary_resources(tmpFileName, tmpFileNameSrt, NULL);
-    if (outputFile != stdout) fclose(outputFile);
 
     return EXIT_SUCCESS;
 }

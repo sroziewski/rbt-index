@@ -1,5 +1,5 @@
-#ifndef FILE_UTILS_H
-#define FILE_UTILS_H
+#ifndef L_FILES_H
+#define L_FILES_H
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -12,28 +12,7 @@
 #include <errno.h>
 #include <libgen.h>
 #include <ctype.h>
-
-// Macros
-#define INITIAL_CAPACITY 10
-#define RESIZE_FACTOR 2
-#define INITIAL_ENTRIES_CAPACITY 400000
-
-// Structures
-typedef struct FileEntry {
-    char path[1024];
-    off_t size;
-    char type[128];
-} FileEntry;
-
-typedef struct TaskQueue {
-    char **tasks;
-    int head;
-    int tail;
-    int capacity;
-    pthread_mutex_t mutex;
-} TaskQueue;
-
-// Function declarations
+#include "lconsts.h"
 
 // File type detection functions
 int isJsonFile(const char *filePath);
@@ -143,9 +122,13 @@ void processDirectory(TaskQueue *taskQueue, FileEntry **entries, int *count, int
 char *getFileSizeAsString(long long fileSizeBytes);
 
 // Print size details
-void printSizeDetails(FILE *outputFile, const char *type, int count, long long size);
-
-void printFileEntries(FileEntry *entries, int count, FILE *outputFile);
+void printSizeDetails(const char *type, int count, long long size);
 
 void release_temporary_resources(char *first, ...);
-#endif // FILE_UTILS_H
+
+void read_entries(const char *filename, FileEntry **entries, size_t fixed_count);
+
+void printToStdOut(FileEntry *entries, int count);
+
+void printToFile(FileEntry *entries, const int count, const char *filename);
+#endif // L_FILES_H
