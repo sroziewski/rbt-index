@@ -131,5 +131,8 @@ void read_entries(const char *filename, FileEntry **entries, size_t fixed_count)
 void printToStdOut(FileEntry *entries, int count);
 
 void printToFile(FileEntry *entries, int count, const char *filename);
+
 void deleteFile(char *filename);
+
+char *removeTrailingSlash(const char *token);
 #endif // L_FILES_H

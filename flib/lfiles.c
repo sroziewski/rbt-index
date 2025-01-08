@@ -802,3 +802,27 @@ void deleteFile(char *filename) {
         perror("Failed to delete the file");
     }
 }
+
+char* removeTrailingSlash(const char* token) {
+    if (token == NULL) {
+        return NULL;
+    }
+    const size_t len = strlen(token);
+    if (len > 0 && token[len - 1] == '/') {
+        // Allocate memory for the new string (excluding the trailing '/')
+        char* newFileName = (char*)malloc(len * sizeof(char));
+        if (newFileName == NULL) {
+            perror("malloc failed");
+            return NULL;
+        }
+        strncpy(newFileName, token, len - 1);
+        newFileName[len - 1] = '\0'; // Null-terminate the string
+        return newFileName;
+    }
+    // If no trailing slash, return a duplicate of the original string
+    char* newFileName = strdup(token);
+    if (newFileName == NULL) {
+        perror("strdup failed");
+    }
+    return newFileName;
+}

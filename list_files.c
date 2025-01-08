@@ -1,43 +1,20 @@
 #include "flib/lfiles.h"
 /**
- * @brief Entry point of the application to analyze and process files and directories.
+ * The main entry point for the program. This function processes files and directories
+ * specified via command-line arguments, calculates file statistics, and produces an
+ * output file summarizing the results. It may also skip certain directories,
+ * limit processing to files below a given size threshold, or use multithreading for
+ * performance optimization.
  *
- * This function processes command-line arguments to configure various operations,
- * such as skipping directories, setting a size threshold for files, and specifying
- * an output file. It utilizes multi-threading for efficiency and processes a directory
- * structure to gather statistics, classify files by type, and generate a detailed
- * output in the specified file.
+ * @param argc The number of command-line arguments passed to the program.
+ * @param argv The array of command-line arguments. The following options are supported:
+ *      - `--skip-dirs`: Skips processing of directories.
+ *      - `-M <size>`: Sets a size threshold (in MB) for processing files.
+ *      - `-o <outputfile>`: Specifies the output file name. This option is mandatory.
  *
- * @param argc Number of command-line arguments, including the program name.
- * @param argv Array of command-line arguments.
- *
- * The following parameters are supported:
- * - argv[1]: Directory path to process (mandatory).
- * - `--skip-dirs`: Optional flag to skip directories while processing files.
- * - `-M <maxSizeInMB>`: Optional argument to set a size threshold (in MB) for files.
- * - `-o <outputfile>`: Mandatory argument specifying the path to the output file.
- *
- * @return EXIT_SUCCESS on successful completion, or EXIT_FAILURE in case of an error.
- *
- * Functionality details:
- * - Parses command-line arguments to configure behavior.
- * - Initializes required resources, such as file pointers and task queues.
- * - Enqueues the specified directory path for processing.
- * - Allocates memory to store file entries and other related data structures.
- * - Uses multi-threading with a maximum number of threads available.
- * - Processes files and directories, gathering statistics:
- *   - Counts total files, directories, and hidden files.
- *   - Calculates total sizes and classifies file types into categories
- *     (e.g., text, music, film, image, binary, etc.).
- * - Generates an output file with file details and - if required -
- *   uses temporary files for sorting intermediate results.
- * - Produces a human-readable summary of the file statistics, displayed on the console.
- *
- * Important considerations:
- * - The `-o` option is mandatory to specify the output file.
- * - Memory allocation failures and file operation errors are handled with error messages
- *   and proper cleanup.
- * - Hidden files (file names starting with a '.') are flagged accordingly in the output.
+ * @return Returns `EXIT_SUCCESS` (typically 0) on successful execution.
+ *         Returns `EXIT_FAILURE` (typically 1) if an error occurs, such as invalid input
+ *         arguments, memory allocation issues, or external command failures.
  */
 int main(int argc, char *argv[]) {
     long long sizeThreshold = 0;
@@ -90,7 +67,7 @@ int main(int argc, char *argv[]) {
 
     TaskQueue taskQueue;
     initQueue(&taskQueue, INITIAL_CAPACITY);
-    enqueue(&taskQueue, argv[1]);
+    enqueue(&taskQueue, removeTrailingSlash(argv[1]));
 
     int capacity = INITIAL_CAPACITY;
     int count = 0;
