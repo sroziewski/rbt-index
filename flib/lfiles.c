@@ -702,13 +702,11 @@ void read_entries(const char *filename, FileEntry **entries, const size_t fixed_
         perror("Error opening file");
         exit(EXIT_FAILURE);
     }
-
     // Reset the current entries
     size_t i = 0;
     if (*entries) {
         free(*entries);
     }
-
     // Allocate memory for the fixed amount of entries
     *entries = malloc(fixed_count * sizeof(FileEntry));
     if (!*entries) {
@@ -719,11 +717,15 @@ void read_entries(const char *filename, FileEntry **entries, const size_t fixed_
 
     char buffer[MAX_LINE_LENGTH];
     while (fgets(buffer, MAX_LINE_LENGTH, file)) {
+        // Remove the newline character, if present
+        size_t len = strlen(buffer);
+        if (len > 0 && buffer[len - 1] == '\n') {
+            buffer[len - 1] = '\0';
+        }
         // Stop reading if we've reached the fixed count
         if (i >= fixed_count) {
             break;
         }
-
         // Parse the line using `strtok` for the `|` delimiter
         FileEntry entry;
         char *token = strtok(buffer, "|");
@@ -733,7 +735,6 @@ void read_entries(const char *filename, FileEntry **entries, const size_t fixed_
         }
         strncpy(entry.path, token, sizeof(entry.path) - 1);
         entry.path[sizeof(entry.path) - 1] = '\0';
-
         token = strtok(NULL, "|");
         if (!token) {
             fprintf(stderr, "Error parsing size in line: %s\n", buffer);
@@ -741,11 +742,10 @@ void read_entries(const char *filename, FileEntry **entries, const size_t fixed_
         }
         char *endptr;
         entry.size = strtol(token, &endptr, 10);
-        if (*endptr != '\0' && *endptr != '\n') {
+        if (*endptr != '\0') {
             fprintf(stderr, "Invalid numeric format for size in line: %s\n", buffer);
             continue;
         }
-
         token = strtok(NULL, "|");
         if (!token) {
             fprintf(stderr, "Error parsing type in line: %s\n", buffer);
@@ -758,7 +758,7 @@ void read_entries(const char *filename, FileEntry **entries, const size_t fixed_
         (*entries)[i] = entry;
         ++i;
     }
-    printf("Read %ld entries from srt file\n", i);
+    printf("Read %ld entries from the file\n", i);
     fclose(file);
 }
 
@@ -779,21 +779,26 @@ void printToFile(FileEntry *entries, const int count, const char *filename) {
     }
     fclose(outputFile);
 }
+
 void printToStdOut(FileEntry *entries, const int count) {
     for (int i = 0; i < count; i++) {
         const char *fileName = getFileName(entries[i].path);
         const int isHidden = (fileName[0] == '.'); // Check if the file is hidden
         char *sizeStr = getFileSizeAsString(entries[i].size);
-
-        // Print to standard output
         printf("File: %s, Size: %s (%ld bytes), Type: %s",
                entries[i].path, sizeStr, entries[i].size, entries[i].type);
-
         if (isHidden) {
             printf(", F_HIDDEN");
         }
-
         printf("\n"); // End the line
         free(sizeStr); // Free dynamically allocated string from getFileSizeAsString
+    }
+}
+
+void deleteFile(char *filename) {
+    const int result = remove(filename);
+    free(filename);
+    if (result != 0) {
+        perror("Failed to delete the file");
     }
 }

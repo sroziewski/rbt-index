@@ -44,7 +44,6 @@ int main(int argc, char *argv[]) {
     int skipDirs = 0;
     char *originalFileName = NULL;
     char *tmpFileName = NULL;
-    char *tmpFileNameSrt = NULL;
 
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "--skip-dirs") == 0) {
@@ -56,25 +55,22 @@ int main(int argc, char *argv[]) {
                 sizeThreshold = (long long) (sizeInMB * 1024 * 1024);
             } else {
                 fprintf(stderr, "Invalid or missing size argument after -M\n");
-                release_temporary_resources(tmpFileName, tmpFileNameSrt, NULL);
+                release_temporary_resources(tmpFileName, originalFileName, NULL);
                 return EXIT_FAILURE;
             }
         } else if (strcmp(argv[i], "-o") == 0) {
             if (i + 1 < argc) {
-                originalFileName = argv[i];
+                originalFileName = argv[++i];
                 tmpFileName = malloc(strlen(originalFileName) + 5); //
                 if (tmpFileName == NULL) {
                     perror("Memory allocation failed (tmpFileName)");
                     exit(1);
                 }
-                tmpFileNameSrt = malloc(strlen(originalFileName) + 9); //
                 strcpy(tmpFileName, originalFileName);
-                strcpy(tmpFileNameSrt, tmpFileName);
                 strcat(tmpFileName, "tmp");    // Appends "tmp" to tmpFileName
-                strcat(tmpFileNameSrt, "srt"); // Appends "srt" to tmpFileNameSrt
             } else {
                 fprintf(stderr, "Output file name expected after -o\n");
-                release_temporary_resources(tmpFileName, tmpFileNameSrt, NULL);
+                release_temporary_resources(tmpFileName, originalFileName, NULL);
                 return EXIT_FAILURE;
             }
         }
@@ -84,7 +80,7 @@ int main(int argc, char *argv[]) {
     if (!originalFileName) {
         fprintf(stderr, "Error: The -o <outputfile> option is required.\n");
         fprintf(stderr, "Usage: %s <directory_path> [-M maxSizeInMB] [--skip-dirs] -o outputfile\n", argv[0]);
-        release_temporary_resources(tmpFileName, tmpFileNameSrt, NULL);
+        release_temporary_resources(tmpFileName, originalFileName, NULL);
         return EXIT_FAILURE;
     }
 
@@ -101,7 +97,7 @@ int main(int argc, char *argv[]) {
     FileEntry *entries = malloc(capacity * sizeof(FileEntry));
     if (!entries) {
         perror("malloc");
-        release_temporary_resources(tmpFileName, tmpFileNameSrt, NULL);
+        release_temporary_resources(tmpFileName, originalFileName, NULL);
         return EXIT_FAILURE;
     }
 
@@ -141,26 +137,27 @@ int main(int argc, char *argv[]) {
                      &texFiles, &texSize, &sqlFiles, &sqlSize, &csvFiles, &csvSize, &cssFiles, &cssSize,
                      skipDirs, sizeThreshold);
     totalDirs--; // Exclude the root directory
-    printf("Read %d entries \n", count);
     if (count < INITIAL_ENTRIES_CAPACITY) {
         qsort(entries, count, sizeof(FileEntry), compareFileEntries);
+        printToFile(entries, count, originalFileName);
     }
     else {
         char command[MAX_LINE_LENGTH];
         printToFile(entries, count, tmpFileName);
-        snprintf(command, sizeof(command), "sort --parallel=12 -t \"|\" -k1,1 %s -o %s", tmpFileName, tmpFileNameSrt);
+        snprintf(command, sizeof(command), "sort --parallel=12 -t \"|\" -k1,1 %s -o %s", tmpFileName, originalFileName);
         int ret = system(command);
+        deleteFile(tmpFileName);
         if (ret == -1) {
             perror("system() failed");
-            release_temporary_resources(tmpFileName, tmpFileNameSrt, NULL);
+            release_temporary_resources(tmpFileName, originalFileName, NULL);
             return EXIT_FAILURE;
         }
         if (WEXITSTATUS(ret) != 0) {
             fprintf(stderr, "Command exited with non-zero status: %d\n", WEXITSTATUS(ret));
-            release_temporary_resources(tmpFileName, tmpFileNameSrt, NULL);
+            release_temporary_resources(tmpFileName, originalFileName, NULL);
             return EXIT_FAILURE;
         }
-        // read_entries(tmpFileNameSrt, &entries, count);
+        read_entries(originalFileName, &entries, count);
     }
     printToStdOut(entries, count);
     printf("\nSummary:\n");
@@ -199,14 +196,13 @@ int main(int argc, char *argv[]) {
     printSizeDetails("C Source", cFiles, cSize);
     printSizeDetails("EXE", exeFiles, exeSize);
 
-    printf("#####################\n");
+    printf("------------------------------------\n");
     printf("Total Number of Directories: %d\n", totalDirs);
     printf("Total Number of Files: %d\n", totalFiles);
     printf("Total Size of Files: %lld bytes (%s)\n", totalSize, getFileSizeAsString(totalSize));
 
     free(entries);
     freeQueue(&taskQueue);
-    release_temporary_resources(tmpFileName, tmpFileNameSrt, NULL);
 
     return EXIT_SUCCESS;
 }
