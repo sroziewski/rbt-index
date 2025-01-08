@@ -9,7 +9,7 @@
 #include <libgen.h>
 #include <stdarg.h>
 #include <omp.h>
-#include "lconsts.h"
+#include "../shared/lconsts.h"
 
 // Check if the file has the .json extension (case insensitive)
 int isJsonFile(const char *filePath) {

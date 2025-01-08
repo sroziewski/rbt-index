@@ -10,6 +10,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <regex.h>
+#include "../shared/lconsts.h"
 
 // Enum to represent node colors
 typedef enum { RED, BLACK } NodeColor;

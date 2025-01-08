@@ -12,7 +12,7 @@
 #include <errno.h>
 #include <libgen.h>
 #include <ctype.h>
-#include "lconsts.h"
+#include "../shared/lconsts.h"
 
 // File type detection functions
 int isJsonFile(const char *filePath);

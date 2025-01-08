@@ -52,7 +52,12 @@ int main(const int argc, char *argv[]) {
         int totalProcessedCount = 0;
 
         for (size_t i = 0; i < numLines; i++) {
-            const FileInfo key = parseFileData(lines[i]);
+            FileInfo key = { NULL, 0, NULL, NULL };
+            if (lines != NULL && lines[i] != NULL) {
+                key = parseFileData(lines[i]);
+            } else {
+                fprintf(stderr, "Error: lines[%ld] is NULL\n", i);
+            }
             if (key.filename && key.filepath && key.filetype) {
                 insert_filename(&finalRoot, key);
                 totalProcessedCount++;
@@ -65,7 +70,9 @@ int main(const int argc, char *argv[]) {
         printf("Total lines successfully processed: %d\n", totalProcessedCount);
 
         for (size_t i = 0; i < numLines; i++) {
-            free(lines[i]);
+            if (lines != NULL && lines[i] != NULL) {
+                free(lines[i]);
+            }
         }
         free(lines);
 

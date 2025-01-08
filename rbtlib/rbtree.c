@@ -17,7 +17,7 @@ char *get_filename_from_path(const char *path) {
 
 // File parsing into FileInfo
 FileInfo parseFileData(const char *inputLine) {
-    const char *separator = "<SEP>";
+    const char *separator = "|";
     char *lineCopy = strdup(inputLine);
     FileInfo result = {NULL, 0, NULL, NULL};
 
