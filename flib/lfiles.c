@@ -7,14 +7,15 @@
 #include <pthread.h>
 #include <errno.h>
 #include <libgen.h>
-#include <ctype.h>
 #include <stdarg.h>
 
 #define INITIAL_CAPACITY 10
 #define RESIZE_FACTOR 2
+#define MAX_LINE_LENGTH 4096
+#define INITIAL_ENTRIES_CAPACITY 400000
 
 typedef struct FileEntry {
-    char path[1024];
+    char path[MAX_LINE_LENGTH];
     off_t size;
     char type[128];
 } FileEntry;
@@ -727,4 +728,58 @@ void release_temporary_resources(char *first, ...) {
         }
     }
     va_end(args);
+}
+
+void read_entries(const char *filename, char ***entries, size_t *size, size_t *capacity) {
+    // Open the file for reading
+    FILE *file = fopen(filename, "r");
+    if (!file) {
+        perror("Error opening file");
+        exit(EXIT_FAILURE);
+    }
+
+    // Empty the current entries
+    for (size_t i = 0; i < *size; ++i) {
+        free((*entries)[i]);
+    }
+    free(*entries);
+    *entries = NULL;
+    *size = 0;
+
+    // Allocate initial memory for entries
+    *capacity = INITIAL_ENTRIES_CAPACITY;
+    *entries = malloc(*capacity * sizeof(char *));
+    if (!*entries) {
+        perror("Memory allocation failed");
+        fclose(file);
+        exit(EXIT_FAILURE);
+    }
+
+    char buffer[MAX_LINE_LENGTH];
+    while (fgets(buffer, MAX_LINE_LENGTH, file)) {
+        // Remove the trailing newline character, if present
+        buffer[strcspn(buffer, "\n")] = '\0';
+
+        // Reallocate memory if we've reached capacity
+        if (*size >= *capacity) {
+            *capacity *= 2;
+            *entries = realloc(*entries, *capacity * sizeof(char *));
+            if (!*entries) {
+                perror("Memory reallocation failed");
+                fclose(file);
+                exit(EXIT_FAILURE);
+            }
+        }
+
+        // Add each line to entries
+        (*entries)[*size] = strdup(buffer); // Duplicate the line into heap memory
+        if (!(*entries)[*size]) {
+            perror("Memory allocation failed for line");
+            fclose(file);
+            exit(EXIT_FAILURE);
+        }
+        ++(*size);
+    }
+
+    fclose(file);
 }

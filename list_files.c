@@ -1,5 +1,4 @@
 #include "flib/lfiles.h"
-
 /**
  * @brief Entry point of the application to analyze and process files and directories.
  *
@@ -45,7 +44,6 @@ int main(int argc, char *argv[]) {
     int skipDirs = 0;
     FILE *outputFile = NULL; // Initially set to NULL since -o is mandatory
     FILE *outputFileTmp = NULL; // Initially set to NULL since -o is mandatory
-    FILE *outputFileTmpSrt = NULL; // for sorted tmpFile
     char *tmpFileName = NULL;
     char *tmpFileNameSrt = NULL;
 
@@ -77,15 +75,9 @@ int main(int argc, char *argv[]) {
                 strcat(tmpFileName, "tmp");    // Appends "tmp" to tmpFileName
                 strcat(tmpFileNameSrt, "srt"); // Appends "srt" to tmpFileNameSrt
                 outputFileTmp = fopen(tmpFileName, "w");
-                outputFileTmpSrt = fopen(tmpFileNameSrt, "w");
                 if (outputFileTmp == NULL) {
                     perror("Failed to open outputFileTmp");
                     free(tmpFileName);
-                    exit(1);
-                }
-                if (outputFileTmpSrt == NULL) {
-                    perror("Failed to open outputFileTmpSrt");
-                    free(tmpFileNameSrt);
                     exit(1);
                 }
                 if (!outputFile) {
@@ -163,7 +155,7 @@ int main(int argc, char *argv[]) {
                      &texFiles, &texSize, &sqlFiles, &sqlSize, &csvFiles, &csvSize, &cssFiles, &cssSize,
                      skipDirs, sizeThreshold);
 
-    if (count < 500000) {
+    if (count < INITIAL_ENTRIES_CAPACITY) {
         qsort(entries, count, sizeof(FileEntry), compareFileEntries);
     }
     else {

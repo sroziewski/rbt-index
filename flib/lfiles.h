@@ -16,6 +16,7 @@
 // Macros
 #define INITIAL_CAPACITY 10
 #define RESIZE_FACTOR 2
+#define INITIAL_ENTRIES_CAPACITY 400000
 
 // Structures
 typedef struct FileEntry {
@@ -145,5 +146,6 @@ char *getFileSizeAsString(long long fileSizeBytes);
 void printSizeDetails(FILE *outputFile, const char *type, int count, long long size);
 
 void printFileEntries(FileEntry *entries, int count, FILE *outputFile);
-void release_temporary_resources(char *first, ...) ;
+
+void release_temporary_resources(char *first, ...);
 #endif // FILE_UTILS_H
