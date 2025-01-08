@@ -163,11 +163,29 @@ int main(int argc, char *argv[]) {
                      &texFiles, &texSize, &sqlFiles, &sqlSize, &csvFiles, &csvSize, &cssFiles, &cssSize,
                      skipDirs, sizeThreshold);
 
-    if (count < 1000) {
+    if (count < 500000) {
         qsort(entries, count, sizeof(FileEntry), compareFileEntries);
+    }
+    else {
+        char command[256];
+        snprintf(command, sizeof(command), "sort --parallel=12 -t \"|\" -k1,1 %s -o %s", tmpFileName, tmpFileNameSrt);
+        int ret = system(command);
+        // Check the command result
+        if (ret == -1) {
+            perror("system() failed");
+            release_temporary_resources(tmpFileName, tmpFileNameSrt, NULL);
+            return EXIT_FAILURE;
+        }
+        if (WEXITSTATUS(ret) != 0) {
+            fprintf(stderr, "Command exited with non-zero status: %d\n", WEXITSTATUS(ret));
+            release_temporary_resources(tmpFileName, tmpFileNameSrt, NULL);
+            return EXIT_FAILURE;
+        }
     }
 
     printFileEntries(entries, count, outputFileTmp);
+
+
     // sort --parallel=12 -t "|" -k1,1 temp.lst -o merged.lst.srt
     for (int i = 0; i < count; i++) {
         const char *fileName = getFileName(entries[i].path);
