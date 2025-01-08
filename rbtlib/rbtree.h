@@ -171,4 +171,8 @@ char *get_filename_from_path(const char *path);
 
 void listSharedMemoryEntities(const char *prefix);
 
+void createRbt(const int argc, char *argv[], void (*insertFunc)(Node **, FileInfo), const char *prefix);
+
+size_t getSharedMemorySize(const char *sharedMemoryName);
+
 #endif // RBTREE_H

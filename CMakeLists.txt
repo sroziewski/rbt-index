@@ -54,6 +54,17 @@ set_target_properties(rbt_name_create PROPERTIES
         VS_DEBUGGER_COMMAND_ARGUMENTS "/home/simon/playground/playground.list"
 )
 
+# Add another executable: rbt_size_create
+add_executable(rbt_size_create
+        rbt_size_create.c
+        rbtlib/rbtree.c  # Your main entry point for rbt_name_create
+)
+
+# Add arguments to the rbt_name_create executable for IDEs/debugging (optional)
+set_target_properties(rbt_size_create PROPERTIES
+        VS_DEBUGGER_COMMAND_ARGUMENTS "/home/simon/playground/playground.list"
+)
+
 # Add another executable: rbt_search
 add_executable(rbt_search
         rbt_search.c

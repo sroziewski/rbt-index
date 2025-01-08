@@ -301,8 +301,13 @@ void write_tree_to_shared_memory(Node *finalRoot, const char *filePath, const ch
     free(buffer);
 
     char *sizeStr = getFileSizeAsString(usedSize);
-    printf("Red-black tree written to shared memory, size: %s (%zu bytes) %s\n", sizeStr, usedSize, sharedMemoryName);
+
+    const size_t fileSize = getSharedMemorySize(sharedMemoryName);
+    char *memSizeStr = getFileSizeAsString(fileSize);
+
+    printf("Red-black tree written to shared memory, rbt size: %s (%zu bytes), file %s size: %s (%zu bytes)\n", sizeStr, usedSize, sharedMemoryName, memSizeStr, fileSize);
     free(fileName);
+    free(memSizeStr);
     free(sharedMemoryName);
     free(sizeStr);
 }
@@ -592,27 +597,7 @@ int remove_shared_memory_object(char **argv, const char *prefix) {
     } else {
         snprintf(sharedMemoryName, sharedMemoryNameLength, "%s%s%s%s", prefix, fileName, EXTENSION_RBT, EXTENSION_MEM);
     }
-
-    // Open the shared memory object to get its size
-    const int shm_fd = shm_open(sharedMemoryName, O_RDONLY, 0);
-    if (shm_fd == -1) {
-        perror("Failed to open shared memory object");
-        free(sharedMemoryName);
-        free(fileName);
-        return EXIT_FAILURE;
-    }
-
-    struct stat shm_stat;
-    if (fstat(shm_fd, &shm_stat) == -1) {
-        perror("Failed to get shared memory object size");
-        close(shm_fd);
-        free(sharedMemoryName);
-        free(fileName);
-        return EXIT_FAILURE;
-    }
-    const size_t fileSize = shm_stat.st_size; // Shared memory size
-
-    // Remove the shared memory object
+    const size_t fileSize = getSharedMemorySize(sharedMemoryName);
     char *sizeStr = getFileSizeAsString(fileSize);
     if (shm_unlink(sharedMemoryName) == 0) {
         printf("Shared memory object %s successfully removed, size: %s (%zu bytes)\n", sharedMemoryName, sizeStr,
@@ -620,7 +605,6 @@ int remove_shared_memory_object(char **argv, const char *prefix) {
     } else {
         perror("Error removing shared memory object");
     }
-
     // Cleanup
     free(sharedMemoryName);
     free(fileName);
@@ -634,23 +618,7 @@ int remove_shared_memory_object_by_name(const char *sharedMemoryName) {
         fprintf(stderr, "Invalid shared memory name.\n");
         return EXIT_FAILURE;
     }
-
-    // Open the shared memory object to get its size
-    const int shm_fd = shm_open(sharedMemoryName, O_RDONLY, 0);
-    if (shm_fd == -1) {
-        perror("Failed to open shared memory object");
-        return EXIT_FAILURE;
-    }
-
-    struct stat shm_stat;
-    if (fstat(shm_fd, &shm_stat) == -1) {
-        perror("Failed to get shared memory object size");
-        close(shm_fd);
-        return EXIT_FAILURE;
-    }
-    const size_t fileSize = shm_stat.st_size; // Get the shared memory size
-
-    // Remove the shared memory object
+    const size_t fileSize = getSharedMemorySize(sharedMemoryName); // Shared memory size
     char *sizeStr = getFileSizeAsString(fileSize);
     if (shm_unlink(sharedMemoryName) == 0) {
         printf("Shared memory object %s successfully removed, size: %s (%zu bytes)\n", sharedMemoryName, sizeStr,
@@ -658,9 +626,6 @@ int remove_shared_memory_object_by_name(const char *sharedMemoryName) {
     } else {
         perror("Error removing shared memory object");
     }
-
-    // Cleanup
-    close(shm_fd);
     free(sizeStr);
 
     return EXIT_SUCCESS;
@@ -780,4 +745,133 @@ void listSharedMemoryEntities(const char *prefix) {
     }
 
     closedir(dir);
+}
+
+void createRbt(const int argc, char *argv[], void (*insertFunc)(Node **, FileInfo), const char *prefix) {
+    if (argc < 2) {
+        fprintf(stderr, "Usage: %s <file> [--save] [--load filename.rbt] [--clean file.lst] [--list] [--remove sharedMemoryFilename]\n", argv[0]);
+        return;
+    }
+
+    if (argc == 3 && strcmp(argv[1], "--load") == 0) {
+        // Handle the --load command
+        read_tree_from_file_to_shared_memory(argv[2], prefix);
+        return;
+    }
+    else if (argc == 3 && strcmp(argv[1], "--clean") == 0) {
+        // Handle the --clean command
+        remove_shared_memory_object(argv, prefix);
+        return;
+    }
+    else if (argc == 2 && strcmp(argv[1], "--list") == 0) {
+        // Handle the --list command
+        listSharedMemoryEntities(prefix);
+        return;
+    }
+    else if (argc == 3 && strcmp(argv[1], "--remove") == 0) {
+        // Handle the --remove command
+        remove_shared_memory_object_by_name(argv[2]);
+        return;
+    }
+    else {
+        // Handle the normal processing and storing workflow
+        FILE *file = fopen(argv[1], "r");
+        if (!file) {
+            perror("Error opening file");
+            return;
+        }
+
+        char **lines = NULL;
+        size_t numLines = 0;
+        char buffer[8 * MAX_LINE_LENGTH];
+        Node *finalRoot = NULL; // Red-Black Tree node
+
+        // Reading lines from the file
+        while (fgets(buffer, sizeof(buffer), file)) {
+            remove_trailing_newline(buffer);
+            if (*buffer) {
+                lines = realloc(lines, sizeof(char *) * ++numLines);
+                if (!lines) {
+                    perror("Failed to allocate memory for lines");
+                    fclose(file);
+                    return;
+                }
+                lines[numLines - 1] = strdup(buffer);
+                if (!lines[numLines - 1]) {
+                    perror("Failed to duplicate buffer");
+                    fclose(file);
+                    return;
+                }
+            }
+        }
+        fclose(file); // Close file after use
+
+        int totalProcessedCount = 0;
+
+        // Processing the lines to insert into the Red-Black Tree
+        for (size_t i = 0; i < numLines; i++) {
+            FileInfo key = { NULL, 0, NULL, NULL };
+            if (lines != NULL && lines[i] != NULL) {
+                key = parseFileData(lines[i]);
+            } else {
+                fprintf(stderr, "Error: lines[%ld] is NULL\n", i);
+                continue;
+            }
+
+            // Ensure `FileInfo` contains valid data and insert into the Tree
+            if (key.filename && key.filepath && key.filetype) {
+                insertFunc(&finalRoot, key); // Use the provided insertion function
+                totalProcessedCount++;
+            }
+        }
+
+        // Display the processed files in sorted Red-Black Tree order
+        printf("\nFiles stored in Red-Black Tree in sorted order by filename:\n");
+        inorder(finalRoot);
+
+        printf("Total lines successfully processed: %d\n", totalProcessedCount);
+
+        // Free the allocated memory for lines
+        for (size_t i = 0; i < numLines; i++) {
+            if (lines != NULL && lines[i] != NULL) {
+                free(lines[i]);
+            }
+        }
+        free(lines);
+
+        // Handle saving to file or shared memory
+        if (argc == 3 && strcmp(argv[2], "--save") == 0) {
+            char *storeFilename = add_rbt_extension(argv[1]);  // Append `.rbt` to the filename
+            write_tree_to_file(finalRoot, storeFilename);
+            free(storeFilename);
+        } else {
+            write_tree_to_shared_memory(finalRoot, argv[1], prefix);
+        }
+
+        // Free the tree if it was created or loaded
+        freeTree(finalRoot);
+    }
+}
+
+size_t getSharedMemorySize(const char *sharedMemoryName) {
+    // Open the shared memory object
+    const int shm_fd = shm_open(sharedMemoryName, O_RDONLY, 0);
+    if (shm_fd == -1) {
+        perror("Failed to open shared memory object");
+        exit( EXIT_FAILURE);
+    }
+
+    // Get the metadata about the shared memory object
+    struct stat shm_stat;
+    if (fstat(shm_fd, &shm_stat) == -1) {
+        perror("Failed to get shared memory object size");
+        close(shm_fd);
+        return 0; // Return 0 to indicate failure
+    }
+
+    // Close the shared memory file descriptor
+    close(shm_fd);
+
+    // Return the size of the shared memory object
+    return shm_stat.st_size;
 }
