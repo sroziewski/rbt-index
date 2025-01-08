@@ -10,6 +10,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <regex.h>
+#include <dirent.h>
 #include "../shared/lconsts.h"
 
 // Enum to represent node colors
@@ -154,7 +155,10 @@ void write_tree_to_shared_memory(Node *finalRoot, const char *filePath, const ch
 
 int remove_shared_memory_object(char **argv, const char *prefix);
 
+int remove_shared_memory_object_by_name(const char *sharedMemoryName);
+
 // Utility Functions
+
 void remove_trailing_newline(char *str);
 
 FileInfo parseFileData(const char *inputLine);
@@ -164,5 +168,7 @@ char *add_rbt_extension(const char *filename);
 char *getFileSizeAsString(size_t fileSizeBytes);
 
 char *get_filename_from_path(const char *path);
+
+void listSharedMemoryEntities(const char *prefix);
 
 #endif // RBTREE_H

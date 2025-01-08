@@ -227,7 +227,8 @@ void write_tree_to_shared_memory(Node *finalRoot, const char *filePath, const ch
     // Extract file name from the file path
     char *fileName = get_filename_from_path(filePath);
     // Allocate memory for the full shared memory name
-    const size_t sharedMemoryNameLength = strlen(prefix) + strlen(fileName) + strlen(EXTENSION_RBT) + strlen(EXTENSION_MEM) + 1;
+    const size_t sharedMemoryNameLength = strlen(prefix) + strlen(fileName) + strlen(EXTENSION_RBT) +
+                                          strlen(EXTENSION_MEM) + 1;
     char *sharedMemoryName = malloc(sharedMemoryNameLength);
     if (!sharedMemoryName) {
         perror("Failed to allocate memory for shared memory name");
@@ -470,7 +471,8 @@ void read_tree_from_file_to_shared_memory(char *filePath, const char *prefix) {
     const int hasExtension = (fileNameLen >= extensionLen) && (
                                  strcmp(&fileName[fileNameLen - extensionLen], EXTENSION_RBT) == 0);
     // Allocate memory for the full shared memory name
-    const size_t sharedMemoryNameLength = strlen(prefix) + strlen(fileName) + (hasExtension ? 0 : extensionLen) + strlen(EXTENSION_MEM) + 1;
+    const size_t sharedMemoryNameLength = strlen(prefix) + strlen(fileName) + (hasExtension ? 0 : extensionLen) +
+                                          strlen(EXTENSION_MEM) + 1;
     char *sharedMemoryName = malloc(sharedMemoryNameLength);
     if (!sharedMemoryName) {
         perror("Failed to allocate memory for shared memory name");
@@ -479,9 +481,11 @@ void read_tree_from_file_to_shared_memory(char *filePath, const char *prefix) {
     }
     // Construct the shared memory name
     if (hasExtension) {
-        snprintf(sharedMemoryName, sharedMemoryNameLength, "%s%s%s", prefix, fileName, EXTENSION_MEM); // Don't append .rbt
+        snprintf(sharedMemoryName, sharedMemoryNameLength, "%s%s%s", prefix, fileName, EXTENSION_MEM);
+        // Don't append .rbt
     } else {
-        snprintf(sharedMemoryName, sharedMemoryNameLength, "%s%s%s%s", prefix, fileName, EXTENSION_RBT, EXTENSION_MEM); // Append .rbt
+        snprintf(sharedMemoryName, sharedMemoryNameLength, "%s%s%s%s", prefix, fileName, EXTENSION_RBT,
+                 EXTENSION_MEM); // Append .rbt
     }
 
     FILE *file = fopen(filePath, "rb");
@@ -572,7 +576,8 @@ int remove_shared_memory_object(char **argv, const char *prefix) {
                              (strcmp(&fileName[fileNameLen - extensionLen], EXTENSION_RBT) == 0);
 
     // Allocate shared memory name
-    const size_t sharedMemoryNameLength = strlen(prefix) + strlen(fileName) + (hasExtension ? 0 : extensionLen) + strlen(EXTENSION_MEM) + 1;
+    const size_t sharedMemoryNameLength = strlen(prefix) + strlen(fileName) + (hasExtension ? 0 : extensionLen) +
+                                          strlen(EXTENSION_MEM) + 1;
     char *sharedMemoryName = malloc(sharedMemoryNameLength);
 
     if (!sharedMemoryName) {
@@ -620,6 +625,44 @@ int remove_shared_memory_object(char **argv, const char *prefix) {
     free(sharedMemoryName);
     free(fileName);
     free(sizeStr);
+    return EXIT_SUCCESS;
+}
+
+int remove_shared_memory_object_by_name(const char *sharedMemoryName) {
+    // Check if the shared memory name is valid
+    if (!sharedMemoryName || strlen(sharedMemoryName) == 0) {
+        fprintf(stderr, "Invalid shared memory name.\n");
+        return EXIT_FAILURE;
+    }
+
+    // Open the shared memory object to get its size
+    const int shm_fd = shm_open(sharedMemoryName, O_RDONLY, 0);
+    if (shm_fd == -1) {
+        perror("Failed to open shared memory object");
+        return EXIT_FAILURE;
+    }
+
+    struct stat shm_stat;
+    if (fstat(shm_fd, &shm_stat) == -1) {
+        perror("Failed to get shared memory object size");
+        close(shm_fd);
+        return EXIT_FAILURE;
+    }
+    const size_t fileSize = shm_stat.st_size; // Get the shared memory size
+
+    // Remove the shared memory object
+    char *sizeStr = getFileSizeAsString(fileSize);
+    if (shm_unlink(sharedMemoryName) == 0) {
+        printf("Shared memory object %s successfully removed, size: %s (%zu bytes)\n", sharedMemoryName, sizeStr,
+               fileSize);
+    } else {
+        perror("Error removing shared memory object");
+    }
+
+    // Cleanup
+    close(shm_fd);
+    free(sizeStr);
+
     return EXIT_SUCCESS;
 }
 
@@ -717,4 +760,24 @@ void search_tree_for_name_and_type(Node *root, const char *namePattern, const ch
     // Traverse the left and right subtrees
     search_tree_for_name_and_type(root->left, namePattern, targetType);
     search_tree_for_name_and_type(root->right, namePattern, targetType);
+}
+
+void listSharedMemoryEntities(const char *prefix) {
+    const char *shmDir = "/dev/shm"; // POSIX shared memory location
+    DIR *dir = opendir(shmDir);
+
+    if (dir == NULL) {
+        perror("Failed to open shared memory directory");
+        return;
+    }
+
+    struct dirent *entry;
+    while ((entry = readdir(dir)) != NULL) {
+        // Check if the entry starts with the given prefix
+        if (strncmp(entry->d_name, prefix, strlen(prefix)) == 0) {
+            printf("Shared memory entity: %s\n", entry->d_name);
+        }
+    }
+
+    closedir(dir);
 }

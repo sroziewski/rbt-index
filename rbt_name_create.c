@@ -4,7 +4,7 @@ DEFINE_COMPARATOR_BY_FIELD(filename, strcmp)
 
 int main(const int argc, char *argv[]) {
     if (argc < 2) {
-        fprintf(stderr, "Usage: %s <file> [--save] [--load filename.rbt] [--clean file]\n", argv[0]);
+        fprintf(stderr, "Usage: %s <file> [--save] [--load filename.rbt] [--clean file.lst] [--list] [--remove sharedMemoryFilename]\n", argv[0]);
         return EXIT_FAILURE;
     }
     const char *prefix = "shared_memory_fname_";
@@ -18,6 +18,15 @@ int main(const int argc, char *argv[]) {
         // Handle the --clean command
         return remove_shared_memory_object(argv, prefix);
     }
+    else if (argc == 2 && strcmp(argv[1], "--list") == 0) {
+        // Handle the --list command
+        listSharedMemoryEntities(prefix);
+        return EXIT_SUCCESS;
+    }
+    else if (argc == 3 && strcmp(argv[1], "--remove") == 0) {
+        // Handle the --remove command
+        return remove_shared_memory_object_by_name(argv[2]);
+    }
     else {
         // Handle the normal processing and storing workflow
         FILE *file = fopen(argv[1], "r");
@@ -28,7 +37,7 @@ int main(const int argc, char *argv[]) {
 
         char **lines = NULL;
         size_t numLines = 0;
-        char buffer[8 * 1024];
+        char buffer[8 * MAX_LINE_LENGTH];
 
         while (fgets(buffer, sizeof(buffer), file)) {
             remove_trailing_newline(buffer);
