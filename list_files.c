@@ -137,12 +137,13 @@ int main(int argc, char *argv[]) {
         }
         read_entries(originalFileName, &entries, count);
     }
+    read_entries(originalFileName, &entries, count);
+    printToFile(entries, count, tmpFileName);
     printf("\nSummary:\n");
     if (hiddenFiles > 0) {
         printf("Total Number of Hidden Files: %d\n", hiddenFiles);
         printf("Total Size of Hidden Files: %s (%lld bytes) \n", getFileSizeAsString(hiddenSize), hiddenSize);
     }
-
     printSizeDetails("Text", textFiles, textSize);
     printSizeDetails("Music", musicFiles, musicSize);
     printSizeDetails("Film", filmFiles, filmSize);

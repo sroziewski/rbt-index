@@ -32,7 +32,8 @@ endif()
 # Add your source files for list_files
 add_executable(list_files
         list_files.c  # Your main entry point for list_files
-        flib/lfiles.c      # File containing the implementation for list_files
+        flib/lfiles.c
+        # File containing the implementation for list_files
 )
 
 # Link libraries: libmagic and OpenMP for list_files

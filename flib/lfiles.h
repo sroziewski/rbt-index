@@ -135,4 +135,7 @@ void printToFile(FileEntry *entries, int count, const char *filename);
 void deleteFile(char *filename);
 
 char *removeTrailingSlash(const char *token);
+
+int findEntryIndexAdded(const FileEntry *entries, const int count, const char *path);
+
 #endif // L_FILES_H

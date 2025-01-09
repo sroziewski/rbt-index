@@ -7,6 +7,7 @@
 // Constants
 #define RESIZE_FACTOR 2
 #define INITIAL_CAPACITY 128
+#define MAX_TYPE_LENGTH 128
 #define MAX_LINE_LENGTH 4096
 #define INITIAL_ENTRIES_CAPACITY 400000
 
@@ -14,6 +15,9 @@
 typedef struct FileEntry {
     char path[MAX_LINE_LENGTH];
     off_t size;
+    int isDir;
+    int isHidden;
+    size_t childrenCount;
     char type[128];
 } FileEntry;
 

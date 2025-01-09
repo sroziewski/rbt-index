@@ -9,6 +9,8 @@
 #include <libgen.h>
 #include <stdarg.h>
 #include <omp.h>
+#include <stdbool.h>
+
 #include "../shared/lconsts.h"
 
 // Check if the file has the .json extension (case insensitive)
@@ -321,6 +323,15 @@ void freeQueue(TaskQueue *queue) {
     free(queue->tasks);
 }
 
+int findEntryIndexAdded(const FileEntry *entries, const int count, const char *path) {
+    for (int i = 0; i < count; i++) {
+        if (strcmp(entries[i].path, path) == 0) {
+            return i; // Return true if the path already exists
+        }
+    }
+    return 0; // Not added yet
+}
+
 void processDirectory(TaskQueue *taskQueue, FileEntry **entries, int *count, int *capacity,
                       long long *totalSize, int *totalFiles, int *totalDirs,
                       int *textFiles, long long *textSize,
@@ -385,6 +396,7 @@ void processDirectory(TaskQueue *taskQueue, FileEntry **entries, int *count, int
 #pragma omp atomic
         (*totalDirs)++;
 
+        int childrenCount = 0; // Count files and directories for the current directory
         while ((entry = readdir(dp)) != NULL) {
             if (!strcmp(entry->d_name, ".") || !strcmp(entry->d_name, "..")) {
                 continue;
@@ -409,8 +421,29 @@ void processDirectory(TaskQueue *taskQueue, FileEntry **entries, int *count, int
                 exit(EXIT_FAILURE);
             }
             numEntries++;
+            childrenCount++; // Increment children count
         }
         closedir(dp);
+
+        // Update the current directory entry with its children count
+#pragma omp critical
+        {
+            if (*count >= *capacity) {
+                *capacity *= RESIZE_FACTOR;
+                *entries = (FileEntry *) realloc(*entries, (*capacity) * sizeof(FileEntry));
+                if (!*entries) {
+                    perror("realloc");
+                    exit(EXIT_FAILURE);
+                }
+            }
+            const int current = *count;
+            (*count)++;
+            snprintf((*entries)[current].path, sizeof((*entries)[current].path), "%s", currentPath);
+            (*entries)[current].size = 0; // Size is 0 for directories
+            (*entries)[current].isDir = 1; // Mark as a directory
+            (*entries)[current].childrenCount = childrenCount; // Store the children count
+            snprintf((*entries)[current].type, sizeof((*entries)[current].type), "T_DIR");
+        }
 
 #pragma omp parallel for schedule(dynamic)
         for (int i = 0; i < numEntries; ++i) {
@@ -435,11 +468,13 @@ void processDirectory(TaskQueue *taskQueue, FileEntry **entries, int *count, int
                                             exit(EXIT_FAILURE);
                                         }
                                     }
-                                    int current = *count;
+                                    const int current = *count;
                                     (*count)++;
                                     snprintf((*entries)[current].path, sizeof((*entries)[current].path), "%s",
                                              fullPath);
                                     (*entries)[current].size = fileStat.st_size;
+                                    (*entries)[current].isDir = 0; // Mark as a file
+                                    (*entries)[current].childrenCount = 0; // Files don't have children
                                     snprintf((*entries)[current].type, sizeof((*entries)[current].type), "%s",
                                              getFileTypeCategory(mimeType, fullPath));
                                 }
@@ -622,12 +657,15 @@ void processDirectory(TaskQueue *taskQueue, FileEntry **entries, int *count, int
                                 exit(EXIT_FAILURE);
                             }
                         }
-                        int current = *count;
-                        (*count)++;
-                        snprintf((*entries)[current].path, sizeof((*entries)[current].path), "%s",
-                                 fullPath);
-                        (*entries)[current].size = 0; // Directories have size 0
-                        snprintf((*entries)[current].type, sizeof((*entries)[current].type), "T_DIR");
+                        if (!findEntryIndexAdded(*entries, *count, fullPath)) {
+                            const int current = *count;
+                            (*count)++;
+                            snprintf((*entries)[current].path, sizeof((*entries)[current].path), "%s", fullPath);
+                            (*entries)[current].size = 0; // Size is 0 for directories
+                            (*entries)[current].isDir = 1; // Mark as a directory
+                            (*entries)[current].childrenCount = 0; // Initialize children count (updated when processed)
+                            snprintf((*entries)[current].type, sizeof((*entries)[current].type), "T_DIR");
+                        }
                         if (!skipDirs) {
                             // If directories need to be enqueued for further exploration
                             enqueue(taskQueue, fullPath);
@@ -702,11 +740,13 @@ void read_entries(const char *filename, FileEntry **entries, const size_t fixed_
         perror("Error opening file");
         exit(EXIT_FAILURE);
     }
+
     // Reset the current entries
     size_t i = 0;
     if (*entries) {
         free(*entries);
     }
+
     // Allocate memory for the fixed amount of entries
     *entries = malloc(fixed_count * sizeof(FileEntry));
     if (!*entries) {
@@ -718,16 +758,23 @@ void read_entries(const char *filename, FileEntry **entries, const size_t fixed_
     char buffer[MAX_LINE_LENGTH];
     while (fgets(buffer, MAX_LINE_LENGTH, file)) {
         // Remove the newline character, if present
-        size_t len = strlen(buffer);
+        int isAdded = false;
+        const size_t len = strlen(buffer);
         if (len > 0 && buffer[len - 1] == '\n') {
             buffer[len - 1] = '\0';
         }
+
         // Stop reading if we've reached the fixed count
         if (i >= fixed_count) {
             break;
         }
+
+        if (i == 31572) {
+            int r=1;
+        }
+
         // Parse the line using `strtok` for the `|` delimiter
-        FileEntry entry;
+        FileEntry entry = {0}; // Ensure to initialize all fields
         char *token = strtok(buffer, "|");
         if (!token) {
             fprintf(stderr, "Error parsing path in line: %s\n", buffer);
@@ -735,6 +782,7 @@ void read_entries(const char *filename, FileEntry **entries, const size_t fixed_
         }
         strncpy(entry.path, token, sizeof(entry.path) - 1);
         entry.path[sizeof(entry.path) - 1] = '\0';
+
         token = strtok(NULL, "|");
         if (!token) {
             fprintf(stderr, "Error parsing size in line: %s\n", buffer);
@@ -746,6 +794,7 @@ void read_entries(const char *filename, FileEntry **entries, const size_t fixed_
             fprintf(stderr, "Invalid numeric format for size in line: %s\n", buffer);
             continue;
         }
+
         token = strtok(NULL, "|");
         if (!token) {
             fprintf(stderr, "Error parsing type in line: %s\n", buffer);
@@ -753,11 +802,53 @@ void read_entries(const char *filename, FileEntry **entries, const size_t fixed_
         }
         strncpy(entry.type, token, sizeof(entry.type) - 1);
         entry.type[sizeof(entry.type) - 1] = '\0';
+        // Check if the entry is a directory and process extra flags
+        if (strcmp(entry.type, "T_DIR") == 0) {
+            entry.isDir = true;
 
+            // Look for additional flags (e.g., C_COUNT and F_HIDDEN)
+            token = strtok(NULL, "|");
+            while (token) {
+                if (strncmp(token, "C_COUNT", 8) == 0) {
+                    token = strtok(NULL, "|");
+                    entry.childrenCount = strtol(token, &endptr, 10);
+                    if (*endptr != '\0') {
+                        fprintf(stderr, "Invalid numeric format in C_COUNT: %s\n", token);
+                    }
+                } else if (strstr(token, "F_HIDDEN") != NULL ) {
+                    const char *hiddenFlag = ", F_HIDDEN";
+                    entry.isHidden = true;
+                    if (strlen(entry.type) + strlen(hiddenFlag) + 1 < MAX_TYPE_LENGTH) {
+                        strncat(entry.type, hiddenFlag, MAX_TYPE_LENGTH - strlen(entry.type) - 1);
+                    } else {
+                        fprintf(stderr, "Error: Not enough space to append to entry.type\n");
+                    }
+                }
+                token = strtok(NULL, "|");
+            }
+            if (i >= 1 && strcmp((*entries)[i-1].path, entry.path) == 0 && (*entries)[i-1].isDir == 1) {
+                (*entries)[i-1] = entry;
+                isAdded = true;
+            }
+            else if (i >= 2 && strcmp((*entries)[i-2].path, entry.path) == 0 && (*entries)[i-2].isDir == 1) {
+                (*entries)[i-2] = entry;
+                isAdded = true;
+            }
+        } else {
+            // Look for hidden flag for non-directory entries
+            if (strstr(entry.type, "F_HIDDEN") != NULL) {
+                entry.isHidden = true;
+            }
+        }
+        if (i>8000) {
+            int asdf=1;
+        }
         // Store the entry in the array
-        (*entries)[i] = entry;
-        ++i;
+        if (!isAdded && *entry.path != '\0') {
+            (*entries)[i++] = entry;
+        }
     }
+
     printf("Read %ld entries from the file\n", i);
     fclose(file);
 }
@@ -772,8 +863,12 @@ void printToFile(FileEntry *entries, const int count, const char *filename) {
         const char *fileName = getFileName(entries[i].path);
         const int isHidden = (fileName[0] == '.'); // Check if the file is hidden
         fprintf(outputFile, "%s|%ld|%s", entries[i].path, entries[i].size, entries[i].type);
+        // If the entry is a directory, add the count of children
+        if (entries[i].isDir) {
+            fprintf(outputFile, "|C_COUNT|%zu", entries[i].childrenCount);
+        }
         if (isHidden) {
-            fprintf(outputFile, ", F_HIDDEN");
+            fprintf(outputFile, "|F_HIDDEN");
         }
         fprintf(outputFile, "\n"); // End the line
     }
@@ -787,6 +882,10 @@ void printToStdOut(FileEntry *entries, const int count) {
         char *sizeStr = getFileSizeAsString(entries[i].size);
         printf("File: %s, Size: %s (%ld bytes), Type: %s",
                entries[i].path, sizeStr, entries[i].size, entries[i].type);
+        // If the entry is a directory, add the count of children
+        if (entries[i].isDir) {
+            printf(", C_COUNT: %zu", entries[i].childrenCount);
+        }
         if (isHidden) {
             printf(", F_HIDDEN");
         }
@@ -803,14 +902,14 @@ void deleteFile(char *filename) {
     }
 }
 
-char* removeTrailingSlash(const char* token) {
+char *removeTrailingSlash(const char *token) {
     if (token == NULL) {
         return NULL;
     }
     const size_t len = strlen(token);
     if (len > 0 && token[len - 1] == '/') {
         // Allocate memory for the new string (excluding the trailing '/')
-        char* newFileName = (char*)malloc(len * sizeof(char));
+        char *newFileName = (char *) malloc(len * sizeof(char));
         if (newFileName == NULL) {
             perror("malloc failed");
             return NULL;
@@ -820,7 +919,7 @@ char* removeTrailingSlash(const char* token) {
         return newFileName;
     }
     // If no trailing slash, return a duplicate of the original string
-    char* newFileName = strdup(token);
+    char *newFileName = strdup(token);
     if (newFileName == NULL) {
         perror("strdup failed");
     }
