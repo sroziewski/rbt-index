@@ -733,7 +733,7 @@ void release_temporary_resources(char *first, ...) {
     va_end(args);
 }
 
-void read_entries(const char *filename, FileEntry **entries, const size_t fixed_count, size_t *count) {
+void read_entries(const char *filename, FileEntry **entries, const size_t fixed_count, int *count) {
     // Open the file for reading
     FILE *file = fopen(filename, "r");
     if (!file) {

@@ -126,7 +126,7 @@ void printSizeDetails(const char *type, int count, long long size);
 
 void release_temporary_resources(char *first, ...);
 
-void read_entries(const char *filename, FileEntry **entries, const size_t fixed_count, size_t *count);
+void read_entries(const char *filename, FileEntry **entries, size_t fixed_count, int *count);
 
 void printToStdOut(FileEntry *entries, int count);
 
@@ -136,7 +136,7 @@ void deleteFile(char *filename);
 
 char *removeTrailingSlash(const char *token);
 
-int findEntryIndexAdded(const FileEntry *entries, const int count, const char *path);
+int findEntryIndexAdded(const FileEntry *entries, int count, const char *path);
 
 void resizeEntries(FileEntry **entries, int *count);
 
