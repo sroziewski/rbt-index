@@ -733,7 +733,38 @@ void release_temporary_resources(char *first, ...) {
     va_end(args);
 }
 
+void resizeEntries(FileEntry **entries, int *count) {
+    // Step 1: Count non-empty elements
+    int nonEmptyCount = 0;
+    for (int i = 0; i < *count; i++) {
+        if ((*entries)[i].path[0] != '\0') {  // Check if "empty" — path[0] not null
+            nonEmptyCount++;
+        }
+    }
+
+    // Step 2: Create a new resized array
+    FileEntry *newEntries = malloc(nonEmptyCount * sizeof(FileEntry));
+    if (!newEntries) {
+        perror("Error resizing entries");
+        return;
+    }
+
+    // Step 3: Copy non-empty elements
+    size_t index = 0;
+    for (int i = 0; i < *count; i++) {
+        if ((*entries)[i].path[0] != '\0') {
+            newEntries[index++] = (*entries)[i];
+        }
+    }
+
+    // Step 4: Free old array and update the pointer
+    free(*entries);
+    *entries = newEntries;
+    *count = nonEmptyCount;  // Update count to reflect new size
+}
+
 void read_entries(const char *filename, FileEntry **entries, const size_t fixed_count, int *count) {
+    *count = 0;
     // Open the file for reading
     FILE *file = fopen(filename, "r");
     if (!file) {
@@ -812,13 +843,13 @@ void read_entries(const char *filename, FileEntry **entries, const size_t fixed_
                         fprintf(stderr, "Invalid numeric format in C_COUNT: %s\n", token);
                     }
                 } else if (strstr(token, "F_HIDDEN") != NULL ) {
-                    const char *hiddenFlag = ", F_HIDDEN";
+                    // const char *hiddenFlag = ", F_HIDDEN";
                     entry.isHidden = true;
-                    if (strlen(entry.type) + strlen(hiddenFlag) + 1 < MAX_TYPE_LENGTH) {
-                        strncat(entry.type, hiddenFlag, MAX_TYPE_LENGTH - strlen(entry.type) - 1);
-                    } else {
-                        fprintf(stderr, "Error: Not enough space to append to entry.type\n");
-                    }
+                    // if (strlen(entry.type) + strlen(hiddenFlag) + 1 < MAX_TYPE_LENGTH) {
+                    //     strncat(entry.type, hiddenFlag, MAX_TYPE_LENGTH - strlen(entry.type) - 1);
+                    // } else {
+                    //     fprintf(stderr, "Error: Not enough space to append to entry.type\n");
+                    // }
                 }
                 token = strtok(NULL, "|");
             }
@@ -918,34 +949,4 @@ char *removeTrailingSlash(const char *token) {
         perror("strdup failed");
     }
     return newFileName;
-}
-
-void resizeEntries(FileEntry **entries, int *count) {
-    // Step 1: Count non-empty elements
-    size_t nonEmptyCount = 0;
-    for (int i = 0; i < *count; i++) {
-        if ((*entries)[i].path[0] != '\0') {  // Check if "empty" — path[0] not null
-            nonEmptyCount++;
-        }
-    }
-
-    // Step 2: Create a new resized array
-    FileEntry *newEntries = malloc(nonEmptyCount * sizeof(FileEntry));
-    if (!newEntries) {
-        perror("Error resizing entries");
-        return;
-    }
-
-    // Step 3: Copy non-empty elements
-    size_t index = 0;
-    for (int i = 0; i < *count; i++) {
-        if ((*entries)[i].path[0] != '\0') {
-            newEntries[index++] = (*entries)[i];
-        }
-    }
-
-    // Step 4: Free old array and update the pointer
-    free(*entries);
-    *entries = newEntries;
-    *count = nonEmptyCount;  // Update count to reflect new size
 }
