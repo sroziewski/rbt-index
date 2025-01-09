@@ -954,14 +954,12 @@ void accumulateChildrenAndSize(FileEntry *entries, const size_t count) {
     if (entries == NULL || count == 0) {
         return;
     }
-
     // Iterate through entries
     for (size_t i = 0; i < count; i++) {
         // Only accumulate for directories
         if (entries[i].isDir) {
             entries[i].childrenCount = 0; // Reset the children count
             entries[i].size = 0;          // Reset the size (to accumulate later)
-
             // Check subsequent entries to see if they belong to this directory
             for (size_t j = i + 1; j < count; j++) {
                 // Check if the current entry's path is part of the directory
