@@ -414,7 +414,7 @@ void processDirectory(TaskQueue *taskQueue, FileEntry **entries, int *count, int
 
 #pragma omp parallel for schedule(dynamic)
         for (int i = 0; i < numEntries; ++i) {
-            char fullPath[1024];
+            char fullPath[MAX_LINE_LENGTH];
             struct stat fileStat;
             snprintf(fullPath, sizeof(fullPath), "%s/%s", currentPath, dirEntries[i]);
 
