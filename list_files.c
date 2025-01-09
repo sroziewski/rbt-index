@@ -117,7 +117,6 @@ int main(int argc, char *argv[]) {
     if (count < INITIAL_ENTRIES_CAPACITY) {
         qsort(entries, count, sizeof(FileEntry), compareFileEntries);
         printToFile(entries, count, originalFileName);
-        // printToStdOut(entries, count);
     }
     else {
         char command[MAX_LINE_LENGTH];
@@ -135,18 +134,13 @@ int main(int argc, char *argv[]) {
             release_temporary_resources(tmpFileName, originalFileName, NULL);
             return EXIT_FAILURE;
         }
-        int outputCount = 0;
-        read_entries(originalFileName, &entries, count, &outputCount);
     }
     int outputCount = 0;
     read_entries(originalFileName, &entries, count, &outputCount);
-    // printToStdOut(entries, outputCount);
     resizeEntries(&entries, &count); // Resize the array to the actual number of entries
-
     accumulateChildrenAndSize(entries, count);
-
     printToFile(entries, count, originalFileName);
-    // printToStdOut(entries, outputCount);
+
     printf("\nSummary:\n");
     if (hiddenFiles > 0) {
         printf("Total Number of Hidden Files: %d\n", hiddenFiles);
