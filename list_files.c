@@ -135,10 +135,13 @@ int main(int argc, char *argv[]) {
             release_temporary_resources(tmpFileName, originalFileName, NULL);
             return EXIT_FAILURE;
         }
-        read_entries(originalFileName, &entries, count);
+        size_t outputCount = 0;
+        read_entries(originalFileName, &entries, count, &outputCount);
     }
-    read_entries(originalFileName, &entries, count);
-    printToFile(entries, count, tmpFileName);
+    size_t outputCount = 0;
+    read_entries(originalFileName, &entries, count, &outputCount);
+    resizeEntries(&entries, &count);
+    printToFile(entries, outputCount, tmpFileName);
     printf("\nSummary:\n");
     if (hiddenFiles > 0) {
         printf("Total Number of Hidden Files: %d\n", hiddenFiles);

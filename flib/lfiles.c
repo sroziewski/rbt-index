@@ -733,7 +733,7 @@ void release_temporary_resources(char *first, ...) {
     va_end(args);
 }
 
-void read_entries(const char *filename, FileEntry **entries, const size_t fixed_count) {
+void read_entries(const char *filename, FileEntry **entries, const size_t fixed_count, size_t *count) {
     // Open the file for reading
     FILE *file = fopen(filename, "r");
     if (!file) {
@@ -767,10 +767,6 @@ void read_entries(const char *filename, FileEntry **entries, const size_t fixed_
         // Stop reading if we've reached the fixed count
         if (i >= fixed_count) {
             break;
-        }
-
-        if (i == 31572) {
-            int r=1;
         }
 
         // Parse the line using `strtok` for the `|` delimiter
@@ -840,12 +836,10 @@ void read_entries(const char *filename, FileEntry **entries, const size_t fixed_
                 entry.isHidden = true;
             }
         }
-        if (i>8000) {
-            int asdf=1;
-        }
         // Store the entry in the array
         if (!isAdded && *entry.path != '\0') {
             (*entries)[i++] = entry;
+            (*count)++;
         }
     }
 
@@ -924,4 +918,34 @@ char *removeTrailingSlash(const char *token) {
         perror("strdup failed");
     }
     return newFileName;
+}
+
+void resizeEntries(FileEntry **entries, int *count) {
+    // Step 1: Count non-empty elements
+    size_t nonEmptyCount = 0;
+    for (int i = 0; i < *count; i++) {
+        if ((*entries)[i].path[0] != '\0') {  // Check if "empty" — path[0] not null
+            nonEmptyCount++;
+        }
+    }
+
+    // Step 2: Create a new resized array
+    FileEntry *newEntries = malloc(nonEmptyCount * sizeof(FileEntry));
+    if (!newEntries) {
+        perror("Error resizing entries");
+        return;
+    }
+
+    // Step 3: Copy non-empty elements
+    size_t index = 0;
+    for (int i = 0; i < *count; i++) {
+        if ((*entries)[i].path[0] != '\0') {
+            newEntries[index++] = (*entries)[i];
+        }
+    }
+
+    // Step 4: Free old array and update the pointer
+    free(*entries);
+    *entries = newEntries;
+    *count = nonEmptyCount;  // Update count to reflect new size
 }
