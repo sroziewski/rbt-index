@@ -142,7 +142,10 @@ int main(int argc, char *argv[]) {
     read_entries(originalFileName, &entries, count, &outputCount);
     // printToStdOut(entries, outputCount);
     resizeEntries(&entries, &count); // Resize the array to the actual number of entries
-    printToFile(entries, count, tmpFileName);
+
+    accumulateChildrenAndSize(entries, count);
+
+    printToFile(entries, count, originalFileName);
     // printToStdOut(entries, outputCount);
     printf("\nSummary:\n");
     if (hiddenFiles > 0) {

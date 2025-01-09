@@ -257,7 +257,6 @@ const char *getFileName(const char *path) {
     return result;
 }
 
-
 int compareFileEntries(const void *a, const void *b) {
     const FileEntry *entryA = (FileEntry *) a;
     const FileEntry *entryB = (FileEntry *) b;
@@ -949,4 +948,35 @@ char *removeTrailingSlash(const char *token) {
         perror("strdup failed");
     }
     return newFileName;
+}
+
+void accumulateChildrenAndSize(FileEntry *entries, const size_t count) {
+    if (entries == NULL || count == 0) {
+        return;
+    }
+
+    // Iterate through entries
+    for (size_t i = 0; i < count; i++) {
+        // Only accumulate for directories
+        if (entries[i].isDir) {
+            entries[i].childrenCount = 0; // Reset the children count
+            entries[i].size = 0;          // Reset the size (to accumulate later)
+
+            // Check subsequent entries to see if they belong to this directory
+            for (size_t j = i + 1; j < count; j++) {
+                // Check if the current entry's path is part of the directory
+                if (strstr(entries[j].path, entries[i].path) == entries[j].path &&
+                    entries[j].path[strlen(entries[i].path)] == '/') {
+                    // Current directory is a parent of entries[j]
+                    entries[i].childrenCount++;
+                    entries[i].size += entries[j].size;
+                    } else {
+                        if (strstr(entries[j].path, entries[i].path) != entries[j].path) {
+                            // Stop checking if subsequent paths are no longer under this directory
+                            break;
+                        }
+                    }
+            }
+        }
+    }
 }

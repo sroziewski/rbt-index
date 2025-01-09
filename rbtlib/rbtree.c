@@ -758,99 +758,97 @@ void createRbt(const int argc, char *argv[], void (*insertFunc)(Node **, FileInf
         read_tree_from_file_to_shared_memory(argv[2], prefix);
         return;
     }
-    else if (argc == 3 && strcmp(argv[1], "--clean") == 0) {
+    if (argc == 3 && strcmp(argv[1], "--clean") == 0) {
         // Handle the --clean command
         remove_shared_memory_object(argv, prefix);
         return;
     }
-    else if (argc == 2 && strcmp(argv[1], "--list") == 0) {
+    if (argc == 2 && strcmp(argv[1], "--list") == 0) {
         // Handle the --list command
         listSharedMemoryEntities(prefix);
         return;
     }
-    else if (argc == 3 && strcmp(argv[1], "--remove") == 0) {
+    if (argc == 3 && strcmp(argv[1], "--remove") == 0) {
         // Handle the --remove command
         remove_shared_memory_object_by_name(argv[2]);
         return;
     }
-    else {
-        // Handle the normal processing and storing workflow
-        FILE *file = fopen(argv[1], "r");
-        if (!file) {
-            perror("Error opening file");
-            return;
-        }
-
-        char **lines = NULL;
-        size_t numLines = 0;
-        char buffer[8 * MAX_LINE_LENGTH];
-        Node *finalRoot = NULL; // Red-Black Tree node
-
-        // Reading lines from the file
-        while (fgets(buffer, sizeof(buffer), file)) {
-            remove_trailing_newline(buffer);
-            if (*buffer) {
-                lines = realloc(lines, sizeof(char *) * ++numLines);
-                if (!lines) {
-                    perror("Failed to allocate memory for lines");
-                    fclose(file);
-                    return;
-                }
-                lines[numLines - 1] = strdup(buffer);
-                if (!lines[numLines - 1]) {
-                    perror("Failed to duplicate buffer");
-                    fclose(file);
-                    return;
-                }
-            }
-        }
-        fclose(file); // Close file after use
-
-        int totalProcessedCount = 0;
-
-        // Processing the lines to insert into the Red-Black Tree
-        for (size_t i = 0; i < numLines; i++) {
-            FileInfo key = { NULL, 0, NULL, NULL };
-            if (lines != NULL && lines[i] != NULL) {
-                key = parseFileData(lines[i]);
-            } else {
-                fprintf(stderr, "Error: lines[%ld] is NULL\n", i);
-                continue;
-            }
-
-            // Ensure `FileInfo` contains valid data and insert into the Tree
-            if (key.filename && key.filepath && key.filetype) {
-                insertFunc(&finalRoot, key); // Use the provided insertion function
-                totalProcessedCount++;
-            }
-        }
-
-        // Display the processed files in sorted Red-Black Tree order
-        printf("\nFiles stored in Red-Black Tree in sorted order by filename:\n");
-        inorder(finalRoot);
-
-        printf("Total lines successfully processed: %d\n", totalProcessedCount);
-
-        // Free the allocated memory for lines
-        for (size_t i = 0; i < numLines; i++) {
-            if (lines != NULL && lines[i] != NULL) {
-                free(lines[i]);
-            }
-        }
-        free(lines);
-
-        // Handle saving to file or shared memory
-        if (argc == 3 && strcmp(argv[2], "--save") == 0) {
-            char *storeFilename = add_rbt_extension(argv[1]);  // Append `.rbt` to the filename
-            write_tree_to_file(finalRoot, storeFilename);
-            free(storeFilename);
-        } else {
-            write_tree_to_shared_memory(finalRoot, argv[1], prefix);
-        }
-
-        // Free the tree if it was created or loaded
-        freeTree(finalRoot);
+    // Handle the normal processing and storing workflow
+    FILE *file = fopen(argv[1], "r");
+    if (!file) {
+        perror("Error opening file");
+        return;
     }
+
+    char **lines = NULL;
+    size_t numLines = 0;
+    char buffer[8 * MAX_LINE_LENGTH];
+    Node *finalRoot = NULL; // Red-Black Tree node
+
+    // Reading lines from the file
+    while (fgets(buffer, sizeof(buffer), file)) {
+        remove_trailing_newline(buffer);
+        if (*buffer) {
+            lines = realloc(lines, sizeof(char *) * ++numLines);
+            if (!lines) {
+                perror("Failed to allocate memory for lines");
+                fclose(file);
+                return;
+            }
+            lines[numLines - 1] = strdup(buffer);
+            if (!lines[numLines - 1]) {
+                perror("Failed to duplicate buffer");
+                fclose(file);
+                return;
+            }
+        }
+    }
+    fclose(file); // Close file after use
+
+    int totalProcessedCount = 0;
+
+    // Processing the lines to insert into the Red-Black Tree
+    for (size_t i = 0; i < numLines; i++) {
+        FileInfo key = { NULL, 0, NULL, NULL };
+        if (lines != NULL && lines[i] != NULL) {
+            key = parseFileData(lines[i]);
+        } else {
+            fprintf(stderr, "Error: lines[%ld] is NULL\n", i);
+            continue;
+        }
+
+        // Ensure `FileInfo` contains valid data and insert into the Tree
+        if (key.filename && key.filepath && key.filetype) {
+            insertFunc(&finalRoot, key); // Use the provided insertion function
+            totalProcessedCount++;
+        }
+    }
+
+    // Display the processed files in sorted Red-Black Tree order
+    printf("\nFiles stored in Red-Black Tree in sorted order by filename:\n");
+    inorder(finalRoot);
+
+    printf("Total lines successfully processed: %d\n", totalProcessedCount);
+
+    // Free the allocated memory for lines
+    for (size_t i = 0; i < numLines; i++) {
+        if (lines != NULL && lines[i] != NULL) {
+            free(lines[i]);
+        }
+    }
+    free(lines);
+
+    // Handle saving to file or shared memory
+    if (argc == 3 && strcmp(argv[2], "--save") == 0) {
+        char *storeFilename = add_rbt_extension(argv[1]);  // Append `.rbt` to the filename
+        write_tree_to_file(finalRoot, storeFilename);
+        free(storeFilename);
+    } else {
+        write_tree_to_shared_memory(finalRoot, argv[1], prefix);
+    }
+
+    // Free the tree if it was created or loaded
+    freeTree(finalRoot);
 }
 
 size_t getSharedMemorySize(const char *sharedMemoryName) {

@@ -140,4 +140,6 @@ int findEntryIndexAdded(const FileEntry *entries, int count, const char *path);
 
 void resizeEntries(FileEntry **entries, int *count);
 
+void accumulateChildrenAndSize(FileEntry *entries, size_t count);
+
 #endif // L_FILES_H
