@@ -332,39 +332,8 @@ int findEntryIndexAdded(const FileEntry *entries, const int count, const char *p
     return 0; // Not added yet
 }
 
-void processDirectory(TaskQueue *taskQueue, FileEntry **entries, int *count, int *capacity,
-                      long long *totalSize, int *totalFiles, int *totalDirs,
-                      int *textFiles, long long *textSize,
-                      int *musicFiles, long long *musicSize,
-                      int *filmFiles, long long *filmSize,
-                      int *imageFiles, long long *imageSize,
-                      int *binaryFiles, long long *binarySize,
-                      int *compressedFiles, long long *compressedSize,
-                      int *hiddenFiles, long long *hiddenSize,
-                      int *jsonFiles, long long *jsonSize,
-                      int *yamlFiles, long long *yamlSize,
-                      int *exeFiles, long long *exeSize,
-                      int *cFiles, long long *cSize,
-                      int *pythonFiles, long long *pythonSize,
-                      int *javaFiles, long long *javaSize,
-                      int *packageFiles, long long *packageSize,
-                      int *logFiles, long long *logSize,
-                      int *classFiles, long long *classSize,
-                      int *templateFiles, long long *templateSize,
-                      int *pdfFiles, long long *pdfSize,
-                      int *jarFiles, long long *jarSize,
-                      int *htmlFiles, long long *htmlSize,
-                      int *xhtmlFiles, long long *xhtmlSize,
-                      int *xmlFiles, long long *xmlSize,
-                      int *tsFiles, long long *tsSize,
-                      int *jsFiles, long long *jsSize,
-                      int *docFiles, long long *docSize,
-                      int *calcFiles, long long *calcSize,
-                      int *texFiles, long long *texSize,
-                      int *sqlFiles, long long *sqlSize,
-                      int *csvFiles, long long *csvSize,
-                      int *cssFiles, long long *cssSize,
-                      int skipDirs, long long sizeThreshold) {
+void processDirectory(TaskQueue *taskQueue, FileEntry **entries, int *count, int *capacity, FileStatistics *fileStats,
+                      const long long sizeThreshold, const int skipDirs) {
     char **dirEntries = malloc(INITIAL_CAPACITY * sizeof(char *));
     if (!dirEntries) {
         perror("malloc");
@@ -394,7 +363,7 @@ void processDirectory(TaskQueue *taskQueue, FileEntry **entries, int *count, int
         }
 
 #pragma omp atomic
-        (*totalDirs)++;
+        fileStats->totalDirs++;
 
         int childrenCount = 0; // Count files and directories for the current directory
         while ((entry = readdir(dp)) != NULL) {
@@ -479,163 +448,163 @@ void processDirectory(TaskQueue *taskQueue, FileEntry **entries, int *count, int
                                              getFileTypeCategory(mimeType, fullPath));
                                 }
 #pragma omp atomic
-                                (*totalSize) += fileStat.st_size;
+                                fileStats->totalSize += fileStat.st_size;
 
 #pragma omp atomic
-                                (*totalFiles)++;
+                                fileStats->totalFiles++;
 
                                 const char *fileType = getFileTypeCategory(mimeType, fullPath);
                                 if (dirEntries[i][0] == '.') {
 #pragma omp atomic
-                                    (*hiddenFiles)++;
+                                    fileStats->hiddenFiles++;
 #pragma omp atomic
-                                    (*hiddenSize) += fileStat.st_size;
+                                    fileStats->hiddenSize += fileStat.st_size;
                                 }
                                 if (strcmp(fileType, "T_TEXT") == 0) {
 #pragma omp atomic
-                                    (*textFiles)++;
+                                    fileStats->textFiles++;
 #pragma omp atomic
-                                    (*textSize) += fileStat.st_size;
+                                    fileStats->textSize += fileStat.st_size;
                                 } else if (strcmp(fileType, "T_JSON") == 0) {
 #pragma omp atomic
-                                    (*jsonFiles)++;
+                                    fileStats->jsonFiles++;
 #pragma omp atomic
-                                    (*jsonSize) += fileStat.st_size;
+                                    fileStats->jsonSize += fileStat.st_size;
                                 } else if (strcmp(fileType, "T_AUDIO") == 0) {
 #pragma omp atomic
-                                    (*musicFiles)++;
+                                    fileStats->musicFiles++;
 #pragma omp atomic
-                                    (*musicSize) += fileStat.st_size;
+                                    fileStats->musicSize += fileStat.st_size;
                                 } else if (strcmp(fileType, "T_FILM") == 0) {
 #pragma omp atomic
-                                    (*filmFiles)++;
+                                    fileStats->filmFiles++;
 #pragma omp atomic
-                                    (*filmSize) += fileStat.st_size;
+                                    fileStats->filmSize += fileStat.st_size;
                                 } else if (strcmp(fileType, "T_IMAGE") == 0) {
 #pragma omp atomic
-                                    (*imageFiles)++;
+                                    fileStats->imageFiles++;
 #pragma omp atomic
-                                    (*imageSize) += fileStat.st_size;
+                                    fileStats->imageSize += fileStat.st_size;
                                 } else if (strcmp(fileType, "T_COMPRESSED") == 0) {
 #pragma omp atomic
-                                    (*compressedFiles)++;
+                                    fileStats->compressedFiles++;
 #pragma omp atomic
-                                    (*compressedSize) += fileStat.st_size;
+                                    fileStats->compressedSize += fileStat.st_size;
                                 } else if (strcmp(fileType, "T_YAML") == 0) {
 #pragma omp atomic
-                                    (*yamlFiles)++;
+                                    fileStats->yamlFiles++;
 #pragma omp atomic
-                                    (*yamlSize) += fileStat.st_size;
+                                    fileStats->yamlSize += fileStat.st_size;
                                 } else if (strcmp(fileType, "T_EXE") == 0) {
 #pragma omp atomic
-                                    (*exeFiles)++;
+                                    fileStats->exeFiles++;
 #pragma omp atomic
-                                    (*exeSize) += fileStat.st_size;
+                                    fileStats->exeSize += fileStat.st_size;
                                 } else if (strcmp(fileType, "T_C") == 0) {
 #pragma omp atomic
-                                    (*cFiles)++;
+                                    fileStats->cFiles++;
 #pragma omp atomic
-                                    (*cSize) += fileStat.st_size;
+                                    fileStats->cSize += fileStat.st_size;
                                 } else if (strcmp(fileType, "T_PYTHON") == 0) {
 #pragma omp atomic
-                                    (*pythonFiles)++;
+                                    fileStats->pythonFiles++;
 #pragma omp atomic
-                                    (*pythonSize) += fileStat.st_size;
+                                    fileStats->pythonSize += fileStat.st_size;
                                 } else if (strcmp(fileType, "T_JAVA") == 0) {
 #pragma omp atomic
-                                    (*javaFiles)++;
+                                    fileStats->javaFiles++;
 #pragma omp atomic
-                                    (*javaSize) += fileStat.st_size;
+                                    fileStats->javaSize += fileStat.st_size;
                                 } else if (strcmp(fileType, "T_LOG") == 0) {
 #pragma omp atomic
-                                    (*logFiles)++;
+                                    fileStats->logFiles++;
 #pragma omp atomic
-                                    (*logSize) += fileStat.st_size;
+                                    fileStats->logSize += fileStat.st_size;
                                 } else if (strcmp(fileType, "T_PACKAGE") == 0) {
 #pragma omp atomic
-                                    (*packageFiles)++;
+                                    fileStats->packageFiles++;
 #pragma omp atomic
-                                    (*packageSize) += fileStat.st_size;
+                                    fileStats->packageSize += fileStat.st_size;
                                 } else if (strcmp(fileType, "T_CLASS") == 0) {
 #pragma omp atomic
-                                    (*classFiles)++;
+                                    fileStats->classFiles++;
 #pragma omp atomic
-                                    (*classSize) += fileStat.st_size;
+                                    fileStats->classSize += fileStat.st_size;
                                 } else if (strcmp(fileType, "T_TEMPLATE") == 0) {
 #pragma omp atomic
-                                    (*templateFiles)++;
+                                    fileStats->templateFiles++;
 #pragma omp atomic
-                                    (*templateSize) += fileStat.st_size;
+                                    fileStats->templateSize += fileStat.st_size;
                                 } else if (strcmp(fileType, "T_PDF") == 0) {
 #pragma omp atomic
-                                    (*pdfFiles)++;
+                                    fileStats->pdfFiles++;
 #pragma omp atomic
-                                    (*pdfSize) += fileStat.st_size;
+                                    fileStats->pdfSize += fileStat.st_size;
                                 } else if (strcmp(fileType, "T_JAR") == 0) {
 #pragma omp atomic
-                                    (*jarFiles)++;
+                                    fileStats->jarFiles++;
 #pragma omp atomic
-                                    (*jarSize) += fileStat.st_size;
+                                    fileStats->jarSize += fileStat.st_size;
                                 } else if (strcmp(fileType, "T_HTML") == 0) {
 #pragma omp atomic
-                                    (*htmlFiles)++;
+                                    fileStats->htmlFiles++;
 #pragma omp atomic
-                                    (*htmlSize) += fileStat.st_size;
+                                    fileStats->htmlSize += fileStat.st_size;
                                 } else if (strcmp(fileType, "T_XML") == 0) {
 #pragma omp atomic
-                                    (*xmlFiles)++;
+                                    fileStats->xmlFiles++;
 #pragma omp atomic
-                                    (*xmlSize) += fileStat.st_size;
+                                    fileStats->xmlSize += fileStat.st_size;
                                 } else if (strcmp(fileType, "T_XHTML") == 0) {
 #pragma omp atomic
-                                    (*xhtmlFiles)++;
+                                    fileStats->xhtmlFiles++;
 #pragma omp atomic
-                                    (*xhtmlSize) += fileStat.st_size;
+                                    fileStats->xhtmlSize += fileStat.st_size;
                                 } else if (strcmp(fileType, "T_TS") == 0) {
 #pragma omp atomic
-                                    (*tsFiles)++;
+                                    fileStats->tsFiles++;
 #pragma omp atomic
-                                    (*tsSize) += fileStat.st_size;
+                                    fileStats->tsSize += fileStat.st_size;
                                 } else if (strcmp(fileType, "T_JS") == 0) {
 #pragma omp atomic
-                                    (*jsFiles)++;
+                                    fileStats->jarFiles++;
 #pragma omp atomic
-                                    (*jsSize) += fileStat.st_size;
+                                    fileStats->jarSize += fileStat.st_size;
                                 } else if (strcmp(fileType, "T_DOC") == 0) {
 #pragma omp atomic
-                                    (*docFiles)++;
+                                    fileStats->docFiles++;
 #pragma omp atomic
-                                    (*docSize) += fileStat.st_size;
+                                    fileStats->docSize += fileStat.st_size;
                                 } else if (strcmp(fileType, "T_CALC") == 0) {
 #pragma omp atomic
-                                    (*calcFiles)++;
+                                    fileStats->calcFiles++;
 #pragma omp atomic
-                                    (*calcSize) += fileStat.st_size;
+                                    fileStats->calcSize += fileStat.st_size;
                                 } else if (strcmp(fileType, "T_LATEX") == 0) {
 #pragma omp atomic
-                                    (*texFiles)++;
+                                    fileStats->textFiles++;
 #pragma omp atomic
-                                    (*texSize) += fileStat.st_size;
+                                    fileStats->textSize += fileStat.st_size;
                                 } else if (strcmp(fileType, "T_SQL") == 0) {
 #pragma omp atomic
-                                    (*sqlFiles)++;
+                                    fileStats->sqlFiles++;
 #pragma omp atomic
-                                    (*sqlSize) += fileStat.st_size;
+                                    fileStats->sqlSize += fileStat.st_size;
                                 } else if (strcmp(fileType, "T_CSV") == 0) {
 #pragma omp atomic
-                                    (*csvFiles)++;
+                                    fileStats->csvFiles++;
 #pragma omp atomic
-                                    (*csvSize) += fileStat.st_size;
+                                    fileStats->csvSize += fileStat.st_size;
                                 } else if (strcmp(fileType, "T_CSS") == 0) {
 #pragma omp atomic
-                                    (*cssFiles)++;
+                                    fileStats->cssFiles++;
 #pragma omp atomic
-                                    (*cssSize) += fileStat.st_size;
+                                    fileStats->cssSize += fileStat.st_size;
                                 } else {
 #pragma omp atomic
-                                    (*binaryFiles)++;
+                                    fileStats->binaryFiles++;
 #pragma omp atomic
-                                    (*binarySize) += fileStat.st_size;
+                                    fileStats->binarySize += fileStat.st_size;
                                 }
                             }
                         }
@@ -714,7 +683,6 @@ void printSizeDetails(const char *type, const int count, const long long size) {
 
 void release_temporary_resources(char **first, ...) {
     if (first && *first) {
-        printf("Freeing first resource at: %p\n", (void *)*first);
         free(*first);
         *first = NULL; // Avoid double freeing
     }
@@ -724,9 +692,7 @@ void release_temporary_resources(char **first, ...) {
 
     va_start(args, first);
     while ((resource = va_arg(args, char **)) != NULL) {
-        printf("Processing resource pointer: %p\n", (void *)resource);
         if (resource && *resource) {
-            printf("Freeing resource at: %p\n", (void *)*resource);
             free(*resource);
             *resource = NULL; // Clear pointer after freeing
         }
@@ -738,7 +704,8 @@ void resizeEntries(FileEntry **entries, int *count) {
     // Step 1: Count non-empty elements
     int nonEmptyCount = 0;
     for (int i = 0; i < *count; i++) {
-        if ((*entries)[i].path[0] != '\0') {  // Check if "empty" — path[0] not null
+        if ((*entries)[i].path[0] != '\0') {
+            // Check if "empty" — path[0] not null
             nonEmptyCount++;
         }
     }
@@ -761,7 +728,7 @@ void resizeEntries(FileEntry **entries, int *count) {
     // Step 4: Free old array and update the pointer
     free(*entries);
     *entries = newEntries;
-    *count = nonEmptyCount;  // Update count to reflect new size
+    *count = nonEmptyCount; // Update count to reflect new size
 }
 
 void read_entries(const char *filename, FileEntry **entries, const size_t fixed_count, int *count) {
@@ -843,7 +810,7 @@ void read_entries(const char *filename, FileEntry **entries, const size_t fixed_
                     if (*endptr != '\0') {
                         fprintf(stderr, "Invalid numeric format in C_COUNT: %s\n", token);
                     }
-                } else if (strstr(token, "F_HIDDEN") != NULL ) {
+                } else if (strstr(token, "F_HIDDEN") != NULL) {
                     // const char *hiddenFlag = ", F_HIDDEN";
                     entry.isHidden = true;
                     // if (strlen(entry.type) + strlen(hiddenFlag) + 1 < MAX_TYPE_LENGTH) {
@@ -854,12 +821,11 @@ void read_entries(const char *filename, FileEntry **entries, const size_t fixed_
                 }
                 token = strtok(NULL, "|");
             }
-            if (i >= 1 && strcmp((*entries)[i-1].path, entry.path) == 0 && (*entries)[i-1].isDir == 1) {
-                (*entries)[i-1] = entry;
+            if (i >= 1 && strcmp((*entries)[i - 1].path, entry.path) == 0 && (*entries)[i - 1].isDir == 1) {
+                (*entries)[i - 1] = entry;
                 isAdded = true;
-            }
-            else if (i >= 2 && strcmp((*entries)[i-2].path, entry.path) == 0 && (*entries)[i-2].isDir == 1) {
-                (*entries)[i-2] = entry;
+            } else if (i >= 2 && strcmp((*entries)[i - 2].path, entry.path) == 0 && (*entries)[i - 2].isDir == 1) {
+                (*entries)[i - 2] = entry;
                 isAdded = true;
             }
         } else {
@@ -961,7 +927,7 @@ void accumulateChildrenAndSize(FileEntry *entries, const size_t count) {
         // Only accumulate for directories
         if (entries[i].isDir) {
             entries[i].childrenCount = 0; // Reset the children count
-            entries[i].size = 0;          // Reset the size (to accumulate later)
+            entries[i].size = 0; // Reset the size (to accumulate later)
             // Check subsequent entries to see if they belong to this directory
             for (size_t j = i + 1; j < count; j++) {
                 // Check if the current entry's path is part of the directory
@@ -970,12 +936,12 @@ void accumulateChildrenAndSize(FileEntry *entries, const size_t count) {
                     // Current directory is a parent of entries[j]
                     entries[i].childrenCount++;
                     entries[i].size += entries[j].size;
-                    } else {
-                        if (strstr(entries[j].path, entries[i].path) != entries[j].path) {
-                            // Stop checking if subsequent paths are no longer under this directory
-                            break;
-                        }
+                } else {
+                    if (strstr(entries[j].path, entries[i].path) != entries[j].path) {
+                        // Stop checking if subsequent paths are no longer under this directory
+                        break;
                     }
+                }
             }
         }
     }
@@ -985,12 +951,10 @@ void free_directories(char ***directories) {
     if (directories && *directories) {
         // Free each string in the array
         for (int i = 0; (*directories)[i] != NULL; i++) {
-            printf("Freeing string at: %p\n", (void *)(*directories)[i]);
             free((*directories)[i]); // Free each string
             (*directories)[i] = NULL; // Avoid dangling pointer
         }
         // Free the array itself
-        printf("Freeing directories at: %p\n", (void *)*directories);
         free(*directories);
         *directories = NULL; // Avoid dangling pointer
     }
@@ -1012,7 +976,8 @@ void free_directories(char ***directories) {
  * @param directoryCount A pointer to an integer that will be set to the number of directories provided as input.
  * @return Returns `EXIT_SUCCESS` (value 0) on success, or `EXIT_FAILURE` (value 1) if any error occurs (e.g., invalid arguments or memory allocation failure).
  */
-int process_arguments(const int argc, char **argv, int *skipDirs, long long *sizeThreshold, char **originalFileName, char **tmpFileName, char ***directories, int *directoryCount) {
+int process_arguments(const int argc, char **argv, int *skipDirs, long long *sizeThreshold, char **originalFileName,
+                      char **tmpFileName, char ***directories, int *directoryCount) {
     *skipDirs = 0; // Default: don't skip directories
     *sizeThreshold = 0; // Default: no size threshold
     *originalFileName = NULL;
@@ -1027,7 +992,7 @@ int process_arguments(const int argc, char **argv, int *skipDirs, long long *siz
             if (i + 1 < argc && isdigit(argv[i + 1][0])) {
                 char *endptr;
                 const double sizeInMB = strtod(argv[++i], &endptr);
-                *sizeThreshold = (long long)(sizeInMB * 1024 * 1024);
+                *sizeThreshold = (long long) (sizeInMB * 1024 * 1024);
             } else {
                 fprintf(stderr, "Invalid or missing size argument after -M\n");
                 release_temporary_resources(tmpFileName, *directories, NULL);
@@ -1051,7 +1016,8 @@ int process_arguments(const int argc, char **argv, int *skipDirs, long long *siz
             }
         } else if (argv[i][0] != '-') {
             // Treat as a directory path (non-option argument)
-            *directories = realloc(*directories, sizeof(char *) * (*directoryCount + 2)); // +2 for new entry & NULL terminator
+            *directories = realloc(*directories, sizeof(char *) * (*directoryCount + 2));
+            // +2 for new entry & NULL terminator
             if (*directories == NULL) {
                 perror("Memory allocation failed (directories)");
                 release_temporary_resources(tmpFileName, *directories, NULL);
@@ -1080,4 +1046,12 @@ int process_arguments(const int argc, char **argv, int *skipDirs, long long *siz
     }
 
     return EXIT_SUCCESS;
+}
+
+void initializeFileStatistics(FileStatistics *fileStats) {
+    if (fileStats == NULL) {
+        return; // Handle NULL pointer to avoid segmentation faults
+    }
+    // Use memset to set all fields to zero
+    memset(fileStats, 0, sizeof(FileStatistics));
 }

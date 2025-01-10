@@ -41,7 +41,8 @@ int main(int argc, char *argv[]) {
     char **directories = NULL;
     int directoryCount = 0;
 
-    if (process_arguments(argc, argv, &skipDirs, &sizeThreshold, &originalFileName, &tmpFileName, &directories, &directoryCount) != EXIT_SUCCESS) {
+    if (process_arguments(argc, argv, &skipDirs, &sizeThreshold, &originalFileName, &tmpFileName, &directories,
+                          &directoryCount) != EXIT_SUCCESS) {
         printf("Error processing arguments\n");
         return EXIT_FAILURE;
     }
@@ -69,49 +70,18 @@ int main(int argc, char *argv[]) {
         return EXIT_FAILURE;
     }
 
-    long long totalSize = 0;
-    int totalFiles = 0;
-    int totalDirs = 0;
-    int textFiles = 0, musicFiles = 0, filmFiles = 0, imageFiles = 0, binaryFiles = 0, compressedFiles = 0, texFiles =
-            0;
-    int jsonFiles = 0, yamlFiles = 0, exeFiles = 0, templateFiles = 0, pdfFiles = 0, jarFiles = 0, htmlFiles = 0,
-            xmlFiles = 0, tsFiles = 0, jsFiles = 0, xhtmlFiles = 0;
-    int cFiles = 0, pythonFiles = 0, javaFiles = 0, packageFiles = 0, logFiles = 0, classFiles = 0, docFiles = 0,
-            calcFiles = 0, sqlFiles = 0, csvFiles = 0, cssFiles = 0;
+    FileStatistics fileStats;
+    initializeFileStatistics(&fileStats); // Initialize the structure
 
-    int hiddenFiles = 0;
+    processDirectory(&taskQueue, &entries, &count, &capacity, &fileStats, sizeThreshold, skipDirs);
+    fileStats.totalDirs--; // Exclude the root directory
 
-    long long textSize = 0, musicSize = 0, filmSize = 0, imageSize = 0, binarySize = 0, compressedSize = 0, texSize = 0;
-    long long jsonSize = 0, yamlSize = 0, exeSize = 0, classSize = 0, templateSize = 0, pdfSize = 0, jarSize = 0,
-            docSize = 0, calcSize = 0;
-    long long cSize = 0, pythonSize = 0, javaSize = 0, packageSize = 0, logSize = 0, htmlSize = 0, xmlSize = 0, tsSize =
-            0, jsSize = 0, xhtmlSize = 0, sqlSize = 0, csvSize = 0, cssSize = 0;
-    long long hiddenSize = 0;
-
-    processDirectory(&taskQueue, &entries, &count, &capacity, &totalSize, &totalFiles, &totalDirs,
-                     &textFiles, &textSize, &musicFiles, &musicSize,
-                     &filmFiles, &filmSize, &imageFiles, &imageSize,
-                     &binaryFiles, &binarySize, &compressedFiles, &compressedSize,
-                     &hiddenFiles, &hiddenSize, &jsonFiles, &jsonSize,
-                     &yamlFiles, &yamlSize, &exeFiles, &exeSize,
-                     &cFiles, &cSize, &pythonFiles, &pythonSize,
-                     &javaFiles, &javaSize, &packageFiles, &packageSize,
-                     &logFiles, &logSize, &classFiles, &classSize,
-                     &templateFiles, &templateSize, &pdfFiles, &pdfSize,
-                     &jarFiles, &jarSize, &htmlFiles, &htmlSize,
-                     &xhtmlFiles, &xhtmlSize, &xmlFiles, &xmlSize,
-                     &tsFiles, &tsSize, &jsFiles, &jsSize,
-                     &docFiles, &docSize, &calcFiles, &calcSize,
-                     &texFiles, &texSize, &sqlFiles, &sqlSize, &csvFiles, &csvSize, &cssFiles, &cssSize,
-                     skipDirs, sizeThreshold);
-    totalDirs--; // Exclude the root directory
     printf("### Total counts before qsort %d ###", count);
     if (count < INITIAL_ENTRIES_CAPACITY) {
         printf("Less than %d entries, sorting in-memory\n", INITIAL_ENTRIES_CAPACITY);
         qsort(entries, count, sizeof(FileEntry), compareFileEntries);
         printToFile(entries, count, originalFileName);
-    }
-    else {
+    } else {
         printf("More than %d entries, sorting to temporary file\n", INITIAL_ENTRIES_CAPACITY);
         char command[MAX_LINE_LENGTH];
         printToFile(entries, count, tmpFileName);
@@ -141,44 +111,45 @@ int main(int argc, char *argv[]) {
     printToFile(entries, count, originalFileName);
 
     printf("\nSummary:\n");
-    if (hiddenFiles > 0) {
-        printf("Total Number of Hidden Files: %d\n", hiddenFiles);
-        printf("Total Size of Hidden Files: %s (%lld bytes) \n", getFileSizeAsString(hiddenSize), hiddenSize);
+    if (fileStats.hiddenFiles > 0) {
+        printf("Total Number of Hidden Files: %d\n", fileStats.hiddenFiles);
+        printf("Total Size of Hidden Files: %s (%lld bytes) \n", getFileSizeAsString(fileStats.hiddenSize),
+               fileStats.hiddenSize);
     }
-    printSizeDetails("Text", textFiles, textSize);
-    printSizeDetails("Music", musicFiles, musicSize);
-    printSizeDetails("Film", filmFiles, filmSize);
-    printSizeDetails("Image", imageFiles, imageSize);
-    printSizeDetails("Compressed", compressedFiles, compressedSize);
-    printSizeDetails("Binary", binaryFiles, binarySize);
-    printSizeDetails("JSON", jsonFiles, jsonSize);
-    printSizeDetails("Csv", csvFiles, csvSize);
-    printSizeDetails("YAML", yamlFiles, yamlSize);
-    printSizeDetails("Python", pythonFiles, pythonSize);
-    printSizeDetails("Java", javaFiles, javaSize);
-    printSizeDetails("Ts", tsFiles, tsSize);
-    printSizeDetails("Js", jsFiles, jsSize);
-    printSizeDetails("Sql", sqlFiles, sqlSize);
-    printSizeDetails("Html", htmlFiles, htmlSize);
-    printSizeDetails("Css", cssFiles, cssSize);
-    printSizeDetails("Xhtml", xhtmlFiles, xhtmlSize);
-    printSizeDetails("Xml", xmlFiles, xmlSize);
-    printSizeDetails("Packages", packageFiles, packageSize);
-    printSizeDetails("Log", logFiles, logSize);
-    printSizeDetails("Class", classFiles, classSize);
-    printSizeDetails("Template", templateFiles, templateSize);
-    printSizeDetails("Pdf", pdfFiles, pdfSize);
-    printSizeDetails("Doc", docFiles, docSize);
-    printSizeDetails("LaTex", texFiles, texSize);
-    printSizeDetails("Calc", calcFiles, calcSize);
-    printSizeDetails("Jar", jarFiles, jarSize);
-    printSizeDetails("C Source", cFiles, cSize);
-    printSizeDetails("EXE", exeFiles, exeSize);
+    printSizeDetails("Text", fileStats.textFiles, fileStats.textSize);
+    printSizeDetails("Music", fileStats.musicFiles, fileStats.musicSize);
+    printSizeDetails("Film", fileStats.filmFiles, fileStats.filmSize);
+    printSizeDetails("Image", fileStats.imageFiles, fileStats.imageSize);
+    printSizeDetails("Compressed", fileStats.compressedFiles, fileStats.compressedSize);
+    printSizeDetails("Binary", fileStats.binaryFiles, fileStats.binarySize);
+    printSizeDetails("JSON", fileStats.jsonFiles, fileStats.jsonSize);
+    printSizeDetails("Csv", fileStats.csvFiles, fileStats.csvSize);
+    printSizeDetails("YAML", fileStats.yamlFiles, fileStats.yamlSize);
+    printSizeDetails("Python", fileStats.pythonFiles, fileStats.pythonSize);
+    printSizeDetails("Java", fileStats.javaFiles, fileStats.javaSize);
+    printSizeDetails("Ts", fileStats.tsFiles, fileStats.tsSize);
+    printSizeDetails("Js", fileStats.jsFiles, fileStats.jsSize);
+    printSizeDetails("Sql", fileStats.sqlFiles, fileStats.sqlSize);
+    printSizeDetails("Html", fileStats.htmlFiles, fileStats.htmlSize);
+    printSizeDetails("Css", fileStats.cssFiles, fileStats.cssSize);
+    printSizeDetails("Xhtml", fileStats.xhtmlFiles, fileStats.xhtmlSize);
+    printSizeDetails("Xml", fileStats.xmlFiles, fileStats.xmlSize);
+    printSizeDetails("Packages", fileStats.packageFiles, fileStats.packageSize);
+    printSizeDetails("Log", fileStats.logFiles, fileStats.logSize);
+    printSizeDetails("Class", fileStats.classFiles, fileStats.classSize);
+    printSizeDetails("Template", fileStats.templateFiles, fileStats.templateSize);
+    printSizeDetails("Pdf", fileStats.pdfFiles, fileStats.pdfSize);
+    printSizeDetails("Doc", fileStats.docFiles, fileStats.docSize);
+    printSizeDetails("LaTex", fileStats.texFiles, fileStats.texSize);
+    printSizeDetails("Calc", fileStats.calcFiles, fileStats.calcSize);
+    printSizeDetails("Jar", fileStats.jarFiles, fileStats.jarSize);
+    printSizeDetails("C Source", fileStats.cFiles, fileStats.cSize);
+    printSizeDetails("EXE", fileStats.exeFiles, fileStats.exeSize);
 
     printf("------------------------------------\n");
-    printf("Total Number of Directories: %d\n", totalDirs);
-    printf("Total Number of Files: %d\n", totalFiles);
-    printf("Total Size of Files: %lld bytes (%s)\n", totalSize, getFileSizeAsString(totalSize));
+    printf("Total Number of Directories: %d\n", fileStats.totalDirs);
+    printf("Total Number of Files: %d\n", fileStats.totalFiles);
+    printf("Total Size of Files: %lld bytes (%s)\n", fileStats.totalSize, getFileSizeAsString(fileStats.totalSize));
 
     free(entries);
     freeQueue(&taskQueue);

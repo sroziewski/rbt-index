@@ -83,40 +83,8 @@ char *dequeue(TaskQueue *queue);
 
 void freeQueue(TaskQueue *queue);
 
-// Directory processing function
-void processDirectory(TaskQueue *taskQueue, FileEntry **entries, int *count, int *capacity,
-                      long long *totalSize, int *totalFiles, int *totalDirs,
-                      int *textFiles, long long *textSize,
-                      int *musicFiles, long long *musicSize,
-                      int *filmFiles, long long *filmSize,
-                      int *imageFiles, long long *imageSize,
-                      int *binaryFiles, long long *binarySize,
-                      int *compressedFiles, long long *compressedSize,
-                      int *hiddenFiles, long long *hiddenSize,
-                      int *jsonFiles, long long *jsonSize,
-                      int *yamlFiles, long long *yamlSize,
-                      int *exeFiles, long long *exeSize,
-                      int *cFiles, long long *cSize,
-                      int *pythonFiles, long long *pythonSize,
-                      int *javaFiles, long long *javaSize,
-                      int *packageFiles, long long *packageSize,
-                      int *logFiles, long long *logSize,
-                      int *classFiles, long long *classSize,
-                      int *templateFiles, long long *templateSize,
-                      int *pdfFiles, long long *pdfSize,
-                      int *jarFiles, long long *jarSize,
-                      int *htmlFiles, long long *htmlSize,
-                      int *xhtmlFiles, long long *xhtmlSize,
-                      int *xmlFiles, long long *xmlSize,
-                      int *tsFiles, long long *tsSize,
-                      int *jsFiles, long long *jsSize,
-                      int *docFiles, long long *docSize,
-                      int *calcFiles, long long *calcSize,
-                      int *texFiles, long long *texSize,
-                      int *sqlFiles, long long *sqlSize,
-                      int *csvFiles, long long *csvSize,
-                      int *cssFiles, long long *cssSize,
-                      int skipDirs, long long sizeThreshold);
+void processDirectory(TaskQueue *taskQueue, FileEntry **entries, int *count, int *capacity, FileStatistics *fileStats,
+                      long long sizeThreshold, int skipDirs);
 
 // File size string utility
 char *getFileSizeAsString(long long fileSizeBytes);
@@ -145,5 +113,7 @@ void resizeEntries(FileEntry **entries, int *count);
 void accumulateChildrenAndSize(FileEntry *entries, size_t count);
 
 int process_arguments(int argc, char **argv, int *skipDirs, long long *sizeThreshold, char **originalFileName, char **tmpFileName, char ***directories, int *directoryCount);
+
+void initializeFileStatistics(FileStatistics *fileStats);
 
 #endif // L_FILES_H
