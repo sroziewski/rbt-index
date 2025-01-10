@@ -970,17 +970,17 @@ void free_directories(char ***directories) {
  * @param argv An array of strings representing the command line arguments.
  * @param skipDirs A pointer to an integer that will be set to 1 if the `--skip-dirs` flag is used, otherwise 0.
  * @param sizeThreshold A pointer to a `long long` that will hold the size threshold in bytes (converted from MB provided via `-M` flag).
- * @param originalFileName A pointer to a char pointer that will be set to the address of the original output file name (provided via `-o`).
+ * @param outputFileName A pointer to a char pointer that will be set to the address of the original output file name (provided via `-o`).
  * @param tmpFileName A pointer to a char pointer that will point to a dynamically allocated temporary file name (based on the original).
  * @param directories A pointer to a dynamic array of strings representing directory paths passed as positional arguments.
  * @param directoryCount A pointer to an integer that will be set to the number of directories provided as input.
  * @return Returns `EXIT_SUCCESS` (value 0) on success, or `EXIT_FAILURE` (value 1) if any error occurs (e.g., invalid arguments or memory allocation failure).
  */
-int process_arguments(const int argc, char **argv, int *skipDirs, long long *sizeThreshold, char **originalFileName,
+int process_arguments(const int argc, char **argv, int *skipDirs, long long *sizeThreshold, char **outputFileName,
                       char **tmpFileName, char ***directories, int *directoryCount) {
     *skipDirs = 0; // Default: don't skip directories
     *sizeThreshold = 0; // Default: no size threshold
-    *originalFileName = NULL;
+    *outputFileName = NULL;
     *tmpFileName = NULL;
     *directories = NULL;
     *directoryCount = 0;
@@ -1000,14 +1000,14 @@ int process_arguments(const int argc, char **argv, int *skipDirs, long long *siz
             }
         } else if (strcmp(argv[i], "-o") == 0) {
             if (i + 1 < argc) {
-                *originalFileName = argv[++i];
-                *tmpFileName = malloc(strlen(*originalFileName) + 5); // Allocate memory for tmpFileName
+                *outputFileName = argv[++i];
+                *tmpFileName = malloc(strlen(*outputFileName) + 5); // Allocate memory for tmpFileName
                 if (*tmpFileName == NULL) {
                     perror("Memory allocation failed (tmpFileName)");
                     release_temporary_resources(tmpFileName, *directories, NULL);
                     return EXIT_FAILURE;
                 }
-                strcpy(*tmpFileName, *originalFileName);
+                strcpy(*tmpFileName, *outputFileName);
                 strcat(*tmpFileName, "tmp"); // Appends "tmp" to tmpFileName
             } else {
                 fprintf(stderr, "Output file name expected after -o\n");
@@ -1038,7 +1038,7 @@ int process_arguments(const int argc, char **argv, int *skipDirs, long long *siz
     }
 
     // Ensure -o parameter is used
-    if (!*originalFileName) {
+    if (!*outputFileName) {
         fprintf(stderr, "Error: The -o <outputfile> option is required.\n");
         fprintf(stderr, "Usage: %s <directory_path(s)> [-M maxSizeInMB] [--skip-dirs] -o <outputfile>\n", argv[0]);
         release_temporary_resources(tmpFileName, *directories, NULL);

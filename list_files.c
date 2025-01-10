@@ -34,14 +34,14 @@
 int main(int argc, char *argv[]) {
     long long sizeThreshold = 0;
     int skipDirs = 0;
-    char *originalFileName = NULL;
+    char *outputFileName = NULL;
     char *tmpFileName = NULL;
 
     // Array for storing directory paths
     char **directories = NULL;
     int directoryCount = 0;
 
-    if (process_arguments(argc, argv, &skipDirs, &sizeThreshold, &originalFileName, &tmpFileName, &directories,
+    if (process_arguments(argc, argv, &skipDirs, &sizeThreshold, &outputFileName, &tmpFileName, &directories,
                           &directoryCount) != EXIT_SUCCESS) {
         printf("Error processing arguments\n");
         return EXIT_FAILURE;
@@ -80,12 +80,12 @@ int main(int argc, char *argv[]) {
     if (count < INITIAL_ENTRIES_CAPACITY) {
         printf("Less than %d entries, sorting in-memory\n", INITIAL_ENTRIES_CAPACITY);
         qsort(entries, count, sizeof(FileEntry), compareFileEntries);
-        printToFile(entries, count, originalFileName);
+        printToFile(entries, count, outputFileName);
     } else {
         printf("More than %d entries, sorting to temporary file\n", INITIAL_ENTRIES_CAPACITY);
         char command[MAX_LINE_LENGTH];
         printToFile(entries, count, tmpFileName);
-        snprintf(command, sizeof(command), "sort --parallel=12 -t \"|\" -k1,1 %s -o %s", tmpFileName, originalFileName);
+        snprintf(command, sizeof(command), "sort --parallel=12 -t \"|\" -k1,1 %s -o %s", tmpFileName, outputFileName);
         int ret = system(command);
         deleteFile(tmpFileName);
         if (ret == -1) {
@@ -102,13 +102,13 @@ int main(int argc, char *argv[]) {
         }
     }
     int outputCount = 0;
-    read_entries(originalFileName, &entries, count, &outputCount);
+    read_entries(outputFileName, &entries, count, &outputCount);
     resizeEntries(&entries, &count); // Resize the array to the actual number of entries
     accumulateChildrenAndSize(entries, count);
 
     printf("### Total counts after accumulateChildrenAndSize %d ###", count);
 
-    printToFile(entries, count, originalFileName);
+    printToFile(entries, count, outputFileName);
 
     printf("\nSummary:\n");
     if (fileStats.hiddenFiles > 0) {
