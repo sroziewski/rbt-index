@@ -107,7 +107,6 @@ int main(int argc, char *argv[]) {
     accumulateChildrenAndSize(entries, count);
 
     printf("### Total counts after accumulateChildrenAndSize %d ###", count);
-
     printToFile(entries, count, outputFileName);
 
     printFileStatistics(fileStats);

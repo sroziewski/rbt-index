@@ -1093,8 +1093,77 @@ void printFileStatistics(const FileStatistics fileStats) {
     printSizeDetails("C Source", fileStats.cFiles, fileStats.cSize);
     printSizeDetails("EXE", fileStats.exeFiles, fileStats.exeSize);
 
+    char *file_size_as_string = getFileSizeAsString(fileStats.totalSize);
+
     printf("------------------------------------\n");
     printf("Total Number of Directories: %d\n", fileStats.totalDirs);
     printf("Total Number of Files: %d\n", fileStats.totalFiles);
-    printf("Total Size of Files: %lld bytes (%s)\n", fileStats.totalSize, getFileSizeAsString(fileStats.totalSize));
+    printf("Total Size of Files: %lld bytes (%s)\n", fileStats.totalSize, file_size_as_string);
+    free(file_size_as_string);
+}
+
+int processDirectoryTask(const char *directory, const char *outputFileName, char *tmpFileName,
+                         const long long sizeThreshold, const int skipDirs) {
+    // Initialize task queue
+    TaskQueue taskQueue;
+    initQueue(&taskQueue, INITIAL_CAPACITY);
+    enqueue(&taskQueue, removeTrailingSlash(directory));
+
+    // Allocate memory for file entries
+    int capacity = INITIAL_CAPACITY;
+    int count = 0;
+    FileEntry *entries = malloc(capacity * sizeof(FileEntry));
+    if (!entries) {
+        perror("malloc");
+        freeQueue(&taskQueue);
+        return EXIT_FAILURE;
+    }
+
+    // Initialize file statistics
+    FileStatistics fileStats;
+    initializeFileStatistics(&fileStats);
+
+    // Process all directories in the queue
+    processDirectory(&taskQueue, &entries, &count, &capacity, &fileStats, sizeThreshold, skipDirs);
+    fileStats.totalDirs -= 1; // Exclude the root directory
+
+    printf("### Total counts before qsort for directory: %s ### %d ###\n", directory, count);
+
+    // Sorting and writing results to file
+    if (count < INITIAL_ENTRIES_CAPACITY) {
+        printf("Less than %d entries, sorting in-memory for directory: %s\n", INITIAL_ENTRIES_CAPACITY, directory);
+        qsort(entries, count, sizeof(FileEntry), compareFileEntries);
+        printToFile(entries, count, outputFileName);
+    } else {
+        printf("More than %d entries, sorting to a temporary file for directory: %s\n", INITIAL_ENTRIES_CAPACITY, directory);
+        char command[MAX_LINE_LENGTH];
+        printToFile(entries, count, tmpFileName);
+        snprintf(command, sizeof(command), "sort --parallel=12 -t \"|\" -k1,1 %s -o %s", tmpFileName, outputFileName);
+        const int ret = system(command);
+        deleteFile(tmpFileName);
+        if (ret == -1 || WEXITSTATUS(ret) != 0) {
+            fprintf(stderr, "Sort command failed with status: %d\n", WEXITSTATUS(ret));
+            free(entries);
+            freeQueue(&taskQueue);
+            return EXIT_FAILURE;
+        }
+    }
+
+    // Post-processing and final statistics
+    int outputCount = 0;
+    read_entries(outputFileName, &entries, count, &outputCount);
+    resizeEntries(&entries, &count); // Resize entries array to actual size
+    accumulateChildrenAndSize(entries, count);
+
+    printf("### Total counts after accumulateChildrenAndSize for directory: %s ### %d ###\n", directory, count);
+    printToFile(entries, count, outputFileName);
+
+    // Print final statistics
+    printFileStatistics(fileStats);
+
+    // Cleanup allocated resources
+    free(entries);
+    freeQueue(&taskQueue);
+
+    return EXIT_SUCCESS;
 }
