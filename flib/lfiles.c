@@ -332,6 +332,36 @@ int findEntryIndexAdded(const FileEntry *entries, const int count, const char *p
     return 0; // Not added yet
 }
 
+/**
+ * Processes directories and their contents, updating file statistics and managing a dynamic,
+ * thread-safe queue of tasks.
+ *
+ * This function dequeues directory paths from a task queue, scans their contents, and processes
+ * files and directories to update an array of FileEntry structures and file statistics. It uses
+ * OpenMP to parallelize file processing, and handles dynamically allocated memory for directory
+ * entries and FileEntry structures. Directories are added to the FileEntry array with their
+ * children count, while various file types are categorized and their statistics are updated.
+ *
+ * The function stops processing if it encounters memory allocation errors or a critical issue
+ * during directory or file handling.
+ *
+ * @param taskQueue      A pointer to the TaskQueue containing directories to be processed.
+ * @param entries        A pointer to an array of FileEntry structures representing files and
+ *                       directories that have been processed. The array is dynamically resized
+ *                       as needed.
+ * @param count          A pointer to an integer tracking the number of FileEntry structures
+ *                       added to the `entries` array.
+ * @param capacity       A pointer to an integer representing the current capacity of the
+ *                       `entries` array. The array is resized by multiplying its size by
+ *                       RESIZE_FACTOR whenever more capacity is needed.
+ * @param fileStats      A pointer to a FileStatistics structure that is updated as files and
+ *                       directories are processed. This structure tracks various counts and
+ *                       sizes of files, directories, and file categories.
+ * @param sizeThreshold  The minimum file size (in bytes) for files to be included in the
+ *                       `entries` array and statistics.
+ * @param skipDirs       An integer flag (0 or 1) to determine whether directories should be
+ *                       included in the `entries` array and counted in statistics.
+ */
 void processDirectory(TaskQueue *taskQueue, FileEntry **entries, int *count, int *capacity, FileStatistics *fileStats,
                       const long long sizeThreshold, const int skipDirs) {
     char **dirEntries = malloc(INITIAL_CAPACITY * sizeof(char *));
@@ -681,6 +711,23 @@ void printSizeDetails(const char *type, const int count, const long long size) {
     }
 }
 
+/**
+ * Releases dynamically allocated resources for a variable number of character pointers.
+ *
+ * This function frees the memory allocated for each dynamically-allocated string passed to
+ * it as arguments. The first parameter is a pointer to a character pointer, and additional
+ * character pointers can be specified through variadic arguments. After freeing a resource,
+ * the corresponding pointer is set to NULL to prevent accidental reuse or double freeing.
+ *
+ * The function uses variable argument handling (variadic arguments) to process an arbitrary
+ * number of resources. The list of arguments must be terminated with a NULL pointer to
+ * indicate the end of the resources.
+ *
+ * @param first   A pointer to the first dynamically-allocated resource. It is freed and
+ *                its pointer is set to NULL after the operation.
+ * @param ...     A variadic list of additional dynamically-allocated resources. Each resource
+ *                is processed similarly to the first. The list must end with a NULL pointer.
+ */
 void release_temporary_resources(char **first, ...) {
     if (first && *first) {
         free(*first);
@@ -700,6 +747,24 @@ void release_temporary_resources(char **first, ...) {
     va_end(args);
 }
 
+/**
+ * Resizes a dynamically allocated array of `FileEntry` structures by removing empty entries.
+ *
+ * This function iterates through an array of `FileEntry` structures and counts the number of
+ * non-empty entries, identified by a non-empty `path` field. A new array of appropriate size
+ * is then allocated, and all non-empty entries from the original array are copied into the
+ * new array. The old array's memory is freed, and the pointer to the array is updated to point
+ * to the newly resized array. The entry count is also updated to reflect the new size.
+ *
+ * This function ensures efficient memory management by freeing unused entries and reallocating
+ * memory only where necessary. It performs error checking for memory allocation failures.
+ *
+ * @param entries  A double pointer to the array of `FileEntry` structures. The function resizes
+ *                 the array, replacing the old array pointer with the new one. The caller is
+ *                 responsible for ensuring the input array is properly initialized.
+ * @param count    A pointer to an integer containing the count of entries in the original array.
+ *                 The function updates this value to the new count after resizing.
+ */
 void resizeEntries(FileEntry **entries, int *count) {
     // Step 1: Count non-empty elements
     int nonEmptyCount = 0;
@@ -731,6 +796,34 @@ void resizeEntries(FileEntry **entries, int *count) {
     *count = nonEmptyCount; // Update count to reflect new size
 }
 
+/**
+ * Reads and parses file entries from a specified file into a dynamically allocated array.
+ *
+ * This function opens a file containing information about file entries, reads each line,
+ * and parses the data into an array of `FileEntry` structures. Each line in the file
+ * should follow the format: `path|size|type[|C_COUNT|childrenCount][|F_HIDDEN]`.
+ * The function processes up to a fixed number of entries and dynamically allocates memory
+ * for the array based on `fixed_count`.
+ *
+ * The parsed information includes the file's path, size, type, and additional metadata such
+ * as whether it is a directory, its children count (if applicable), and whether it is hidden.
+ * Duplicate directories are handled by replacing earlier entries with the new one.
+ *
+ * The function performs robust error checking for parsing issues and ensures proper memory
+ * management. If any error occurs (e.g., file access, memory allocation failure), the program
+ * terminates with an error message. Malformed lines in the file are skipped with a warning.
+ *
+ * @param filename     The name of the file to read from. The file must be accessible and
+ *                     formatted correctly.
+ * @param entries      A double pointer to a `FileEntry` array. The function allocates memory
+ *                     to this pointer, and the caller is responsible for freeing it afterward.
+ *                     If this pointer already contains allocated memory, it will be freed
+ *                     before reallocating.
+ * @param fixed_count  The maximum number of entries to read. This defines the size of the
+ *                     allocated array.
+ * @param count        Pointer to an integer where the number of successfully read entries will
+ *                     be stored.
+ */
 void read_entries(const char *filename, FileEntry **entries, const size_t fixed_count, int *count) {
     *count = 0;
     // Open the file for reading
@@ -845,6 +938,30 @@ void read_entries(const char *filename, FileEntry **entries, const size_t fixed_
     fclose(file);
 }
 
+/**
+ * Writes detailed information about a collection of file entries to a specified file.
+ *
+ * This function iterates over an array of `FileEntry` structures and writes information
+ * for each entry to the provided file. The output includes the file's path, size, type,
+ * and additional metadata.
+ *
+ * If the entry represents a directory, the number of its children is appended to the output.
+ * Entries that are hidden (i.e., filenames starting with a '.') are explicitly flagged in the output.
+ *
+ * The output format follows this structure: `path|size|type[|C_COUNT|childrenCount][|F_HIDDEN]\n`.
+ * Each entry is written as a single line in the output file. If the file cannot be opened,
+ * an error message is printed, and the function terminates early.
+ *
+ * The user must ensure that the provided filename and file mode are valid for the intended operation.
+ *
+ * @param entries  Pointer to an array of `FileEntry` structures containing details of each file.
+ *                 Each entry must include valid data for `path`, `size`, `type`, and directory status.
+ * @param count    The number of file entries in the array. This specifies how many entries to process.
+ * @param filename The name of the file to which the information will be written. This file will
+ *                 be created or modified according to the specified mode.
+ * @param mode     The file access mode (e.g., "w" for write, "a" for append). The mode must be a
+ *                 valid format recognized by `fopen`.
+ */
 void printToFile(FileEntry *entries, const int count, const char *filename, const char *mode) {
     FILE *outputFile = fopen(filename, mode);
     if (!outputFile) {
@@ -867,6 +984,27 @@ void printToFile(FileEntry *entries, const int count, const char *filename, cons
     fclose(outputFile);
 }
 
+/**
+ * Prints detailed information about a collection of file entries to the standard output.
+ *
+ * This function iterates over a list of file entries and prints details for each file,
+ * including its path, size (in both human-readable and raw byte formats), type, and any
+ * other applicable metadata (e.g., whether it is a directory or a hidden file).
+ *
+ * If the entry is a directory, the number of children it contains is also displayed.
+ * Hidden files (those starting with a '.') are explicitly marked in the output.
+ *
+ * The size of each file is converted to a human-readable format using `getFileSizeAsString`.
+ * The string returned by this function is dynamically allocated and must be freed to
+ * prevent memory leaks. This function ensures that `free` is called for this data
+ * after it is printed.
+ *
+ * @param entries A pointer to an array of `FileEntry` structures containing information
+ *                about the files to be printed. Each entry must contain valid data,
+ *                including its path, size, type, and whether it is a directory.
+ * @param count   The number of file entries in the array. This value specifies how many
+ *                entries to iterate over.
+ */
 void printToStdOut(FileEntry *entries, const int count) {
     for (int i = 0; i < count; i++) {
         const char *fileName = getFileName(entries[i].path);
@@ -886,6 +1024,22 @@ void printToStdOut(FileEntry *entries, const int count) {
     }
 }
 
+/**
+ * Deletes the specified file and releases the memory allocated for the filename.
+ *
+ * This function attempts to delete the file specified by the given `filename` using
+ * the standard `remove` function. After attempting the file deletion, it deallocates
+ * the memory associated with the `filename` using `free`. If the file deletion fails,
+ * an error message is printed to standard error using `perror`.
+ *
+ * It is the caller's responsibility to ensure that `filename` is dynamically allocated
+ * before passing it to this function, as `free` is called on the provided pointer.
+ * Passing an invalid or statically allocated string could result in undefined behavior.
+ *
+ * @param filename A pointer to a dynamically allocated string representing the name
+ *                 of the file to be deleted. If `filename` is NULL or invalid,
+ *                 the behavior is undefined.
+ */
 void deleteFile(char *filename) {
     const int result = remove(filename);
     free(filename);
@@ -894,6 +1048,26 @@ void deleteFile(char *filename) {
     }
 }
 
+/**
+ * Removes the trailing slash from a given string, if present, and returns a new string.
+ *
+ * This function processes an input string to check for a trailing slash ('/').
+ * If the trailing slash exists, it allocates memory for a new string without
+ * the trailing slash, copies the content excluding the slash, and null-terminates
+ * the result. If there is no trailing slash, a duplicate of the original string is returned.
+ *
+ * Memory for the returned string is dynamically allocated and should be freed
+ * by the caller to avoid memory leaks.
+ *
+ * In case of memory allocation errors, it logs an error message and returns NULL.
+ *
+ * @param token The input string to process. It represents the original string that might
+ *              have a trailing slash. If NULL is passed, the function returns NULL.
+ *
+ * @return A new dynamically allocated string without a trailing slash, or NULL in case of
+ *         errors. If the input string does not contain a trailing slash, a duplicate of
+ *         the original string is returned.
+ */
 char *removeTrailingSlash(const char *token) {
     if (token == NULL) {
         return NULL;
@@ -918,6 +1092,24 @@ char *removeTrailingSlash(const char *token) {
     return newFileName;
 }
 
+/**
+ * Accumulates the size and number of children for directory entries within a file entry array.
+ *
+ * This function processes an array of file entries, identifying directory entries
+ * and calculating their total size and number of children by analyzing subsequent
+ * entries in the array that reside within the directory's path hierarchy.
+ *
+ * For each directory entry, this function resets the `childrenCount` and `size`
+ * fields before accumulating the relevant data. Only entries whose paths match
+ * the directory's path as a prefix are considered as children. The process stops
+ * early if entries no longer belong to the current directory hierarchy to optimize performance.
+ *
+ * @param entries A pointer to an array of `FileEntry` structures representing files
+ *                and directories. Each entry holds information about size, path, and
+ *                whether it is a directory.
+ * @param count   The total number of entries in the `entries` array. This is used to
+ *                determine the bounds for iteration to avoid accessing invalid memory.
+ */
 void accumulateChildrenAndSize(FileEntry *entries, const size_t count) {
     if (entries == NULL || count == 0) {
         return;
@@ -947,6 +1139,19 @@ void accumulateChildrenAndSize(FileEntry *entries, const size_t count) {
     }
 }
 
+/**
+ * Frees memory allocated for an array of directory paths.
+ *
+ * Iterates through the array of directory paths, deallocating each string and
+ * then the array itself. All pointers are safely reset to NULL to avoid
+ * dangling references.
+ *
+ * @param directories A pointer to a dynamically allocated array of strings
+ *                    representing directory paths. Each string in the array,
+ *                    as well as the array itself, will be deallocated.
+ *                    The provided pointer and all its elements will be set to NULL
+ *                    after memory is freed.
+ */
 void free_directories(char ***directories) {
     if (directories && *directories) {
         // Free each string in the array
@@ -1096,6 +1301,23 @@ void initializeFileStatistics(FileStatistics *fileStats) {
     memset(fileStats, 0, sizeof(FileStatistics));
 }
 
+/**
+ * Prints detailed statistics of files and directories from the given file statistics data.
+ *
+ * This function outputs a summary report that includes the count and total
+ * size for various file types, as well as overall statistics for files,
+ * hidden files, and directories. Each category of file types (e.g., text,
+ * music, images) is reported separately.
+ *
+ * For hidden files, the total number and size are displayed only if there
+ * are hidden files present. The total size of all files is displayed in
+ * both raw bytes and a human-readable format. The detailed statistics are
+ * printed using helper functions.
+ *
+ * @param fileStats A `FileStatistics` structure containing the statistics
+ *                  for different file categories, hidden files, total files,
+ *                  total size, and directories.
+ */
 void printFileStatistics(const FileStatistics fileStats) {
     printf("\nSummary:\n");
     if (fileStats.hiddenFiles > 0) {
@@ -1142,6 +1364,32 @@ void printFileStatistics(const FileStatistics fileStats) {
     free(file_size_as_string);
 }
 
+/**
+ * Processes a directory and performs various operations including sorting,
+ * post-processing, and writing results to specified files.
+ *
+ * The function initializes a task queue to process the given directory and its
+ * subdirectories, allocates memory for file entries, and computes file data.
+ * Depending on the number of entries, it either sorts them in-memory or writes
+ * intermediate results to temporary files for sorting using external commands.
+ * Final post-processing computes statistics and writes the results to output files.
+ * Resource cleanup is performed at the end to release allocated memory.
+ *
+ * @param fileStats Pointer to a FileStatistics structure that is updated with
+ *                  computed statistics about files and directories.
+ * @param directory The path to the root directory to process.
+ * @param outputFileName The name of the output file where results will be written.
+ *                       This file may temporarily be used for intermediate operations.
+ * @param tmpFileName The name of a temporary file for intermediate sorting or storage
+ *                    when the number of entries exceeds a predefined capacity.
+ * @param sizeThreshold The size threshold in bytes to filter files based on size.
+ * @param skipDirs A flag indicating whether to skip directories (non-zero to enable, 0 to disable).
+ * @param totalCount Pointer to an integer that will store the total count of
+ *                   processed file entries after all operations.
+ *
+ * @return EXIT_SUCCESS (0) if the task was completed successfully, or
+ *         EXIT_FAILURE (1) if an error occurred during processing.
+ */
 int processDirectoryTask(FileStatistics *fileStats, const char *directory, char *outputFileName, char *tmpFileName,
                          const long long sizeThreshold, const int skipDirs, int *totalCount) {
     // Initialize task queue
@@ -1213,6 +1461,24 @@ int processDirectoryTask(FileStatistics *fileStats, const char *directory, char 
     return EXIT_SUCCESS;
 }
 
+/**
+ * Appends the contents of a temporary file to a specified output file.
+ *
+ * This function opens the temporary file in read mode and the output file
+ * in append mode. It reads the temporary file's contents into a buffer and
+ * writes them to the output file. Both files are closed after the operation
+ * is complete. If an error occurs, the function ensures any opened file
+ * is properly closed before returning an error status.
+ *
+ * @param tmpFileName The path to the temporary file whose contents are to
+ *                    be appended.
+ * @param outputFileName The path to the output file to which the contents
+ *                       will be appended. The file is created if it does
+ *                       not already exist.
+ *
+ * @return EXIT_SUCCESS (0) if the operation succeeded, or EXIT_FAILURE (1)
+ *         if an error occurred while opening or processing the files.
+ */
 int append_file(const char *tmpFileName, const char *outputFileName) {
     // Open the output file in append mode (create it if it doesn't exist)
     FILE *outputFile = fopen(outputFileName, "a");
@@ -1243,6 +1509,21 @@ int append_file(const char *tmpFileName, const char *outputFileName) {
     return EXIT_SUCCESS;
 }
 
+/**
+ * Combines the statistical data of two `FileStatistics` objects into a new
+ * `FileStatistics` object. The resulting object contains the aggregated
+ * counts and sizes of files and directories, as well as detailed statistics
+ * for various file types.
+ *
+ * This function is useful for merging file statistics from different sources
+ * or directories to generate a cumulative report.
+ *
+ * @param a Pointer to the first `FileStatistics` object.
+ * @param b Pointer to the second `FileStatistics` object.
+ *
+ * @return A new `FileStatistics` object containing the aggregated
+ *         statistical data from the inputs.
+ */
 FileStatistics addFileStatistics(const FileStatistics *a, const FileStatistics *b) {
     FileStatistics result;
 
