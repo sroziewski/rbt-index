@@ -37,7 +37,7 @@ int main(int argc, char *argv[]) {
                 sizeThreshold = (long long) (sizeInMB * 1024 * 1024);
             } else {
                 fprintf(stderr, "Invalid or missing size argument after -M\n");
-                release_temporary_resources(tmpFileName, originalFileName, directories);
+                release_temporary_resources(&tmpFileName, directories, NULL);
                 return EXIT_FAILURE;
             }
         } else if (strcmp(argv[i], "-o") == 0) {
@@ -46,14 +46,14 @@ int main(int argc, char *argv[]) {
                 tmpFileName = malloc(strlen(originalFileName) + 5); // Allocate memory for tmpFileName
                 if (tmpFileName == NULL) {
                     perror("Memory allocation failed (tmpFileName)");
-                    release_temporary_resources(tmpFileName, originalFileName, directories);
+                    release_temporary_resources(&tmpFileName, directories, NULL);
                     return EXIT_FAILURE;
                 }
                 strcpy(tmpFileName, originalFileName);
                 strcat(tmpFileName, "tmp"); // Appends "tmp" to tmpFileName
             } else {
                 fprintf(stderr, "Output file name expected after -o\n");
-                release_temporary_resources(tmpFileName, originalFileName, directories);
+                release_temporary_resources(&tmpFileName, directories, NULL);
                 return EXIT_FAILURE;
             }
         } else if (argv[i][0] != '-') {
@@ -61,19 +61,19 @@ int main(int argc, char *argv[]) {
             directories = realloc(directories, sizeof(char *) * (directoryCount + 2)); // +2 for new entry & NULL terminator
             if (directories == NULL) {
                 perror("Memory allocation failed (directories)");
-                release_temporary_resources(tmpFileName, originalFileName, directories);
+                release_temporary_resources(&tmpFileName, directories, NULL);
                 return EXIT_FAILURE;
             }
             directories[directoryCount] = strdup(argv[i]);
             if (directories[directoryCount] == NULL) {
                 perror("Memory allocation failed (directory entry)");
-                release_temporary_resources(tmpFileName, originalFileName, directories);
+                release_temporary_resources(&tmpFileName, directories, NULL);
                 return EXIT_FAILURE;
             }
             directories[++directoryCount] = NULL; // Null-terminate the array
         } else {
             fprintf(stderr, "Unknown option: %s\n", argv[i]);
-            release_temporary_resources(tmpFileName, originalFileName, directories);
+            release_temporary_resources(&tmpFileName, directories, NULL);
             return EXIT_FAILURE;
         }
     }
@@ -81,7 +81,7 @@ int main(int argc, char *argv[]) {
     if (!originalFileName) {
         fprintf(stderr, "Error: The -o <outputfile> option is required.\n");
         fprintf(stderr, "Usage: %s <directory_path(s)> [-M maxSizeInMB] [--skip-dirs] -o <outputfile>\n", argv[0]);
-        release_temporary_resources(tmpFileName, originalFileName, directories);
+        release_temporary_resources(&tmpFileName, directories, NULL);
         return EXIT_FAILURE;
     }
     // Process directories
@@ -91,6 +91,7 @@ int main(int argc, char *argv[]) {
             printf("- %s\n", directories[i]);
         }
     }
+    release_temporary_resources(&tmpFileName, directories, NULL);
     free(directories);
 
     int numCores = omp_get_max_threads();
@@ -106,7 +107,7 @@ int main(int argc, char *argv[]) {
     FileEntry *entries = malloc(capacity * sizeof(FileEntry));
     if (!entries) {
         perror("malloc");
-        release_temporary_resources(tmpFileName, originalFileName, NULL);
+        release_temporary_resources(&tmpFileName, directories, NULL);
         return EXIT_FAILURE;
     }
 
@@ -161,12 +162,12 @@ int main(int argc, char *argv[]) {
         deleteFile(tmpFileName);
         if (ret == -1) {
             perror("system() failed");
-            release_temporary_resources(tmpFileName, originalFileName, NULL);
+            release_temporary_resources(&tmpFileName, directories, NULL);
             return EXIT_FAILURE;
         }
         if (WEXITSTATUS(ret) != 0) {
             fprintf(stderr, "Command exited with non-zero status: %d\n", WEXITSTATUS(ret));
-            release_temporary_resources(tmpFileName, originalFileName, NULL);
+            release_temporary_resources(&tmpFileName, directories, NULL);
             return EXIT_FAILURE;
         }
     }

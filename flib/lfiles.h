@@ -124,7 +124,7 @@ char *getFileSizeAsString(long long fileSizeBytes);
 // Print size details
 void printSizeDetails(const char *type, int count, long long size);
 
-void release_temporary_resources(char *first, ...);
+void release_temporary_resources(char **first, ...);
 
 void read_entries(const char *filename, FileEntry **entries, size_t fixed_count, int *count);
 

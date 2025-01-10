@@ -711,22 +711,23 @@ void printSizeDetails(const char *type, const int count, const long long size) {
     }
 }
 
-void release_temporary_resources(char *first, ...) {
-    // Check and free the first argument
-    if (first) {
-        free(first);
-        first = NULL; // Set to NULL after freeing
+void release_temporary_resources(char **first, ...) {
+    if (first && *first) {
+        printf("Freeing first resource at: %p\n", (void *)*first);
+        free(*first);
+        *first = NULL; // Avoid double freeing
     }
 
     va_list args;
-    char *resource;
+    char **resource;
 
-    // Start iterating through variable arguments
     va_start(args, first);
-    while ((resource = va_arg(args, char *)) != NULL) {
-        if (resource) {
-            free(resource);
-            resource = NULL; // Set to NULL after freeing to avoid reuse
+    while ((resource = va_arg(args, char **)) != NULL) {
+        printf("Processing resource pointer: %p\n", (void *)resource);
+        if (resource && *resource) {
+            printf("Freeing resource at: %p\n", (void *)*resource);
+            free(*resource);
+            *resource = NULL; // Clear pointer after freeing
         }
     }
     va_end(args);
