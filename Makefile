@@ -1,6 +1,6 @@
 # Compiler and flags
 CC = gcc
-CFLAGS = -Wextra -g -lmagic -fopenmp
+CFLAGS = -Wextra -g -lmagic -fopenmp -pedantic
 
 # Target executables
 TARGET = rbt_name_create

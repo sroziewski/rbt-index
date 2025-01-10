@@ -114,6 +114,7 @@ int main(int argc, char *argv[]) {
                      &texFiles, &texSize, &sqlFiles, &sqlSize, &csvFiles, &csvSize, &cssFiles, &cssSize,
                      skipDirs, sizeThreshold);
     totalDirs--; // Exclude the root directory
+    printf("### Total counts before qsort %d ###", count);
     if (count < INITIAL_ENTRIES_CAPACITY) {
         qsort(entries, count, sizeof(FileEntry), compareFileEntries);
         printToFile(entries, count, originalFileName);
@@ -139,6 +140,9 @@ int main(int argc, char *argv[]) {
     read_entries(originalFileName, &entries, count, &outputCount);
     resizeEntries(&entries, &count); // Resize the array to the actual number of entries
     accumulateChildrenAndSize(entries, count);
+
+    printf("### Total counts after accumulateChildrenAndSize %d ###", count);
+
     printToFile(entries, count, originalFileName);
 
     printf("\nSummary:\n");
