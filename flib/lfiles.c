@@ -1108,7 +1108,6 @@ int processDirectoryTask(const char *directory, const char *outputFileName, char
     TaskQueue taskQueue;
     initQueue(&taskQueue, INITIAL_CAPACITY);
     enqueue(&taskQueue, removeTrailingSlash(directory));
-
     // Allocate memory for file entries
     int capacity = INITIAL_CAPACITY;
     int count = 0;
@@ -1118,17 +1117,14 @@ int processDirectoryTask(const char *directory, const char *outputFileName, char
         freeQueue(&taskQueue);
         return EXIT_FAILURE;
     }
-
     // Initialize file statistics
     FileStatistics fileStats;
     initializeFileStatistics(&fileStats);
-
     // Process all directories in the queue
     processDirectory(&taskQueue, &entries, &count, &capacity, &fileStats, sizeThreshold, skipDirs);
     fileStats.totalDirs -= 1; // Exclude the root directory
 
     printf("### Total counts before qsort for directory: %s ### %d ###\n", directory, count);
-
     // Sorting and writing results to file
     if (count < INITIAL_ENTRIES_CAPACITY) {
         printf("Less than %d entries, sorting in-memory for directory: %s\n", INITIAL_ENTRIES_CAPACITY, directory);
@@ -1148,7 +1144,6 @@ int processDirectoryTask(const char *directory, const char *outputFileName, char
             return EXIT_FAILURE;
         }
     }
-
     // Post-processing and final statistics
     int outputCount = 0;
     read_entries(outputFileName, &entries, count, &outputCount);
@@ -1157,10 +1152,8 @@ int processDirectoryTask(const char *directory, const char *outputFileName, char
 
     printf("### Total counts after accumulateChildrenAndSize for directory: %s ### %d ###\n", directory, count);
     printToFile(entries, count, outputFileName);
-
     // Print final statistics
     printFileStatistics(fileStats);
-
     // Cleanup allocated resources
     free(entries);
     freeQueue(&taskQueue);
