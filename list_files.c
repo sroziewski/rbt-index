@@ -35,87 +35,33 @@ int main(int argc, char *argv[]) {
     long long sizeThreshold = 0;
     int skipDirs = 0;
     char *outputFileName = NULL;
-    char *tmpFileName = NULL;
 
     // Array for storing directory paths
     char **directories = NULL;
+    char **tmpFileNames = NULL;
     int directoryCount = 0;
 
-    if (process_arguments(argc, argv, &skipDirs, &sizeThreshold, &outputFileName, &tmpFileName, &directories,
-                          &directoryCount) != EXIT_SUCCESS) {
+    if (process_arguments(argc, argv, &skipDirs, &sizeThreshold, &outputFileName, &tmpFileNames, &directories, &directoryCount) != EXIT_SUCCESS) {
         printf("Error processing arguments\n");
         return EXIT_FAILURE;
     }
-    // Process directories
-    if (directories != NULL) {
-        printf("Processing %s:\n", directoryCount > 1 ? "directories" : "directory");
-        for (int i = 0; directories[i] != NULL; i++) {
-            printf("- %s\n", directories[i]);
-        }
-    }
-    int numCores = omp_get_max_threads();
+
+    const int numCores = omp_get_max_threads();
     omp_set_num_threads(numCores);
     fprintf(stdout, "Using %d cores.\n", numCores);
-
-    TaskQueue taskQueue;
-    initQueue(&taskQueue, INITIAL_CAPACITY);
-    enqueue(&taskQueue, removeTrailingSlash(argv[1]));
-
-    int capacity = INITIAL_CAPACITY;
-    int count = 0;
-    FileEntry *entries = malloc(capacity * sizeof(FileEntry));
-    if (!entries) {
-        perror("malloc");
-        release_temporary_resources(&tmpFileName, directories, NULL);
-        return EXIT_FAILURE;
-    }
-
-    FileStatistics fileStats;
-    initializeFileStatistics(&fileStats); // Initialize the structure
-
-    processDirectory(&taskQueue, &entries, &count, &capacity, &fileStats, sizeThreshold, skipDirs);
-    fileStats.totalDirs--; // Exclude the root directory
-
-    printf("### Total counts before qsort %d ###", count);
-    if (count < INITIAL_ENTRIES_CAPACITY) {
-        printf("Less than %d entries, sorting in-memory\n", INITIAL_ENTRIES_CAPACITY);
-        qsort(entries, count, sizeof(FileEntry), compareFileEntries);
-        printToFile(entries, count, outputFileName);
-    } else {
-        printf("More than %d entries, sorting to temporary file\n", INITIAL_ENTRIES_CAPACITY);
-        char command[MAX_LINE_LENGTH];
-        printToFile(entries, count, tmpFileName);
-        snprintf(command, sizeof(command), "sort --parallel=12 -t \"|\" -k1,1 %s -o %s", tmpFileName, outputFileName);
-        int ret = system(command);
-        deleteFile(tmpFileName);
-        if (ret == -1) {
-            perror("system() failed");
-            release_temporary_resources(&tmpFileName, NULL);
+    int totalCount = 0;
+    // Process each directory in the list
+    for (int i = 0; directories[i] != NULL && i < argc - 2; i++) {
+        printf("\nProcessing directory: %s\n", directories[i]);
+        if (processDirectoryTask(directories[i], outputFileName, tmpFileNames[i], sizeThreshold, skipDirs, i == 0, &totalCount) != EXIT_SUCCESS) {
+            fprintf(stderr, "An error occurred while processing directory: %s\n", directories[i]);
             free_directories(&directories);
-            return EXIT_FAILURE;
-        }
-        if (WEXITSTATUS(ret) != 0) {
-            fprintf(stderr, "Command exited with non-zero status: %d\n", WEXITSTATUS(ret));
-            release_temporary_resources(&tmpFileName, NULL);
-            free_directories(&directories);
-            return EXIT_FAILURE;
+            free_directories(&tmpFileNames);
         }
     }
-    int outputCount = 0;
-    read_entries(outputFileName, &entries, count, &outputCount);
-    resizeEntries(&entries, &count); // Resize the array to the actual number of entries
-    accumulateChildrenAndSize(entries, count);
 
-    printf("### Total counts after accumulateChildrenAndSize %d ###", count);
-    printToFile(entries, count, outputFileName);
-
-    printFileStatistics(fileStats);
-
-    free(entries);
-    freeQueue(&taskQueue);
-
-    release_temporary_resources(&tmpFileName, NULL);
     free_directories(&directories);
+    free_directories(&tmpFileNames);
 
     return EXIT_SUCCESS;
 }

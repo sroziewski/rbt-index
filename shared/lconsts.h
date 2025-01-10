@@ -10,6 +10,8 @@
 #define MAX_TYPE_LENGTH 128
 #define MAX_LINE_LENGTH 4096
 #define INITIAL_ENTRIES_CAPACITY 400000
+#define APPEND "a"
+#define NEW "w"
 
 // Structures
 typedef struct FileEntry {

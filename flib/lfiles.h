@@ -100,7 +100,7 @@ void read_entries(const char *filename, FileEntry **entries, size_t fixed_count,
 
 void printToStdOut(FileEntry *entries, int count);
 
-void printToFile(FileEntry *entries, int count, const char *filename);
+void printToFile(FileEntry *entries, int count, const char *filename, const char *mode);
 
 void deleteFile(char *filename);
 
@@ -112,12 +112,12 @@ void resizeEntries(FileEntry **entries, int *count);
 
 void accumulateChildrenAndSize(FileEntry *entries, size_t count);
 
-int process_arguments(int argc, char **argv, int *skipDirs, long long *sizeThreshold, char **outputFileName, char **tmpFileName, char ***directories, int *directoryCount);
+int process_arguments(int argc, char **argv, int *skipDirs, long long *sizeThreshold, char **outputFileName, char ***tmpFileNames, char ***directories, int *directoryCount);
 
 void initializeFileStatistics(FileStatistics *fileStats);
 
 void printFileStatistics(FileStatistics fileStats);
 
-int processDirectoryTask(const char *directory, const char *outputFileName, const char *tmpFileName, long long sizeThreshold, int skipDirs);
+int processDirectoryTask(const char *directory, const char *outputFileName, char *tmpFileName, long long sizeThreshold, int skipDirs, int isFirstDirectory, int *totalCount);
 
 #endif // L_FILES_H
