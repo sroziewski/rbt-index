@@ -110,46 +110,7 @@ int main(int argc, char *argv[]) {
 
     printToFile(entries, count, outputFileName);
 
-    printf("\nSummary:\n");
-    if (fileStats.hiddenFiles > 0) {
-        printf("Total Number of Hidden Files: %d\n", fileStats.hiddenFiles);
-        printf("Total Size of Hidden Files: %s (%lld bytes) \n", getFileSizeAsString(fileStats.hiddenSize),
-               fileStats.hiddenSize);
-    }
-    printSizeDetails("Text", fileStats.textFiles, fileStats.textSize);
-    printSizeDetails("Music", fileStats.musicFiles, fileStats.musicSize);
-    printSizeDetails("Film", fileStats.filmFiles, fileStats.filmSize);
-    printSizeDetails("Image", fileStats.imageFiles, fileStats.imageSize);
-    printSizeDetails("Compressed", fileStats.compressedFiles, fileStats.compressedSize);
-    printSizeDetails("Binary", fileStats.binaryFiles, fileStats.binarySize);
-    printSizeDetails("JSON", fileStats.jsonFiles, fileStats.jsonSize);
-    printSizeDetails("Csv", fileStats.csvFiles, fileStats.csvSize);
-    printSizeDetails("YAML", fileStats.yamlFiles, fileStats.yamlSize);
-    printSizeDetails("Python", fileStats.pythonFiles, fileStats.pythonSize);
-    printSizeDetails("Java", fileStats.javaFiles, fileStats.javaSize);
-    printSizeDetails("Ts", fileStats.tsFiles, fileStats.tsSize);
-    printSizeDetails("Js", fileStats.jsFiles, fileStats.jsSize);
-    printSizeDetails("Sql", fileStats.sqlFiles, fileStats.sqlSize);
-    printSizeDetails("Html", fileStats.htmlFiles, fileStats.htmlSize);
-    printSizeDetails("Css", fileStats.cssFiles, fileStats.cssSize);
-    printSizeDetails("Xhtml", fileStats.xhtmlFiles, fileStats.xhtmlSize);
-    printSizeDetails("Xml", fileStats.xmlFiles, fileStats.xmlSize);
-    printSizeDetails("Packages", fileStats.packageFiles, fileStats.packageSize);
-    printSizeDetails("Log", fileStats.logFiles, fileStats.logSize);
-    printSizeDetails("Class", fileStats.classFiles, fileStats.classSize);
-    printSizeDetails("Template", fileStats.templateFiles, fileStats.templateSize);
-    printSizeDetails("Pdf", fileStats.pdfFiles, fileStats.pdfSize);
-    printSizeDetails("Doc", fileStats.docFiles, fileStats.docSize);
-    printSizeDetails("LaTex", fileStats.texFiles, fileStats.texSize);
-    printSizeDetails("Calc", fileStats.calcFiles, fileStats.calcSize);
-    printSizeDetails("Jar", fileStats.jarFiles, fileStats.jarSize);
-    printSizeDetails("C Source", fileStats.cFiles, fileStats.cSize);
-    printSizeDetails("EXE", fileStats.exeFiles, fileStats.exeSize);
-
-    printf("------------------------------------\n");
-    printf("Total Number of Directories: %d\n", fileStats.totalDirs);
-    printf("Total Number of Files: %d\n", fileStats.totalFiles);
-    printf("Total Size of Files: %lld bytes (%s)\n", fileStats.totalSize, getFileSizeAsString(fileStats.totalSize));
+    printFileStatistics(fileStats);
 
     free(entries);
     freeQueue(&taskQueue);

@@ -116,4 +116,6 @@ int process_arguments(int argc, char **argv, int *skipDirs, long long *sizeThres
 
 void initializeFileStatistics(FileStatistics *fileStats);
 
+void printFileStatistics(FileStatistics fileStats);
+
 #endif // L_FILES_H
