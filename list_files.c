@@ -22,6 +22,11 @@ int main(int argc, char *argv[]) {
     char *originalFileName = NULL;
     char *tmpFileName = NULL;
 
+    // Array for storing directory paths
+    char **directories = NULL;
+    int directoryCount = 0;
+
+    // Scan arguments
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "--skip-dirs") == 0) {
             skipDirs = 1; // Enable directory skipping
@@ -32,34 +37,62 @@ int main(int argc, char *argv[]) {
                 sizeThreshold = (long long) (sizeInMB * 1024 * 1024);
             } else {
                 fprintf(stderr, "Invalid or missing size argument after -M\n");
-                release_temporary_resources(tmpFileName, originalFileName, NULL);
+                release_temporary_resources(tmpFileName, originalFileName, directories);
                 return EXIT_FAILURE;
             }
         } else if (strcmp(argv[i], "-o") == 0) {
             if (i + 1 < argc) {
                 originalFileName = argv[++i];
-                tmpFileName = malloc(strlen(originalFileName) + 5); //
+                tmpFileName = malloc(strlen(originalFileName) + 5); // Allocate memory for tmpFileName
                 if (tmpFileName == NULL) {
                     perror("Memory allocation failed (tmpFileName)");
-                    exit(1);
+                    release_temporary_resources(tmpFileName, originalFileName, directories);
+                    return EXIT_FAILURE;
                 }
                 strcpy(tmpFileName, originalFileName);
-                strcat(tmpFileName, "tmp");    // Appends "tmp" to tmpFileName
+                strcat(tmpFileName, "tmp"); // Appends "tmp" to tmpFileName
             } else {
                 fprintf(stderr, "Output file name expected after -o\n");
-                release_temporary_resources(tmpFileName, originalFileName, NULL);
+                release_temporary_resources(tmpFileName, originalFileName, directories);
                 return EXIT_FAILURE;
             }
+        } else if (argv[i][0] != '-') {
+            // Treat as a directory path (non-option argument)
+            directories = realloc(directories, sizeof(char *) * (directoryCount + 2)); // +2 for new entry & NULL terminator
+            if (directories == NULL) {
+                perror("Memory allocation failed (directories)");
+                release_temporary_resources(tmpFileName, originalFileName, directories);
+                return EXIT_FAILURE;
+            }
+            directories[directoryCount] = strdup(argv[i]);
+            if (directories[directoryCount] == NULL) {
+                perror("Memory allocation failed (directory entry)");
+                release_temporary_resources(tmpFileName, originalFileName, directories);
+                return EXIT_FAILURE;
+            }
+            directories[++directoryCount] = NULL; // Null-terminate the array
+        } else {
+            fprintf(stderr, "Unknown option: %s\n", argv[i]);
+            release_temporary_resources(tmpFileName, originalFileName, directories);
+            return EXIT_FAILURE;
         }
     }
-
     // Ensure -o parameter is used
     if (!originalFileName) {
         fprintf(stderr, "Error: The -o <outputfile> option is required.\n");
-        fprintf(stderr, "Usage: %s <directory_path> [-M maxSizeInMB] [--skip-dirs] -o outputfile\n", argv[0]);
-        release_temporary_resources(tmpFileName, originalFileName, NULL);
+        fprintf(stderr, "Usage: %s <directory_path(s)> [-M maxSizeInMB] [--skip-dirs] -o <outputfile>\n", argv[0]);
+        release_temporary_resources(tmpFileName, originalFileName, directories);
         return EXIT_FAILURE;
     }
+    // Process directories
+    if (directories != NULL) {
+        printf("Processing %s:\n", directoryCount > 1 ? "directories" : "directory");
+        for (int i = 0; directories[i] != NULL; i++) {
+            printf("- %s\n", directories[i]);
+            // Add your directory processing logic here
+        }
+    }
+    free(directories);
 
     int numCores = omp_get_max_threads();
     omp_set_num_threads(numCores);
