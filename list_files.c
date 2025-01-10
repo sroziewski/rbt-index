@@ -89,7 +89,6 @@ int main(int argc, char *argv[]) {
         printf("Processing %s:\n", directoryCount > 1 ? "directories" : "directory");
         for (int i = 0; directories[i] != NULL; i++) {
             printf("- %s\n", directories[i]);
-            // Add your directory processing logic here
         }
     }
     free(directories);
@@ -149,10 +148,12 @@ int main(int argc, char *argv[]) {
     totalDirs--; // Exclude the root directory
     printf("### Total counts before qsort %d ###", count);
     if (count < INITIAL_ENTRIES_CAPACITY) {
+        printf("Less than %d entries, sorting in-memory\n", INITIAL_ENTRIES_CAPACITY);
         qsort(entries, count, sizeof(FileEntry), compareFileEntries);
         printToFile(entries, count, originalFileName);
     }
     else {
+        printf("More than %d entries, sorting to temporary file\n", INITIAL_ENTRIES_CAPACITY);
         char command[MAX_LINE_LENGTH];
         printToFile(entries, count, tmpFileName);
         snprintf(command, sizeof(command), "sort --parallel=12 -t \"|\" -k1,1 %s -o %s", tmpFileName, originalFileName);
