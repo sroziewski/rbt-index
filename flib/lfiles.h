@@ -126,6 +126,8 @@ void printSizeDetails(const char *type, int count, long long size);
 
 void release_temporary_resources(char **first, ...);
 
+void free_directories(char ***directories);
+
 void read_entries(const char *filename, FileEntry **entries, size_t fixed_count, int *count);
 
 void printToStdOut(FileEntry *entries, int count);
@@ -141,5 +143,7 @@ int findEntryIndexAdded(const FileEntry *entries, int count, const char *path);
 void resizeEntries(FileEntry **entries, int *count);
 
 void accumulateChildrenAndSize(FileEntry *entries, size_t count);
+
+int process_arguments(int argc, char **argv, int *skipDirs, long long *sizeThreshold, char **originalFileName, char **tmpFileName, char ***directories, int *directoryCount);
 
 #endif // L_FILES_H

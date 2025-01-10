@@ -1,3 +1,4 @@
+#include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -978,4 +979,89 @@ void accumulateChildrenAndSize(FileEntry *entries, const size_t count) {
             }
         }
     }
+}
+
+void free_directories(char ***directories) {
+    if (directories && *directories) {
+        // Free each string in the array
+        for (int i = 0; (*directories)[i] != NULL; i++) {
+            printf("Freeing string at: %p\n", (void *)(*directories)[i]);
+            free((*directories)[i]); // Free each string
+            (*directories)[i] = NULL; // Avoid dangling pointer
+        }
+        // Free the array itself
+        printf("Freeing directories at: %p\n", (void *)*directories);
+        free(*directories);
+        *directories = NULL; // Avoid dangling pointer
+    }
+}
+
+int process_arguments(const int argc, char **argv, int *skipDirs, long long *sizeThreshold, char **originalFileName, char **tmpFileName, char ***directories, int *directoryCount) {
+    *skipDirs = 0; // Default: don't skip directories
+    *sizeThreshold = 0; // Default: no size threshold
+    *originalFileName = NULL;
+    *tmpFileName = NULL;
+    *directories = NULL;
+    *directoryCount = 0;
+
+    for (int i = 1; i < argc; i++) {
+        if (strcmp(argv[i], "--skip-dirs") == 0) {
+            *skipDirs = 1; // Enable directory skipping
+        } else if (strcmp(argv[i], "-M") == 0) {
+            if (i + 1 < argc && isdigit(argv[i + 1][0])) {
+                char *endptr;
+                const double sizeInMB = strtod(argv[++i], &endptr);
+                *sizeThreshold = (long long)(sizeInMB * 1024 * 1024);
+            } else {
+                fprintf(stderr, "Invalid or missing size argument after -M\n");
+                release_temporary_resources(tmpFileName, *directories, NULL);
+                return EXIT_FAILURE;
+            }
+        } else if (strcmp(argv[i], "-o") == 0) {
+            if (i + 1 < argc) {
+                *originalFileName = argv[++i];
+                *tmpFileName = malloc(strlen(*originalFileName) + 5); // Allocate memory for tmpFileName
+                if (*tmpFileName == NULL) {
+                    perror("Memory allocation failed (tmpFileName)");
+                    release_temporary_resources(tmpFileName, *directories, NULL);
+                    return EXIT_FAILURE;
+                }
+                strcpy(*tmpFileName, *originalFileName);
+                strcat(*tmpFileName, "tmp"); // Appends "tmp" to tmpFileName
+            } else {
+                fprintf(stderr, "Output file name expected after -o\n");
+                release_temporary_resources(tmpFileName, *directories, NULL);
+                return EXIT_FAILURE;
+            }
+        } else if (argv[i][0] != '-') {
+            // Treat as a directory path (non-option argument)
+            *directories = realloc(*directories, sizeof(char *) * (*directoryCount + 2)); // +2 for new entry & NULL terminator
+            if (*directories == NULL) {
+                perror("Memory allocation failed (directories)");
+                release_temporary_resources(tmpFileName, *directories, NULL);
+                return EXIT_FAILURE;
+            }
+            (*directories)[*directoryCount] = strdup(argv[i]);
+            if ((*directories)[*directoryCount] == NULL) {
+                perror("Memory allocation failed (directory entry)");
+                release_temporary_resources(tmpFileName, *directories, NULL);
+                return EXIT_FAILURE;
+            }
+            (*directories)[++(*directoryCount)] = NULL; // Null-terminate the array
+        } else {
+            fprintf(stderr, "Unknown option: %s\n", argv[i]);
+            release_temporary_resources(tmpFileName, *directories, NULL);
+            return EXIT_FAILURE;
+        }
+    }
+
+    // Ensure -o parameter is used
+    if (!*originalFileName) {
+        fprintf(stderr, "Error: The -o <outputfile> option is required.\n");
+        fprintf(stderr, "Usage: %s <directory_path(s)> [-M maxSizeInMB] [--skip-dirs] -o <outputfile>\n", argv[0]);
+        release_temporary_resources(tmpFileName, *directories, NULL);
+        return EXIT_FAILURE;
+    }
+
+    return EXIT_SUCCESS;
 }
