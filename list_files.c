@@ -1,20 +1,35 @@
 #include "flib/lfiles.h"
 /**
- * The main entry point for the program. This function processes files and directories
- * specified via command-line arguments, calculates file statistics, and produces an
- * output file summarizing the results. It may also skip certain directories,
- * limit processing to files below a given size threshold, or use multithreading for
- * performance optimization.
+ * @brief Entry point of the program. Processes directories and files based on given arguments.
  *
- * @param argc The number of command-line arguments passed to the program.
- * @param argv The array of command-line arguments. The following options are supported:
- *      - `--skip-dirs`: Skips processing of directories.
- *      - `-M <size>`: Sets a size threshold (in MB) for processing files.
- *      - `-o <outputfile>`: Specifies the output file name. This option is mandatory.
+ * This function processes command line arguments, initializes processing resources, and handles
+ * directories and files based on specified thresholds, identifying details such as file types, sizes,
+ * and counts for different categories. Sorting and summarizing results are performed on the output.
+ * If needed, temporary resources and external sorting are utilized. Finally, the results are formatted
+ * and saved to a specified file.
  *
- * @return Returns `EXIT_SUCCESS` (typically 0) on successful execution.
- *         Returns `EXIT_FAILURE` (typically 1) if an error occurs, such as invalid input
- *         arguments, memory allocation issues, or external command failures.
+ * @param argc Argument count.
+ * @param argv Argument vector containing program arguments.
+ * @return EXIT_SUCCESS on successful execution; EXIT_FAILURE on errors.
+ *
+ * This function performs the following steps:
+ * - Parses command line arguments.
+ * - Initializes OpenMP with the maximum number of threads.
+ * - Creates and initializes a task queue to manage directory processing.
+ * - Allocates memory for storing file entries.
+ * - Processes directories and files iteratively, collecting statistics such as file counts, sizes,
+ *   and classifications by type (e.g., text, music, binaries, etc.).
+ * - If the number of entries exceeds a specific threshold, employs external sorting using temporary
+ *   files; otherwise, uses in-memory sorting.
+ * - Accumulates children statistics and total sizes of entries.
+ * - Produces detailed outputs and summaries for each type of file.
+ * - Releases all allocated resources and temporary files upon completion.
+ *
+ * The processed output includes statistics such as:
+ * - Total number of files categorized by type (e.g., "Hidden", "Text", "Music").
+ * - Total sizes of files for each category.
+ * - Number of directories encountered.
+ * - Overall statistics for the total count and size of files.
  */
 int main(int argc, char *argv[]) {
     long long sizeThreshold = 0;
@@ -30,7 +45,6 @@ int main(int argc, char *argv[]) {
         printf("Error processing arguments\n");
         return EXIT_FAILURE;
     }
-
     // Process directories
     if (directories != NULL) {
         printf("Processing %s:\n", directoryCount > 1 ? "directories" : "directory");

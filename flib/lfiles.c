@@ -996,6 +996,22 @@ void free_directories(char ***directories) {
     }
 }
 
+/**
+ * Processes command line arguments and extracts information for further processing.
+ *
+ * This method parses arguments passed via command line and initializes several variables
+ * holding configuration information such as flags, thresholds, filenames, and directories.
+ *
+ * @param argc The number of command line arguments.
+ * @param argv An array of strings representing the command line arguments.
+ * @param skipDirs A pointer to an integer that will be set to 1 if the `--skip-dirs` flag is used, otherwise 0.
+ * @param sizeThreshold A pointer to a `long long` that will hold the size threshold in bytes (converted from MB provided via `-M` flag).
+ * @param originalFileName A pointer to a char pointer that will be set to the address of the original output file name (provided via `-o`).
+ * @param tmpFileName A pointer to a char pointer that will point to a dynamically allocated temporary file name (based on the original).
+ * @param directories A pointer to a dynamic array of strings representing directory paths passed as positional arguments.
+ * @param directoryCount A pointer to an integer that will be set to the number of directories provided as input.
+ * @return Returns `EXIT_SUCCESS` (value 0) on success, or `EXIT_FAILURE` (value 1) if any error occurs (e.g., invalid arguments or memory allocation failure).
+ */
 int process_arguments(const int argc, char **argv, int *skipDirs, long long *sizeThreshold, char **originalFileName, char **tmpFileName, char ***directories, int *directoryCount) {
     *skipDirs = 0; // Default: don't skip directories
     *sizeThreshold = 0; // Default: no size threshold
