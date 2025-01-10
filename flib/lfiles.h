@@ -118,6 +118,10 @@ void initializeFileStatistics(FileStatistics *fileStats);
 
 void printFileStatistics(FileStatistics fileStats);
 
-int processDirectoryTask(const char *directory, const char *outputFileName, char *tmpFileName, long long sizeThreshold, int skipDirs, int isFirstDirectory, int *totalCount);
+int processDirectoryTask(FileStatistics *fileStats, const char *directory, char *outputFileName, char *tmpFileName, long long sizeThreshold, int skipDirs, int *totalCount);
+
+int append_file(const char *tmpFileName, const char *outputFileName);
+
+FileStatistics addFileStatistics(const FileStatistics *a, const FileStatistics *b);
 
 #endif // L_FILES_H

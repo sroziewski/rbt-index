@@ -1142,9 +1142,8 @@ void printFileStatistics(const FileStatistics fileStats) {
     free(file_size_as_string);
 }
 
-int processDirectoryTask(const char *directory, const char *outputFileName, char *tmpFileName,
-                         const long long sizeThreshold, const int skipDirs, const int isFirstDirectory,
-                         int *totalCount) {
+int processDirectoryTask(FileStatistics *fileStats, const char *directory, char *outputFileName, char *tmpFileName,
+                         const long long sizeThreshold, const int skipDirs, int *totalCount) {
     // Initialize task queue
     TaskQueue taskQueue;
     initQueue(&taskQueue, INITIAL_CAPACITY);
@@ -1158,12 +1157,9 @@ int processDirectoryTask(const char *directory, const char *outputFileName, char
         freeQueue(&taskQueue);
         return EXIT_FAILURE;
     }
-    // Initialize file statistics
-    FileStatistics fileStats;
-    initializeFileStatistics(&fileStats);
     // Process all directories in the queue
-    processDirectory(&taskQueue, &entries, &count, &capacity, &fileStats, sizeThreshold, skipDirs);
-    fileStats.totalDirs -= 1; // Exclude the root directory
+    processDirectory(&taskQueue, &entries, &count, &capacity, fileStats, sizeThreshold, skipDirs);
+    fileStats->totalDirs -= 1; // Exclude the root directory
 
     printf("### Total counts before qsort for directory: %s ### %d ###\n", directory, count);
 
@@ -1171,22 +1167,18 @@ int processDirectoryTask(const char *directory, const char *outputFileName, char
     if (count < INITIAL_ENTRIES_CAPACITY) {
         printf("Less than %d entries, sorting in-memory for directory: %s\n", INITIAL_ENTRIES_CAPACITY, directory);
         qsort(entries, count, sizeof(FileEntry), compareFileEntries);
-        // printToFile(entries, count, outputFileName, isFirstDirectory ? NEW : APPEND);
-        printToFile(entries, count, tmpFileName, NEW);
+        printToFile(entries, count, outputFileName, NEW); // we treat outputFileName as temp for a while
     } else {
-        printf("More than %d entries, sorting to a temporary file for directory: %s\n", INITIAL_ENTRIES_CAPACITY,
-               directory);
+        printf("More than %d entries, sorting to a temporary file for directory: %s\n", INITIAL_ENTRIES_CAPACITY, directory);
         char command[MAX_LINE_LENGTH];
         printToFile(entries, count, tmpFileName, NEW);
-        snprintf(command, sizeof(command), "sort --parallel=12 -t \"|\" -k1,1 %s -o %s", tmpFileName, outputFileName);
-        int ret = system(command);
-        deleteFile(tmpFileName);
-        if (ret == -1) {
-            perror("system() failed");
-            return EXIT_FAILURE;
-        }
-        if (WEXITSTATUS(ret) != 0) {
-            fprintf(stderr, "Command exited with non-zero status: %d\n", WEXITSTATUS(ret));
+        snprintf(command, sizeof(command), "sort --parallel=12 -t \"|\" -k1,1 %s -o %s", tmpFileName, outputFileName); // we treat outputFileName as temp for a while
+        const int ret = system(command);
+        deleteFile(outputFileName);
+        if (ret == -1 || WEXITSTATUS(ret) != 0) {
+            fprintf(stderr, "Sort command failed with status: %d\n", WEXITSTATUS(ret));
+            free(entries);
+            freeQueue(&taskQueue);
             return EXIT_FAILURE;
         }
 
@@ -1209,17 +1201,119 @@ int processDirectoryTask(const char *directory, const char *outputFileName, char
     // Post-processing and final statistics
     read_entries(outputFileName, &entries, count, &outputCount);
     resizeEntries(&entries, &count); // Resize entries array to actual size
-    accumulateChildrenAndSize(entries, count);
-
+    accumulateChildrenAndSize(entries, outputCount);
+    *totalCount = outputCount;
     printf("### Total counts after accumulateChildrenAndSize for directory: %s ### %d ###\n", directory, outputCount);
-
     // Append results after processing children
-    printToFile(entries, outputCount, outputFileName, APPEND);
-    // Print final statistics
-    printFileStatistics(fileStats);
+    printToFile(entries, outputCount, tmpFileName, NEW);
     // Cleanup allocated resources
     free(entries);
     freeQueue(&taskQueue);
 
     return EXIT_SUCCESS;
+}
+
+int append_file(const char *tmpFileName, const char *outputFileName) {
+    // Open the output file in append mode (create it if it doesn't exist)
+    FILE *outputFile = fopen(outputFileName, "a");
+    if (!outputFile) {
+        perror("Error opening output file");
+        return EXIT_FAILURE;
+    }
+
+    // Open the temporary file in read mode
+    FILE *tmpFile = fopen(tmpFileName, "r");
+    if (!tmpFile) {
+        perror("Error opening temporary file");
+        fclose(outputFile);  // Close output file before returning
+        return EXIT_FAILURE;
+    }
+
+    // Append the contents of tmpFile to outputFile
+    char buffer[BUFSIZ];  // A buffer to temporarily hold file data
+    size_t bytesRead;
+    while ((bytesRead = fread(buffer, 1, sizeof(buffer), tmpFile)) > 0) {
+        fwrite(buffer, 1, bytesRead, outputFile);
+    }
+
+    // Clean up: Close both files
+    fclose(tmpFile);
+    fclose(outputFile);
+
+    return EXIT_SUCCESS;
+}
+
+FileStatistics addFileStatistics(const FileStatistics *a, const FileStatistics *b) {
+    FileStatistics result;
+
+    // Add global statistics
+    result.totalSize = a->totalSize + b->totalSize;
+    result.totalFiles = a->totalFiles + b->totalFiles;
+    result.totalDirs = a->totalDirs + b->totalDirs;
+
+    // Add file type counters
+    result.textFiles = a->textFiles + b->textFiles;
+    result.musicFiles = a->musicFiles + b->musicFiles;
+    result.filmFiles = a->filmFiles + b->filmFiles;
+    result.imageFiles = a->imageFiles + b->imageFiles;
+    result.binaryFiles = a->binaryFiles + b->binaryFiles;
+    result.compressedFiles = a->compressedFiles + b->compressedFiles;
+    result.texFiles = a->texFiles + b->texFiles;
+    result.jsonFiles = a->jsonFiles + b->jsonFiles;
+    result.yamlFiles = a->yamlFiles + b->yamlFiles;
+    result.exeFiles = a->exeFiles + b->exeFiles;
+    result.templateFiles = a->templateFiles + b->templateFiles;
+    result.pdfFiles = a->pdfFiles + b->pdfFiles;
+    result.jarFiles = a->jarFiles + b->jarFiles;
+    result.htmlFiles = a->htmlFiles + b->htmlFiles;
+    result.xhtmlFiles = a->xhtmlFiles + b->xhtmlFiles;
+    result.xmlFiles = a->xmlFiles + b->xmlFiles;
+    result.tsFiles = a->tsFiles + b->tsFiles;
+    result.jsFiles = a->jsFiles + b->jsFiles;
+    result.cFiles = a->cFiles + b->cFiles;
+    result.pythonFiles = a->pythonFiles + b->pythonFiles;
+    result.javaFiles = a->javaFiles + b->javaFiles;
+    result.packageFiles = a->packageFiles + b->packageFiles;
+    result.logFiles = a->logFiles + b->logFiles;
+    result.classFiles = a->classFiles + b->classFiles;
+    result.docFiles = a->docFiles + b->docFiles;
+    result.calcFiles = a->calcFiles + b->calcFiles;
+    result.sqlFiles = a->sqlFiles + b->sqlFiles;
+    result.csvFiles = a->csvFiles + b->csvFiles;
+    result.cssFiles = a->cssFiles + b->cssFiles;
+    result.hiddenFiles = a->hiddenFiles + b->hiddenFiles;
+
+    // Add file type sizes
+    result.textSize = a->textSize + b->textSize;
+    result.musicSize = a->musicSize + b->musicSize;
+    result.filmSize = a->filmSize + b->filmSize;
+    result.imageSize = a->imageSize + b->imageSize;
+    result.binarySize = a->binarySize + b->binarySize;
+    result.compressedSize = a->compressedSize + b->compressedSize;
+    result.texSize = a->texSize + b->texSize;
+    result.jsonSize = a->jsonSize + b->jsonSize;
+    result.yamlSize = a->yamlSize + b->yamlSize;
+    result.exeSize = a->exeSize + b->exeSize;
+    result.classSize = a->classSize + b->classSize;
+    result.templateSize = a->templateSize + b->templateSize;
+    result.pdfSize = a->pdfSize + b->pdfSize;
+    result.jarSize = a->jarSize + b->jarSize;
+    result.docSize = a->docSize + b->docSize;
+    result.calcSize = a->calcSize + b->calcSize;
+    result.cSize = a->cSize + b->cSize;
+    result.pythonSize = a->pythonSize + b->pythonSize;
+    result.javaSize = a->javaSize + b->javaSize;
+    result.packageSize = a->packageSize + b->packageSize;
+    result.logSize = a->logSize + b->logSize;
+    result.htmlSize = a->htmlSize + b->htmlSize;
+    result.xmlSize = a->xmlSize + b->xmlSize;
+    result.tsSize = a->tsSize + b->tsSize;
+    result.jsSize = a->jsSize + b->jsSize;
+    result.xhtmlSize = a->xhtmlSize + b->xhtmlSize;
+    result.sqlSize = a->sqlSize + b->sqlSize;
+    result.csvSize = a->csvSize + b->csvSize;
+    result.cssSize = a->cssSize + b->cssSize;
+    result.hiddenSize = a->hiddenSize + b->hiddenSize;
+
+    return result;
 }

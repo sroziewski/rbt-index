@@ -31,7 +31,7 @@
  * - Number of directories encountered.
  * - Overall statistics for the total count and size of files.
  */
-int main(int argc, char *argv[]) {
+int main(const int argc, char *argv[]) {
     long long sizeThreshold = 0;
     int skipDirs = 0;
     char *outputFileName = NULL;
@@ -43,22 +43,35 @@ int main(int argc, char *argv[]) {
 
     if (process_arguments(argc, argv, &skipDirs, &sizeThreshold, &outputFileName, &tmpFileNames, &directories, &directoryCount) != EXIT_SUCCESS) {
         printf("Error processing arguments\n");
+        free_directories(&directories);
+        free_directories(&tmpFileNames);
         return EXIT_FAILURE;
     }
-
     const int numCores = omp_get_max_threads();
     omp_set_num_threads(numCores);
     fprintf(stdout, "Using %d cores.\n", numCores);
     int totalCount = 0;
-    // Process each directory in the list
+    FileStatistics fileStats = {0};
     for (int i = 0; directories[i] != NULL && i < argc - 2; i++) {
         printf("\nProcessing directory: %s\n", directories[i]);
-        if (processDirectoryTask(directories[i], outputFileName, tmpFileNames[i], sizeThreshold, skipDirs, i == 0, &totalCount) != EXIT_SUCCESS) {
+        FileStatistics currentFileStats = {0}; // Initialize all fields to 0
+        int currentCount = 0;
+        if (processDirectoryTask(&currentFileStats, directories[i], outputFileName, tmpFileNames[i], sizeThreshold, skipDirs, &currentCount) != EXIT_SUCCESS) {
             fprintf(stderr, "An error occurred while processing directory: %s\n", directories[i]);
-            free_directories(&directories);
-            free_directories(&tmpFileNames);
         }
+        if (append_file(tmpFileNames[i], outputFileName) != EXIT_SUCCESS) {
+            fprintf(stderr, "Failed to append file %s to %s\n", tmpFileNames[i], outputFileName);
+        }
+        fileStats = addFileStatistics(&fileStats, &currentFileStats);
+        totalCount += currentCount;
     }
+
+    FileEntry *entries = malloc(totalCount * sizeof(FileEntry));
+    int totalOutputCount = 0;
+    read_entries(outputFileName, &entries, totalCount, &totalOutputCount);
+    printToFile(entries, totalOutputCount, outputFileName, NEW);
+    printToStdOut(entries, totalOutputCount);
+    printFileStatistics(fileStats);
 
     free_directories(&directories);
     free_directories(&tmpFileNames);
