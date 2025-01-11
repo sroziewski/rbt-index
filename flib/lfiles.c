@@ -1166,42 +1166,39 @@ void free_directories(char ***directories) {
 }
 
 /**
- * Processes and validates command-line arguments for the application, setting configuration options
- * and preparing directory paths, temporary file names, and other parameters for further processing.
+ * Processes command-line arguments to configure program options such as output file names,
+ * size thresholds, directory skipping, and directory paths. The function also generates
+ * temporary filenames and validates the input arguments.
  *
- * This function parses the provided arguments to configure options such as skipping directories,
- * setting a size threshold, defining the output file name, and collecting directory paths to process.
- * It handles argument validation, memory allocation for arrays used to store directory paths and
- * temporary file names, and ensures the required `-o` (output file) option is present.
+ * This function ensures that required arguments (e.g., output file) are provided, allocates
+ * memory dynamically for directory lists and temporary file names, and handles errors if any
+ * arguments are invalid or memory allocation fails.
  *
- * Behavior:
- * - The `-o <outputfile>` option is mandatory and specifies the output file name.
- * - The `--skip-dirs` option specifies whether to skip directories during processing.
- * - The `-M <maxSizeInMB>` option sets a file size threshold in bytes.
- * - Non-option arguments are interpreted as directory paths to process, and corresponding temporary
- *   file names are generated for each directory.
+ * @param argc                 The number of command-line arguments, including the program name.
+ * @param argv                 An array of strings representing the command-line arguments.
+ * @param skipDirs             A pointer to an integer flag (0 or 1). A value of 1 indicates
+ *                             that directories should be skipped during processing.
+ * @param sizeThreshold        A pointer to a long long representing the size threshold (in bytes).
+ *                             Files smaller than this size will be excluded from processing.
+ *                             Default is 0 (no threshold).
+ * @param outputFileName       A pointer to a string where the output file name will be stored.
+ *                             This value is required and will be extracted from the `-o` option.
+ * @param outputTmpFileName    A pointer to a string where the temporary file name (based on the
+ *                             output file name) will be stored. The string is dynamically
+ *                             allocated and must be freed by the caller.
+ * @param tmpFileNames         A pointer to an array of strings where dynamically generated
+ *                             temporary file names for directories will be stored. The array
+ *                             is NULL-terminated and must be freed by the caller.
+ * @param directories          A pointer to an array of strings where the paths of directories
+ *                             specified in arguments will be stored. The array is NULL-terminated
+ *                             and must be freed by the caller.
+ * @param directoryCount       A pointer to an integer tracking the number of directories
+ *                             specified in the arguments.
  *
- * If invalid or unknown arguments are provided, or if memory allocation fails, the function handles
- * cleanup of allocated resources and returns a failure code.
- *
- * @param argc              The number of arguments passed to the program, including the program name.
- * @param argv              An array of strings representing the arguments provided to the program.
- * @param skipDirs          A pointer to an integer flag that is set to 1 if the `--skip-dirs` option
- *                          is provided; otherwise, it is set to 0 (default behavior).
- * @param sizeThreshold     A pointer to a `long long` variable to store the file size threshold
- *                          (in bytes) if the `-M` option is specified. Defaults to 0 (no threshold).
- * @param outputFileName    A pointer to a string that will hold the output file name specified by
- *                          the `-o` option. Memory is dynamically allocated for this name.
- * @param outputtmpFileName Not used in the current implementation (reserved for future use or updates).
- * @param tmpFileNames      A pointer to an array of strings for storing dynamically generated
- *                          temporary file names corresponding to directory arguments.
- * @param directories       A pointer to an array of strings for storing directory path arguments
- *                          provided to the program.
- * @param directoryCount    A pointer to an integer tracking the number of directories provided.
- *
- * @return                  `EXIT_SUCCESS` (0) if arguments are valid and processing completes
- *                          successfully, or `EXIT_FAILURE` (non-zero) if an error occurs (e.g.,
- *                          missing required arguments, memory allocation failure, or invalid options).
+ * @return                     Returns `EXIT_SUCCESS` (0) if the arguments are processed
+ *                             successfully and all resources are properly allocated.
+ *                             Returns `EXIT_FAILURE` (non-zero) in case of invalid arguments,
+ *                             missing required options, or memory allocation failures.
  */
 int process_arguments(const int argc, char **argv, int *skipDirs, long long *sizeThreshold, char **outputFileName, char **outputTmpFileName,
                       char ***tmpFileNames, char ***directories, int *directoryCount) {
