@@ -74,6 +74,9 @@ int main(const int argc, char *argv[]) {
     read_entries(outputFileName, &entries, totalCount, &totalOutputCount);
 
     sort_and_write_results_to_file(outputTmpFileName, outputFileName, &totalOutputCount, totalOutputCount, entries);
+    copy_file(outputFileName, outputTmpFileName);
+    remove_duplicates(outputTmpFileName, outputFileName);
+
     // printToStdOut(entries, totalOutputCount);
     printFileStatistics(fileStats);
 

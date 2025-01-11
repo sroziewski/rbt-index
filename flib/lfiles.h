@@ -126,4 +126,8 @@ FileStatistics addFileStatistics(const FileStatistics *a, const FileStatistics *
 
 int sort_and_write_results_to_file(char *tmpFileName, char *outputFileName, int *totalCount, int count, FileEntry *entries);
 
+int remove_duplicates(const char *inputFileName, const char *outputFileName);
+
+int copy_file(const char *inputFileName, const char *outputFileName);
+
 #endif // L_FILES_H

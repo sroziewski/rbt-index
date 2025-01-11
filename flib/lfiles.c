@@ -1630,3 +1630,81 @@ FileStatistics addFileStatistics(const FileStatistics *a, const FileStatistics *
 
     return result;
 }
+
+int remove_duplicates(const char *inputFileName, const char *outputFileName) {
+    // Open input file for reading
+    FILE *inputFile = fopen(inputFileName, "r");
+    if (inputFile == NULL) {
+        perror("Error opening input file");
+        return EXIT_FAILURE;
+    }
+    // Open output file for writing
+    FILE *outputFile = fopen(outputFileName, "w");
+    if (outputFile == NULL) {
+        perror("Error opening output file");
+        fclose(inputFile);
+        return EXIT_FAILURE;
+    }
+
+    char prevLine[MAX_LINE_LENGTH] = "";  // Store the previous line for duplicate check
+    char currLine[MAX_LINE_LENGTH];      // Store the current line being read
+
+    // Read through each line of the input file
+    while (fgets(currLine, sizeof(currLine), inputFile) != NULL) {
+        // If the current line is different from the previous line, write it to the output file
+        if (strcmp(currLine, prevLine) != 0) {
+            fputs(currLine, outputFile);  // Write the unique line to the output file
+            strcpy(prevLine, currLine);  // Update the previous line
+        }
+    }
+    // Close files
+    fclose(inputFile);
+    fclose(outputFile);
+
+    return EXIT_SUCCESS;
+}
+
+int copy_file(const char *inputFileName, const char *outputFileName) {
+    // Open the input file for reading
+    FILE *inputFile = fopen(inputFileName, "r");
+    if (inputFile == NULL) {
+        perror("Error opening input file");
+        return EXIT_FAILURE;
+    }
+
+    // Open the output file for writing
+    FILE *outputFile = fopen(outputFileName, "w");
+    if (outputFile == NULL) {
+        perror("Error opening output file");
+        fclose(inputFile); // Close the input file before returning
+        return EXIT_FAILURE;
+    }
+
+    // Buffer to hold chunks of data being copied
+    char buffer[MAX_LINE_LENGTH];
+    size_t bytesRead;
+
+    // Read from input file and write to output file in chunks
+    while ((bytesRead = fread(buffer, 1, sizeof(buffer), inputFile)) > 0) {
+        if (fwrite(buffer, 1, bytesRead, outputFile) != bytesRead) {
+            perror("Error writing to output file");
+            fclose(inputFile);
+            fclose(outputFile);
+            return EXIT_FAILURE;
+        }
+    }
+
+    // Check for reading errors
+    if (ferror(inputFile)) {
+        perror("Error reading from input file");
+        fclose(inputFile);
+        fclose(outputFile);
+        return EXIT_FAILURE;
+    }
+
+    // Close both files
+    fclose(inputFile);
+    fclose(outputFile);
+
+    return EXIT_SUCCESS;
+}
