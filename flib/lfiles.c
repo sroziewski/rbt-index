@@ -1166,35 +1166,49 @@ void free_directories(char ***directories) {
 }
 
 /**
- * Processes command-line arguments to configure the program's behavior.
+ * Processes and validates command-line arguments for the application, setting configuration options
+ * and preparing directory paths, temporary file names, and other parameters for further processing.
  *
- * Parses options for skipping directories, setting a maximum file size
- * threshold, specifying an output file, and collecting directory paths.
- * It performs validation of input and updates the provided pointers with the
- * respective configuration values.
+ * This function parses the provided arguments to configure options such as skipping directories,
+ * setting a size threshold, defining the output file name, and collecting directory paths to process.
+ * It handles argument validation, memory allocation for arrays used to store directory paths and
+ * temporary file names, and ensures the required `-o` (output file) option is present.
  *
- * @param argc The number of command-line arguments passed to the program.
- * @param argv The array of command-line arguments passed to the program.
- * @param skipDirs Pointer to an integer that will be set to 1 if directory skipping
- *                 is enabled, 0 otherwise.
- * @param sizeThreshold Pointer to a long long that will store the maximum
- *                      file size threshold in bytes, if specified.
- * @param outputFileName Pointer to a string that will be set to the output file name.
- *                       This must be specified using the `-o` option.
- * @param tmpFileNames Unused in the implementation but provided for compatibility.
- * @param directories Pointer to an array of strings that will be allocated and
- *                    populated with directory paths specified as arguments.
- * @param directoryCount Pointer to an integer that will store the total count of
- *                       directories provided as input (non-option arguments).
+ * Behavior:
+ * - The `-o <outputfile>` option is mandatory and specifies the output file name.
+ * - The `--skip-dirs` option specifies whether to skip directories during processing.
+ * - The `-M <maxSizeInMB>` option sets a file size threshold in bytes.
+ * - Non-option arguments are interpreted as directory paths to process, and corresponding temporary
+ *   file names are generated for each directory.
  *
- * @return EXIT_SUCCESS (0) if arguments were parsed successfully, or
- *         EXIT_FAILURE (1) if an error was encountered during parsing or validation.
+ * If invalid or unknown arguments are provided, or if memory allocation fails, the function handles
+ * cleanup of allocated resources and returns a failure code.
+ *
+ * @param argc              The number of arguments passed to the program, including the program name.
+ * @param argv              An array of strings representing the arguments provided to the program.
+ * @param skipDirs          A pointer to an integer flag that is set to 1 if the `--skip-dirs` option
+ *                          is provided; otherwise, it is set to 0 (default behavior).
+ * @param sizeThreshold     A pointer to a `long long` variable to store the file size threshold
+ *                          (in bytes) if the `-M` option is specified. Defaults to 0 (no threshold).
+ * @param outputFileName    A pointer to a string that will hold the output file name specified by
+ *                          the `-o` option. Memory is dynamically allocated for this name.
+ * @param outputtmpFileName Not used in the current implementation (reserved for future use or updates).
+ * @param tmpFileNames      A pointer to an array of strings for storing dynamically generated
+ *                          temporary file names corresponding to directory arguments.
+ * @param directories       A pointer to an array of strings for storing directory path arguments
+ *                          provided to the program.
+ * @param directoryCount    A pointer to an integer tracking the number of directories provided.
+ *
+ * @return                  `EXIT_SUCCESS` (0) if arguments are valid and processing completes
+ *                          successfully, or `EXIT_FAILURE` (non-zero) if an error occurs (e.g.,
+ *                          missing required arguments, memory allocation failure, or invalid options).
  */
-int process_arguments(const int argc, char **argv, int *skipDirs, long long *sizeThreshold, char **outputFileName,
+int process_arguments(const int argc, char **argv, int *skipDirs, long long *sizeThreshold, char **outputFileName, char **outputTmpFileName,
                       char ***tmpFileNames, char ***directories, int *directoryCount) {
     *skipDirs = 0; // Default: don't skip directories
     *sizeThreshold = 0; // Default: no size threshold
     *outputFileName = NULL;
+    *outputTmpFileName = NULL;
     *directories = NULL;
     *tmpFileNames = NULL;
     *directoryCount = 0;
@@ -1222,6 +1236,20 @@ int process_arguments(const int argc, char **argv, int *skipDirs, long long *siz
         return EXIT_FAILURE;
     }
 
+    const size_t outputFileNameLen = strlen(*outputFileName); // Get the length of the original output file name
+    const size_t tmpSuffixLen = strlen(".tmp");              // Length of the ".tmp" suffix
+
+    // Allocate memory for the new string (*outputFileName + ".tmp")
+    *outputTmpFileName = malloc(outputFileNameLen + tmpSuffixLen + 1); // +1 for the null terminator
+    if (*outputTmpFileName == NULL) {
+        free_directories(directories);
+        free_directories(tmpFileNames);
+        return EXIT_FAILURE; // Exit on memory allocation failure
+    }
+    // Copy the original output file name and append ".tmp"
+    strcpy(*outputTmpFileName, *outputFileName);
+    strcat(*outputTmpFileName, ".tmp");
+
     // Then, process the remaining arguments
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "--skip-dirs") == 0) {
@@ -1235,6 +1263,7 @@ int process_arguments(const int argc, char **argv, int *skipDirs, long long *siz
                 fprintf(stderr, "Invalid or missing size argument after -M\n");
                 free_directories(directories);
                 free_directories(tmpFileNames);
+                release_temporary_resources(outputTmpFileName, NULL);
                 return EXIT_FAILURE;
             }
         } else if (strcmp(argv[i], "-o") == 0) {
@@ -1245,12 +1274,14 @@ int process_arguments(const int argc, char **argv, int *skipDirs, long long *siz
                     perror("Memory allocation failed (output file name)");
                     free_directories(directories);
                     free_directories(tmpFileNames);
+                    release_temporary_resources(outputTmpFileName, NULL);
                     return EXIT_FAILURE;
                 }
             } else {
                 fprintf(stderr, "Missing argument after -o\n");
                 free_directories(directories);
                 free_directories(tmpFileNames);
+                release_temporary_resources(outputTmpFileName, NULL);
                 return EXIT_FAILURE;
             }
         } else if (argv[i][0] != '-') {
@@ -1262,6 +1293,7 @@ int process_arguments(const int argc, char **argv, int *skipDirs, long long *siz
                 perror("Memory allocation failed");
                 free_directories(directories);
                 free_directories(tmpFileNames);
+                release_temporary_resources(outputTmpFileName, NULL);
                 return EXIT_FAILURE;
             }
 
@@ -1271,6 +1303,7 @@ int process_arguments(const int argc, char **argv, int *skipDirs, long long *siz
                 perror("Memory allocation failed (directory entry)");
                 free_directories(directories);
                 free_directories(tmpFileNames);
+                release_temporary_resources(outputTmpFileName, NULL);
                 return EXIT_FAILURE;
             }
 
@@ -1282,6 +1315,7 @@ int process_arguments(const int argc, char **argv, int *skipDirs, long long *siz
                 perror("Memory allocation failed (temporary file name)");
                 free_directories(directories);
                 free_directories(tmpFileNames);
+                release_temporary_resources(outputTmpFileName, NULL);
                 return EXIT_FAILURE;
             }
 
@@ -1293,17 +1327,9 @@ int process_arguments(const int argc, char **argv, int *skipDirs, long long *siz
             fprintf(stderr, "Unknown option: %s\n", argv[i]);
             free_directories(directories);
             free_directories(tmpFileNames);
+            release_temporary_resources(outputTmpFileName, NULL);
             return EXIT_FAILURE;
         }
-    }
-
-    // Ensure -o parameter is used
-    if (!*outputFileName) {
-        fprintf(stderr, "Error: The -o <outputfile> option is required.\n");
-        fprintf(stderr, "Usage: %s <directory_path(s)> [-M maxSizeInMB] [--skip-dirs] -o <outputfile>\n", argv[0]);
-        free_directories(directories);
-        free_directories(tmpFileNames);
-        return EXIT_FAILURE;
     }
 
     return EXIT_SUCCESS;
@@ -1380,6 +1406,36 @@ void printFileStatistics(const FileStatistics fileStats) {
     free(file_size_as_string);
 }
 
+int sort_and_write_results_to_file(char *tmpFileName, char *outputFileName, int *totalCount, int count, FileEntry *entries) {
+    // Sorting and writing results to file
+    if (count < INITIAL_ENTRIES_CAPACITY) {
+        qsort(entries, count, sizeof(FileEntry), compareFileEntries);
+        printToFile(entries, count, tmpFileName, NEW); // we treat outputFileName as temp for a while
+    } else {
+        char command[MAX_LINE_LENGTH];
+        printToFile(entries, count, outputFileName, NEW);
+        snprintf(command, sizeof(command), "sort --parallel=12 -t \"|\" -k1,1 %s -o %s", outputFileName, tmpFileName);
+        // we treat outputFileName as temp for a while
+        const int ret = system(command);
+        if (ret == -1 || WEXITSTATUS(ret) != 0) {
+            fprintf(stderr, "Sort command failed with status: %d\n", WEXITSTATUS(ret));
+            free(entries);
+            return EXIT_FAILURE;
+        }
+    }
+    int outputCount = 0;
+    // Post-processing and final statistics
+    read_entries(tmpFileName, &entries, count, &outputCount);
+    resizeEntries(&entries, &count); // Resize entries array to actual size
+    accumulateChildrenAndSize(entries, outputCount);
+    *totalCount = outputCount;
+    printf("### Total counts after accumulateChildrenAndSize for directory: ### %d ###\n", outputCount);
+    // print results after processing children
+    printToFile(entries, outputCount, outputFileName, NEW);
+    free(entries);
+    return EXIT_SUCCESS;
+}
+
 /**
  * Processes a directory and performs various operations including sorting,
  * post-processing, and writing results to specified files.
@@ -1424,56 +1480,8 @@ int processDirectoryTask(FileStatistics *fileStats, const char *directory, char 
     // Process all directories in the queue
     processDirectory(&taskQueue, &entries, &count, &capacity, fileStats, sizeThreshold, skipDirs);
     fileStats->totalDirs -= 1; // Exclude the root directory
-
     printf("### Total counts before qsort for directory: %s ### %d ###\n", directory, count);
-
-    // Sorting and writing results to file
-    if (count < INITIAL_ENTRIES_CAPACITY) {
-        printf("Less than %d entries, sorting in-memory for directory: %s\n", INITIAL_ENTRIES_CAPACITY, directory);
-        qsort(entries, count, sizeof(FileEntry), compareFileEntries);
-        printToFile(entries, count, outputFileName, NEW); // we treat outputFileName as temp for a while
-    } else {
-        printf("More than %d entries, sorting to a temporary file for directory: %s\n", INITIAL_ENTRIES_CAPACITY,
-               directory);
-        char command[MAX_LINE_LENGTH];
-        printToFile(entries, count, tmpFileName, NEW);
-        snprintf(command, sizeof(command), "sort --parallel=12 -t \"|\" -k1,1 %s -o %s", tmpFileName, outputFileName);
-        // we treat outputFileName as temp for a while
-        const int ret = system(command);
-        deleteFile(outputFileName);
-        if (ret == -1 || WEXITSTATUS(ret) != 0) {
-            fprintf(stderr, "Sort command failed with status: %d\n", WEXITSTATUS(ret));
-            free(entries);
-            freeQueue(&taskQueue);
-            return EXIT_FAILURE;
-        }
-
-        // Use append mode for the final sorting output if not the first directory
-        // if (!isFirstDirectory) {
-        //     strncat(command, " && cat >> ", MAX_LINE_LENGTH - strlen(command) - 1);
-        //     strncat(command, outputFileName, MAX_LINE_LENGTH - strlen(command) - 1);
-        // }
-        // const int ret = system(command);
-        // deleteFile(tmpFileName);
-        // if (ret == -1 || WEXITSTATUS(ret) != 0) {
-        //     fprintf(stderr, "Sort command failed with status: %d\n", WEXITSTATUS(ret));
-        //     free(entries);
-        //     freeQueue(&taskQueue);
-        //     release_temporary_resources(&tmpFileName, NULL);
-        //     return EXIT_FAILURE;
-        // }
-    }
-    int outputCount = 0;
-    // Post-processing and final statistics
-    read_entries(outputFileName, &entries, count, &outputCount);
-    resizeEntries(&entries, &count); // Resize entries array to actual size
-    accumulateChildrenAndSize(entries, outputCount);
-    *totalCount = outputCount;
-    printf("### Total counts after accumulateChildrenAndSize for directory: %s ### %d ###\n", directory, outputCount);
-    // Append results after processing children
-    printToFile(entries, outputCount, tmpFileName, NEW);
-    // Cleanup allocated resources
-    free(entries);
+    sort_and_write_results_to_file(outputFileName, tmpFileName, totalCount, count, entries);
     freeQueue(&taskQueue);
 
     return EXIT_SUCCESS;

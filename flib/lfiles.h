@@ -112,7 +112,7 @@ void resizeEntries(FileEntry **entries, int *count);
 
 void accumulateChildrenAndSize(FileEntry *entries, size_t count);
 
-int process_arguments(int argc, char **argv, int *skipDirs, long long *sizeThreshold, char **outputFileName, char ***tmpFileNames, char ***directories, int *directoryCount);
+int process_arguments(int argc, char **argv, int *skipDirs, long long *sizeThreshold, char **outputFileName, char **outputTmpFileName, char ***tmpFileNames, char ***directories, int *directoryCount);
 
 void initializeFileStatistics(FileStatistics *fileStats);
 
@@ -123,5 +123,7 @@ int processDirectoryTask(FileStatistics *fileStats, const char *directory, char 
 int append_file(const char *tmpFileName, const char *outputFileName);
 
 FileStatistics addFileStatistics(const FileStatistics *a, const FileStatistics *b);
+
+int sort_and_write_results_to_file(char *tmpFileName, char *outputFileName, int *totalCount, int count, FileEntry *entries);
 
 #endif // L_FILES_H

@@ -35,13 +35,14 @@ int main(const int argc, char *argv[]) {
     long long sizeThreshold = 0;
     int skipDirs = 0;
     char *outputFileName = NULL;
+    char *outputTmpFileName = NULL;
 
     // Array for storing directory paths
     char **directories = NULL;
     char **tmpFileNames = NULL;
     int directoryCount = 0;
 
-    if (process_arguments(argc, argv, &skipDirs, &sizeThreshold, &outputFileName, &tmpFileNames, &directories, &directoryCount) != EXIT_SUCCESS) {
+    if (process_arguments(argc, argv, &skipDirs, &sizeThreshold, &outputFileName, &outputTmpFileName, &tmpFileNames, &directories, &directoryCount) != EXIT_SUCCESS) {
         printf("Error processing arguments\n");
         free_directories(&directories);
         free_directories(&tmpFileNames);
@@ -59,22 +60,26 @@ int main(const int argc, char *argv[]) {
         if (processDirectoryTask(&currentFileStats, directories[i], outputFileName, tmpFileNames[i], sizeThreshold, skipDirs, &currentCount) != EXIT_SUCCESS) {
             fprintf(stderr, "An error occurred while processing directory: %s\n", directories[i]);
         }
+        fileStats = addFileStatistics(&fileStats, &currentFileStats);
+        totalCount += currentCount;
+    }
+    for (int i = 0; directories[i] != NULL && i < argc - 2; i++) {
         if (append_file(tmpFileNames[i], outputFileName) != EXIT_SUCCESS) {
             fprintf(stderr, "Failed to append file %s to %s\n", tmpFileNames[i], outputFileName);
         }
-        fileStats = addFileStatistics(&fileStats, &currentFileStats);
-        totalCount += currentCount;
     }
 
     FileEntry *entries = malloc(totalCount * sizeof(FileEntry));
     int totalOutputCount = 0;
     read_entries(outputFileName, &entries, totalCount, &totalOutputCount);
-    printToFile(entries, totalOutputCount, outputFileName, NEW);
-    printToStdOut(entries, totalOutputCount);
+
+    sort_and_write_results_to_file(outputTmpFileName, outputFileName, &totalOutputCount, totalOutputCount, entries);
+    // printToStdOut(entries, totalOutputCount);
     printFileStatistics(fileStats);
 
     free_directories(&directories);
     free_directories(&tmpFileNames);
+    release_temporary_resources(&outputTmpFileName, NULL);
 
     return EXIT_SUCCESS;
 }
