@@ -1237,7 +1237,23 @@ int process_arguments(const int argc, char **argv, int *skipDirs, long long *siz
                 free_directories(tmpFileNames);
                 return EXIT_FAILURE;
             }
-        } else if (argv[i][0] != '-' && strcmp(argv[i], "-o") != 0) {
+        } else if (strcmp(argv[i], "-o") == 0) {
+            // Handle the output file
+            if (i + 1 < argc) {
+                *outputFileName = strdup(argv[++i]); // Copy next argument as output file name
+                if (*outputFileName == NULL) {
+                    perror("Memory allocation failed (output file name)");
+                    free_directories(directories);
+                    free_directories(tmpFileNames);
+                    return EXIT_FAILURE;
+                }
+            } else {
+                fprintf(stderr, "Missing argument after -o\n");
+                free_directories(directories);
+                free_directories(tmpFileNames);
+                return EXIT_FAILURE;
+            }
+        } else if (argv[i][0] != '-') {
             // Treat as a directory path (non-option argument)
             *directories = realloc(*directories, sizeof(char *) * (*directoryCount + 2));
             *tmpFileNames = realloc(*tmpFileNames, sizeof(char *) * (*directoryCount + 2));
@@ -1272,8 +1288,8 @@ int process_arguments(const int argc, char **argv, int *skipDirs, long long *siz
             // Increment directory count and terminate both arrays
             (*directories)[++(*directoryCount)] = NULL;
             (*tmpFileNames)[*directoryCount] = NULL;
-        } else if (strcmp(argv[i], "-o") != 0) {
-            // Ignore `-o` here because it's already handled
+        } else {
+            // Unknown option
             fprintf(stderr, "Unknown option: %s\n", argv[i]);
             free_directories(directories);
             free_directories(tmpFileNames);
@@ -1417,10 +1433,12 @@ int processDirectoryTask(FileStatistics *fileStats, const char *directory, char 
         qsort(entries, count, sizeof(FileEntry), compareFileEntries);
         printToFile(entries, count, outputFileName, NEW); // we treat outputFileName as temp for a while
     } else {
-        printf("More than %d entries, sorting to a temporary file for directory: %s\n", INITIAL_ENTRIES_CAPACITY, directory);
+        printf("More than %d entries, sorting to a temporary file for directory: %s\n", INITIAL_ENTRIES_CAPACITY,
+               directory);
         char command[MAX_LINE_LENGTH];
         printToFile(entries, count, tmpFileName, NEW);
-        snprintf(command, sizeof(command), "sort --parallel=12 -t \"|\" -k1,1 %s -o %s", tmpFileName, outputFileName); // we treat outputFileName as temp for a while
+        snprintf(command, sizeof(command), "sort --parallel=12 -t \"|\" -k1,1 %s -o %s", tmpFileName, outputFileName);
+        // we treat outputFileName as temp for a while
         const int ret = system(command);
         deleteFile(outputFileName);
         if (ret == -1 || WEXITSTATUS(ret) != 0) {
@@ -1486,16 +1504,12 @@ int append_file(const char *tmpFileName, const char *outputFileName) {
         perror("Error opening output file");
         return EXIT_FAILURE;
     }
-
-    // Open the temporary file in read mode
     FILE *tmpFile = fopen(tmpFileName, "r");
     if (!tmpFile) {
         perror("Error opening temporary file");
-        fclose(outputFile);  // Close output file before returning
+        fclose(outputFile); // Close output file before returning
         return EXIT_FAILURE;
     }
-
-    // Check if temporary file is empty
     if (fseek(tmpFile, 0, SEEK_END) == 0 && ftell(tmpFile) == 0) {
         printf("Temporary file is empty: %s\n", tmpFileName);
         fclose(tmpFile);
@@ -1503,9 +1517,7 @@ int append_file(const char *tmpFileName, const char *outputFileName) {
         return EXIT_SUCCESS; // Nothing to append for empty temporary file
     }
     rewind(tmpFile); // Reset file pointer to beginning for reading
-
-    // Append the contents of tmpFile to outputFile
-    char buffer[BUFSIZ];  // A buffer to temporarily hold file data
+    char buffer[BUFSIZ]; // A buffer to temporarily hold file data
     size_t bytesRead;
     while ((bytesRead = fread(buffer, 1, sizeof(buffer), tmpFile)) > 0) {
         if (fwrite(buffer, 1, bytesRead, outputFile) < bytesRead) {
@@ -1515,10 +1527,11 @@ int append_file(const char *tmpFileName, const char *outputFileName) {
             return EXIT_FAILURE;
         }
     }
-
+    // Explicitly flush buffered output
+    fflush(outputFile);
     // Clean up: Close both files
-    // fclose(tmpFile);
-    // fclose(outputFile);
+    fclose(tmpFile);
+    fclose(outputFile);
 
     return EXIT_SUCCESS;
 }
