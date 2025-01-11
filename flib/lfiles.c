@@ -1671,7 +1671,6 @@ int copy_file(const char *inputFileName, const char *outputFileName) {
         perror("Error opening input file");
         return EXIT_FAILURE;
     }
-
     // Open the output file for writing
     FILE *outputFile = fopen(outputFileName, "w");
     if (outputFile == NULL) {
@@ -1679,11 +1678,9 @@ int copy_file(const char *inputFileName, const char *outputFileName) {
         fclose(inputFile); // Close the input file before returning
         return EXIT_FAILURE;
     }
-
     // Buffer to hold chunks of data being copied
     char buffer[MAX_LINE_LENGTH];
     size_t bytesRead;
-
     // Read from input file and write to output file in chunks
     while ((bytesRead = fread(buffer, 1, sizeof(buffer), inputFile)) > 0) {
         if (fwrite(buffer, 1, bytesRead, outputFile) != bytesRead) {
@@ -1693,7 +1690,6 @@ int copy_file(const char *inputFileName, const char *outputFileName) {
             return EXIT_FAILURE;
         }
     }
-
     // Check for reading errors
     if (ferror(inputFile)) {
         perror("Error reading from input file");
@@ -1701,7 +1697,6 @@ int copy_file(const char *inputFileName, const char *outputFileName) {
         fclose(outputFile);
         return EXIT_FAILURE;
     }
-
     // Close both files
     fclose(inputFile);
     fclose(outputFile);
