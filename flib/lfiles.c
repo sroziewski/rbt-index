@@ -1495,16 +1495,30 @@ int append_file(const char *tmpFileName, const char *outputFileName) {
         return EXIT_FAILURE;
     }
 
+    // Check if temporary file is empty
+    if (fseek(tmpFile, 0, SEEK_END) == 0 && ftell(tmpFile) == 0) {
+        printf("Temporary file is empty: %s\n", tmpFileName);
+        fclose(tmpFile);
+        fclose(outputFile);
+        return EXIT_SUCCESS; // Nothing to append for empty temporary file
+    }
+    rewind(tmpFile); // Reset file pointer to beginning for reading
+
     // Append the contents of tmpFile to outputFile
     char buffer[BUFSIZ];  // A buffer to temporarily hold file data
     size_t bytesRead;
     while ((bytesRead = fread(buffer, 1, sizeof(buffer), tmpFile)) > 0) {
-        fwrite(buffer, 1, bytesRead, outputFile);
+        if (fwrite(buffer, 1, bytesRead, outputFile) < bytesRead) {
+            perror("Error writing to output file");
+            fclose(tmpFile);
+            fclose(outputFile);
+            return EXIT_FAILURE;
+        }
     }
 
     // Clean up: Close both files
-    fclose(tmpFile);
-    fclose(outputFile);
+    // fclose(tmpFile);
+    // fclose(outputFile);
 
     return EXIT_SUCCESS;
 }
