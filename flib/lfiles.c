@@ -1431,7 +1431,7 @@ int sort_and_write_results_to_file(char *tmpFileName, char *outputFileName, int 
     printf("### Total counts after accumulateChildrenAndSize for directory: ### %d ###\n", outputCount);
     // print results after processing children
     printToFile(entries, outputCount, outputFileName, NEW);
-    free(entries);
+
     return EXIT_SUCCESS;
 }
 
@@ -1481,7 +1481,9 @@ int processDirectoryTask(FileStatistics *fileStats, const char *directory, char 
     fileStats->totalDirs -= 1; // Exclude the root directory
     printf("### Total counts before qsort for directory: %s ### %d ###\n", directory, count);
     sort_and_write_results_to_file(outputFileName, tmpFileName, totalCount, count, entries, true);
+
     freeQueue(&taskQueue);
+    free(entries);
 
     return EXIT_SUCCESS;
 }
