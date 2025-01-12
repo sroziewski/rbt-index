@@ -1403,7 +1403,7 @@ void printFileStatistics(const FileStatistics fileStats) {
     free(file_size_as_string);
 }
 
-int sort_and_write_results_to_file(char *tmpFileName, char *outputFileName, int *totalCount, int count, FileEntry *entries) {
+int sort_and_write_results_to_file(char *tmpFileName, char *outputFileName, int *totalCount, int count, FileEntry *entries, const int acc) {
     // Sorting and writing results to file
     if (count < INITIAL_ENTRIES_CAPACITY) {
         qsort(entries, count, sizeof(FileEntry), compareFileEntries);
@@ -1424,7 +1424,9 @@ int sort_and_write_results_to_file(char *tmpFileName, char *outputFileName, int 
     // Post-processing and final statistics
     read_entries(tmpFileName, &entries, count, &outputCount);
     resizeEntries(&entries, &count); // Resize entries array to actual size
-    accumulateChildrenAndSize(entries, outputCount);
+    if (acc) {
+        accumulateChildrenAndSize(entries, outputCount);
+    }
     *totalCount = outputCount;
     printf("### Total counts after accumulateChildrenAndSize for directory: ### %d ###\n", outputCount);
     // print results after processing children
@@ -1478,7 +1480,7 @@ int processDirectoryTask(FileStatistics *fileStats, const char *directory, char 
     processDirectory(&taskQueue, &entries, &count, &capacity, fileStats, sizeThreshold, skipDirs);
     fileStats->totalDirs -= 1; // Exclude the root directory
     printf("### Total counts before qsort for directory: %s ### %d ###\n", directory, count);
-    sort_and_write_results_to_file(outputFileName, tmpFileName, totalCount, count, entries);
+    sort_and_write_results_to_file(outputFileName, tmpFileName, totalCount, count, entries, true);
     freeQueue(&taskQueue);
 
     return EXIT_SUCCESS;

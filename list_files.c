@@ -55,6 +55,8 @@ int main(const int argc, char *argv[]) {
     FileStatistics fileStats = {0};
     for (int i = 0; directories[i] != NULL && i < argc - 2; i++) {
         printf("\nProcessing directory: %s\n", directories[i]);
+        // Start measuring time
+        clock_t start = clock();
         FileStatistics currentFileStats = {0}; // Initialize all fields to 0
         int currentCount = 0;
         if (processDirectoryTask(&currentFileStats, directories[i], outputFileName, tmpFileNames[i], sizeThreshold, skipDirs, &currentCount) != EXIT_SUCCESS) {
@@ -62,6 +64,11 @@ int main(const int argc, char *argv[]) {
         }
         fileStats = addFileStatistics(&fileStats, &currentFileStats);
         totalCount += currentCount;
+        // Stop measuring time
+        clock_t end = clock();
+        // Calculate elapsed time in seconds
+        double elapsed = (double)(end - start) / CLOCKS_PER_SEC;
+        printf("Time taken to process directory '%s': %.4f seconds\n", directories[i], elapsed);
     }
     for (int i = 0; directories[i] != NULL && i < argc - 2; i++) {
         if (append_file(tmpFileNames[i], outputFileName) != EXIT_SUCCESS) {
@@ -73,7 +80,7 @@ int main(const int argc, char *argv[]) {
     int totalOutputCount = 0;
     read_entries(outputFileName, &entries, totalCount, &totalOutputCount);
 
-    sort_and_write_results_to_file(outputTmpFileName, outputFileName, &totalOutputCount, totalOutputCount, entries);
+    sort_and_write_results_to_file(outputTmpFileName, outputFileName, &totalOutputCount, totalOutputCount, entries, false);
     copy_file(outputFileName, outputTmpFileName);
     remove_duplicates(outputTmpFileName, outputFileName);
 

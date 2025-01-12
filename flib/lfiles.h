@@ -124,7 +124,7 @@ int append_file(const char *tmpFileName, const char *outputFileName);
 
 FileStatistics addFileStatistics(const FileStatistics *a, const FileStatistics *b);
 
-int sort_and_write_results_to_file(char *tmpFileName, char *outputFileName, int *totalCount, int count, FileEntry *entries);
+int sort_and_write_results_to_file(char *tmpFileName, char *outputFileName, int *totalCount, int count, FileEntry *entries, int acc);
 
 int remove_duplicates(const char *inputFileName, const char *outputFileName);
 
