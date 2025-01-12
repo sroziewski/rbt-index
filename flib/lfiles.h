@@ -12,6 +12,8 @@
 #include <errno.h>
 #include <libgen.h>
 #include <ctype.h>
+#include <time.h>
+#include <sys/time.h>
 #include "../shared/lconsts.h"
 
 // File type detection functions
@@ -129,5 +131,7 @@ int sort_and_write_results_to_file(char *tmpFileName, char *outputFileName, int 
 int remove_duplicates(const char *inputFileName, const char *outputFileName);
 
 int copy_file(const char *inputFileName, const char *outputFileName);
+
+double get_time_difference(const struct timeval start, const struct timeval end);
 
 #endif // L_FILES_H

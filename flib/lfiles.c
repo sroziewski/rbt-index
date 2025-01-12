@@ -1705,3 +1705,7 @@ int copy_file(const char *inputFileName, const char *outputFileName) {
 
     return EXIT_SUCCESS;
 }
+
+double get_time_difference(const struct timeval start, const struct timeval end) {
+    return (end.tv_sec - start.tv_sec) + (end.tv_usec - start.tv_usec) / 1000000.0;
+}
