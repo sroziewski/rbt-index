@@ -68,7 +68,7 @@ int main(const int argc, char *argv[]) {
         clock_t end = clock();
         // Calculate elapsed time in seconds
         double elapsed = (double)(end - start) / CLOCKS_PER_SEC;
-        printf("Time taken to process directory '%s': %.4f seconds\n", directories[i], elapsed);
+        printf("Time taken to process directory '%s': %.1f seconds\n", directories[i], elapsed);
     }
     for (int i = 0; directories[i] != NULL && i < argc - 2; i++) {
         if (append_file(tmpFileNames[i], outputFileName) != EXIT_SUCCESS) {
