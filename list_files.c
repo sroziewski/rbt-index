@@ -71,7 +71,7 @@ int main(const int argc, char *argv[]) {
         gettimeofday(&end, NULL);
         // Calculate and display elapsed time
         double elapsed = get_time_difference(start, end);
-        fprintf(stdout, "Time taken to process directory '%s': %.6f seconds\n", directories[i], elapsed);
+        fprintf(stdout, "Time taken to process directory '%s': %.1f seconds\n", directories[i], elapsed);
     }
     for (int i = 0; directories[i] != NULL && i < argc - 2; i++) {
         if (append_file(tmpFileNames[i], outputFileName) != EXIT_SUCCESS) {
