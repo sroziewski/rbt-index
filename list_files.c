@@ -93,7 +93,7 @@ int main(const int argc, char *argv[]) {
 
     free_directories(&directories);
     free_directories(&tmpFileNames);
-    release_temporary_resources(&outputTmpFileName, NULL);
+    release_temporary_resources(&outputFileName, &outputTmpFileName, NULL);
 
     return EXIT_SUCCESS;
 }

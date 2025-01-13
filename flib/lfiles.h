@@ -69,7 +69,7 @@ int isCssFile(const char *filePath);
 const char *getFileTypeCategory(const char *mimeType, const char *filePath);
 
 // Filename extraction utility
-const char *getFileName(const char *path);
+char *getFileName(const char *path);
 
 // File entry comparison
 int compareFileEntries(const void *a, const void *b);
@@ -132,6 +132,8 @@ int remove_duplicates(const char *inputFileName, const char *outputFileName);
 
 int copy_file(const char *inputFileName, const char *outputFileName);
 
-double get_time_difference(const struct timeval start, const struct timeval end);
+double get_time_difference(struct timeval start, struct timeval end);
+
+void initializeFileEntries(FileEntry *entries, size_t count);
 
 #endif // L_FILES_H
