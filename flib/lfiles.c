@@ -250,10 +250,10 @@ const char *getFileTypeCategory(const char *mimeType, const char *filePath) {
     return "T_BINARY";
 }
 
-const char *getFileName(const char *path) {
+char *getFileName(const char *path) {
     char *pathCopy = strdup(path); // Strdup to avoid modifying the input path
     const char *baseName = basename(pathCopy);
-    const char *result = strdup(baseName);
+    char *result = strdup(baseName);
     free(pathCopy);
     return result;
 }
@@ -682,6 +682,21 @@ void processDirectory(TaskQueue *taskQueue, FileEntry **entries, int *count, int
     free(dirEntries);
 }
 
+void initializeFileEntries(FileEntry *entries, const size_t count) {
+    if (!entries) {
+        return; // Avoid null pointer dereference
+    }
+
+    for (size_t i = 0; i < count; i++) {
+        entries[i].path[0] = '\0';       // Initialize path to empty
+        entries[i].size = 0;             // Initialize size to 0
+        entries[i].isDir = 0;            // Initialize isDir to false (0)
+        entries[i].isHidden = 0;         // Initialize isHidden to false (0)
+        entries[i].childrenCount = 0;    // Initialize childrenCount to 0
+        entries[i].type[0] = '\0';       // Initialize type to empty
+    }
+}
+
 char *getFileSizeAsString(const long long fileSizeBytesIn) {
     const double fileSizeBytes = (double) fileSizeBytesIn;
     const double kB = 1024.0;
@@ -781,6 +796,7 @@ void resizeEntries(FileEntry **entries, int *count) {
         perror("Error resizing entries");
         return;
     }
+    initializeFileEntries(newEntries, nonEmptyCount);
 
     // Step 3: Copy non-empty elements
     size_t index = 0;
@@ -841,6 +857,7 @@ void read_entries(const char *filename, FileEntry **entries, const size_t fixed_
 
     // Allocate memory for the fixed amount of entries
     *entries = malloc(fixed_count * sizeof(FileEntry));
+    initializeFileEntries(*entries, fixed_count);
     if (!*entries) {
         perror("Memory allocation failed");
         fclose(file);
@@ -969,8 +986,9 @@ void printToFile(FileEntry *entries, const int count, const char *filename, cons
         return;
     }
     for (int i = 0; i < count; i++) {
-        const char *fileName = getFileName(entries[i].path);
+        char *fileName = getFileName(entries[i].path);
         const int isHidden = (fileName[0] == '.'); // Check if the file is hidden
+        free(fileName);
         fprintf(outputFile, "%s|%ld|%s", entries[i].path, entries[i].size, entries[i].type);
         // If the entry is a directory, add the count of children
         if (entries[i].isDir) {
@@ -1711,3 +1729,4 @@ int copy_file(const char *inputFileName, const char *outputFileName) {
 double get_time_difference(const struct timeval start, const struct timeval end) {
     return (end.tv_sec - start.tv_sec) + (end.tv_usec - start.tv_usec) / 1000000.0;
 }
+
