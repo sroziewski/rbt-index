@@ -438,7 +438,7 @@ void processDirectory(TaskQueue *taskQueue, FileEntry **entries, int *count, int
             const int current = *count;
             (*count)++;
             snprintf((*entries)[current].path, sizeof((*entries)[current].path), "%s", currentPath);
-            (*entries)[current].size = 0; // Size is 0 for directories
+            (*entries)[current].size = 4096; // Size is 0 for directories
             (*entries)[current].isDir = 1; // Mark as a directory
             (*entries)[current].childrenCount = childrenCount; // Store the children count
             snprintf((*entries)[current].type, sizeof((*entries)[current].type), "T_DIR");
@@ -660,7 +660,7 @@ void processDirectory(TaskQueue *taskQueue, FileEntry **entries, int *count, int
                             const int current = *count;
                             (*count)++;
                             snprintf((*entries)[current].path, sizeof((*entries)[current].path), "%s", fullPath);
-                            (*entries)[current].size = 0; // Size is 0 for directories
+                            (*entries)[current].size = 4096; // Size is 0 for directories
                             (*entries)[current].isDir = 1; // Mark as a directory
                             (*entries)[current].childrenCount = 0; // Initialize children count (updated when processed)
                             snprintf((*entries)[current].type, sizeof((*entries)[current].type), "T_DIR");
@@ -1119,7 +1119,7 @@ void accumulateChildrenAndSize(FileEntry *entries, const size_t count) {
         // Only accumulate for directories
         if (entries[i].isDir) {
             entries[i].childrenCount = 0; // Reset the children count
-            entries[i].size = 0; // Reset the size (to accumulate later)
+            entries[i].size = 4096; // Reset the size (to accumulate later)
             // Check subsequent entries to see if they belong to this directory
             for (size_t j = i + 1; j < count; j++) {
                 // Check if the current entry's path is part of the directory
