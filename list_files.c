@@ -36,6 +36,7 @@ int main(const int argc, char *argv[]) {
     int skipDirs = 0;
     char *outputFileName = NULL;
     char *outputTmpFileName = NULL;
+    char *addFileName = NULL;
 
     // Array for storing directory paths
     char **directories = NULL;
@@ -43,7 +44,7 @@ int main(const int argc, char *argv[]) {
     int directoryCount = 0;
 
     if (process_arguments(argc, argv, &skipDirs, &sizeThreshold, &outputFileName, &outputTmpFileName, &tmpFileNames,
-                          &directories, &directoryCount) != EXIT_SUCCESS) {
+                          &directories, &directoryCount, &addFileName) != EXIT_SUCCESS) {
         printf("Error processing arguments\n");
         free_directories(&directories);
         free_directories(&tmpFileNames);
@@ -93,7 +94,7 @@ int main(const int argc, char *argv[]) {
 
     free_directories(&directories);
     free_directories(&tmpFileNames);
-    release_temporary_resources(&outputFileName, &outputTmpFileName, NULL);
+    release_temporary_resources(&outputTmpFileName, NULL);
 
     return EXIT_SUCCESS;
 }

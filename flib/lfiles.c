@@ -1219,7 +1219,7 @@ void free_directories(char ***directories) {
  *                             missing required options, or memory allocation failures.
  */
 int process_arguments(const int argc, char **argv, int *skipDirs, long long *sizeThreshold, char **outputFileName, char **outputTmpFileName,
-                      char ***tmpFileNames, char ***directories, int *directoryCount) {
+                      char ***tmpFileNames, char ***directories, int *directoryCount, char **addFileName) {
     *skipDirs = 0; // Default: don't skip directories
     *sizeThreshold = 0; // Default: no size threshold
     *outputFileName = NULL;
@@ -1227,8 +1227,9 @@ int process_arguments(const int argc, char **argv, int *skipDirs, long long *siz
     *directories = NULL;
     *tmpFileNames = NULL;
     *directoryCount = 0;
+    *addFileName = NULL; // For the --add parameter
 
-    // First, process the `-o` option to ensure `*outputFileName` is set
+    // First, process the `-o` and `--add` options
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "-o") == 0) {
             if (i + 1 < argc) {
@@ -1239,33 +1240,54 @@ int process_arguments(const int argc, char **argv, int *skipDirs, long long *siz
                 free_directories(tmpFileNames);
                 return EXIT_FAILURE;
             }
+        } else if (strcmp(argv[i], "--add") == 0) {
+            if (i + 1 < argc) {
+                *addFileName = argv[++i];
+            } else {
+                fprintf(stderr, "File name for --add is missing\n");
+                free_directories(directories);
+                free_directories(tmpFileNames);
+                return EXIT_FAILURE;
+            }
         }
     }
 
-    // Ensure that `-o` (output file name) is provided before proceeding
-    if (*outputFileName == NULL) {
-        fprintf(stderr, "Error: The -o <outputfile> option is required.\n");
-        fprintf(stderr, "Usage: %s <directory_path(s)> [-M maxSizeInMB] [--skip-dirs] -o <outputfile>\n", argv[0]);
+    // Ensure --add and -o are not used simultaneously
+    if (*outputFileName != NULL && *addFileName != NULL) {
+        fprintf(stderr, "Error: --add and -o cannot be used together.\n");
         free_directories(directories);
         free_directories(tmpFileNames);
         return EXIT_FAILURE;
     }
 
-    const size_t outputFileNameLen = strlen(*outputFileName); // Get the length of the original output file name
-    const size_t tmpSuffixLen = strlen(".tmp");              // Length of the ".tmp" suffix
-
-    // Allocate memory for the new string (*outputFileName + ".tmp")
-    *outputTmpFileName = malloc(outputFileNameLen + tmpSuffixLen + 1); // +1 for the null terminator
-    if (*outputTmpFileName == NULL) {
+    // Ensure that `-o` (output file name) is provided before proceeding
+    if (*outputFileName == NULL && *addFileName == NULL) {
+        fprintf(stderr, "Error: The -o <outputfile> option is required.\n");
+        fprintf(stderr, "Usage: %s <directory_path(s)> [-M maxSizeInMB] [--skip-dirs] -o <outputfile>\n", argv[0]);
+        if (argc == 1) {
+            exit(EXIT_FAILURE);
+        }
         free_directories(directories);
         free_directories(tmpFileNames);
-        return EXIT_FAILURE; // Exit on memory allocation failure
+        return EXIT_FAILURE;
     }
-    // Copy the original output file name and append ".tmp"
-    strcpy(*outputTmpFileName, *outputFileName);
-    strcat(*outputTmpFileName, ".tmp");
 
-    // Then, process the remaining arguments
+    // Prepare a temporary output file name if -o is provided
+    if (*outputFileName != NULL) {
+        const size_t outputFileNameLen = strlen(*outputFileName); // Get the length of the original output file name
+        const size_t tmpSuffixLen = strlen(".tmp");              // Length of the ".tmp" suffix
+
+        *outputTmpFileName = malloc(outputFileNameLen + tmpSuffixLen + 1); // +1 for the null terminator
+        if (*outputTmpFileName == NULL) {
+            free_directories(directories);
+            free_directories(tmpFileNames);
+            return EXIT_FAILURE; // Exit on memory allocation failure
+        }
+        strcpy(*outputTmpFileName, *outputFileName);
+        strcat(*outputTmpFileName, ".tmp");
+    }
+
+    // Process remaining arguments
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "--skip-dirs") == 0) {
             *skipDirs = 1; // Enable directory skipping
@@ -1273,7 +1295,7 @@ int process_arguments(const int argc, char **argv, int *skipDirs, long long *siz
             if (i + 1 < argc && isdigit(argv[i + 1][0])) {
                 char *endptr;
                 const double sizeInMB = strtod(argv[++i], &endptr);
-                *sizeThreshold = (long long) (sizeInMB * 1024 * 1024);
+                *sizeThreshold = (long long)(sizeInMB * 1024 * 1024);
             } else {
                 fprintf(stderr, "Invalid or missing size argument after -M\n");
                 free_directories(directories);
@@ -1281,29 +1303,12 @@ int process_arguments(const int argc, char **argv, int *skipDirs, long long *siz
                 release_temporary_resources(outputTmpFileName, NULL);
                 return EXIT_FAILURE;
             }
-        } else if (strcmp(argv[i], "-o") == 0) {
-            // Handle the output file
-            if (i + 1 < argc) {
-                *outputFileName = strdup(argv[++i]); // Copy next argument as output file name
-                if (*outputFileName == NULL) {
-                    perror("Memory allocation failed (output file name)");
-                    free_directories(directories);
-                    free_directories(tmpFileNames);
-                    release_temporary_resources(outputTmpFileName, NULL);
-                    return EXIT_FAILURE;
-                }
-            } else {
-                fprintf(stderr, "Missing argument after -o\n");
-                free_directories(directories);
-                free_directories(tmpFileNames);
-                release_temporary_resources(outputTmpFileName, NULL);
-                return EXIT_FAILURE;
-            }
+        } else if (strcmp(argv[i], "-o") == 0 || strcmp(argv[i], "--add") == 0) {
+            i++; // Skip these since they've already been processed above
         } else if (argv[i][0] != '-') {
             // Treat as a directory path (non-option argument)
             *directories = realloc(*directories, sizeof(char *) * (*directoryCount + 2));
             *tmpFileNames = realloc(*tmpFileNames, sizeof(char *) * (*directoryCount + 2));
-            // +2 for new entry & NULL terminator
             if (*directories == NULL || *tmpFileNames == NULL) {
                 perror("Memory allocation failed");
                 free_directories(directories);
@@ -1324,7 +1329,7 @@ int process_arguments(const int argc, char **argv, int *skipDirs, long long *siz
 
             // Generate a temporary file name
             char tmpFileNameBuffer[256]; // Assumes a max temporary filename size
-            snprintf(tmpFileNameBuffer, sizeof(tmpFileNameBuffer), "%s_tmp%d", *outputFileName, *directoryCount);
+            snprintf(tmpFileNameBuffer, sizeof(tmpFileNameBuffer), "%s_tmp%d", *outputFileName ? *outputFileName : "default", *directoryCount);
             (*tmpFileNames)[*directoryCount] = strdup(tmpFileNameBuffer);
             if ((*tmpFileNames)[*directoryCount] == NULL) {
                 perror("Memory allocation failed (temporary file name)");

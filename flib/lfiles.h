@@ -114,7 +114,7 @@ void resizeEntries(FileEntry **entries, int *count);
 
 void accumulateChildrenAndSize(FileEntry *entries, size_t count);
 
-int process_arguments(int argc, char **argv, int *skipDirs, long long *sizeThreshold, char **outputFileName, char **outputTmpFileName, char ***tmpFileNames, char ***directories, int *directoryCount);
+int process_arguments(int argc, char **argv, int *skipDirs, long long *sizeThreshold, char **outputFileName, char **outputTmpFileName, char ***tmpFileNames, char ***directories, int *directoryCount, char **addFileName);
 
 void initializeFileStatistics(FileStatistics *fileStats);
 
