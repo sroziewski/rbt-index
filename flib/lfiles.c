@@ -688,12 +688,12 @@ void initializeFileEntries(FileEntry *entries, const size_t count) {
     }
 
     for (size_t i = 0; i < count; i++) {
-        entries[i].path[0] = '\0';       // Initialize path to empty
-        entries[i].size = 0;             // Initialize size to 0
-        entries[i].isDir = 0;            // Initialize isDir to false (0)
-        entries[i].isHidden = 0;         // Initialize isHidden to false (0)
-        entries[i].childrenCount = 0;    // Initialize childrenCount to 0
-        entries[i].type[0] = '\0';       // Initialize type to empty
+        entries[i].path[0] = '\0'; // Initialize path to empty
+        entries[i].size = 0; // Initialize size to 0
+        entries[i].isDir = 0; // Initialize isDir to false (0)
+        entries[i].isHidden = 0; // Initialize isHidden to false (0)
+        entries[i].childrenCount = 0; // Initialize childrenCount to 0
+        entries[i].type[0] = '\0'; // Initialize type to empty
     }
 }
 
@@ -1184,41 +1184,37 @@ void free_directories(char ***directories) {
 }
 
 /**
- * Processes command-line arguments to configure program options such as output file names,
- * size thresholds, directory skipping, and directory paths. The function also generates
- * temporary filenames and validates the input arguments.
+ * Processes command-line arguments for a program and initializes configuration parameters.
  *
- * This function ensures that required arguments (e.g., output file) are provided, allocates
- * memory dynamically for directory lists and temporary file names, and handles errors if any
- * arguments are invalid or memory allocation fails.
+ * This function parses the provided command-line arguments to configure settings such as directory
+ * skipping, file size threshold, input directories, output file names, and temporary file names.
+ * It validates the input, ensures necessary options are provided, and handles memory allocation for
+ * storing directory names and temporary file paths. Errors or missing arguments will result in early
+ * termination with appropriate messages.
  *
- * @param argc                 The number of command-line arguments, including the program name.
- * @param argv                 An array of strings representing the command-line arguments.
- * @param skipDirs             A pointer to an integer flag (0 or 1). A value of 1 indicates
- *                             that directories should be skipped during processing.
- * @param sizeThreshold        A pointer to a long long representing the size threshold (in bytes).
- *                             Files smaller than this size will be excluded from processing.
- *                             Default is 0 (no threshold).
- * @param outputFileName       A pointer to a string where the output file name will be stored.
- *                             This value is required and will be extracted from the `-o` option.
- * @param outputTmpFileName    A pointer to a string where the temporary file name (based on the
- *                             output file name) will be stored. The string is dynamically
- *                             allocated and must be freed by the caller.
- * @param tmpFileNames         A pointer to an array of strings where dynamically generated
- *                             temporary file names for directories will be stored. The array
- *                             is NULL-terminated and must be freed by the caller.
- * @param directories          A pointer to an array of strings where the paths of directories
- *                             specified in arguments will be stored. The array is NULL-terminated
- *                             and must be freed by the caller.
- * @param directoryCount       A pointer to an integer tracking the number of directories
- *                             specified in the arguments.
+ * @param argc              The number of command-line arguments.
+ * @param argv              An array of argument strings.
+ * @param skipDirs          A pointer to an integer flag (0 or 1) indicating whether directories should
+ *                           be skipped.
+ * @param sizeThreshold     A pointer to a long long integer specifying the minimum file size (in bytes)
+ *                           for processed files.
+ * @param outputFileName    A pointer to a string that will store the name of the output file, if provided.
+ * @param outputTmpFileName A pointer to a string that will store the name of the temporary output file,
+ *                           if generated.
+ * @param tmpFileNames      A pointer to an array of strings for storing temporary file names for each
+ *                           directory.
+ * @param directories       A pointer to an array of strings for storing the directory paths provided as
+ *                           arguments.
+ * @param directoryCount    A pointer to an integer that tracks the total number of directories processed.
+ * @param addFileName       A pointer to a string that will store the file name provided with the `--add`
+ *                           argument, if present.
  *
- * @return                     Returns `EXIT_SUCCESS` (0) if the arguments are processed
- *                             successfully and all resources are properly allocated.
- *                             Returns `EXIT_FAILURE` (non-zero) in case of invalid arguments,
- *                             missing required options, or memory allocation failures.
+ * @return                  EXIT_SUCCESS (0) if the arguments are successfully processed and resources are
+ *                           initialized. Returns EXIT_FAILURE (non-zero value) if an error occurs during
+ *                           processing or memory allocation.
  */
-int process_arguments(const int argc, char **argv, int *skipDirs, long long *sizeThreshold, char **outputFileName, char **outputTmpFileName,
+int process_arguments(const int argc, char **argv, int *skipDirs, long long *sizeThreshold, char **outputFileName,
+                      char **outputTmpFileName,
                       char ***tmpFileNames, char ***directories, int *directoryCount, char **addFileName) {
     *skipDirs = 0; // Default: don't skip directories
     *sizeThreshold = 0; // Default: no size threshold
@@ -1273,9 +1269,26 @@ int process_arguments(const int argc, char **argv, int *skipDirs, long long *siz
     }
 
     // Prepare a temporary output file name if -o is provided
+    if (*addFileName != NULL) {
+        const size_t outputFileNameLen = strlen(*addFileName); // Get the length of the original output file name
+        const size_t tmpSuffixLen = strlen(".tmp"); // Length of the ".tmp" suffix
+
+        *outputTmpFileName = malloc(outputFileNameLen + tmpSuffixLen + 1); // +1 for the null terminator
+        *outputFileName = malloc(outputFileNameLen + tmpSuffixLen + 1); // +1 for the null terminator
+        if (*outputTmpFileName == NULL) {
+            free_directories(directories);
+            free_directories(tmpFileNames);
+            return EXIT_FAILURE; // Exit on memory allocation failure
+        }
+        strcpy(*outputFileName, *addFileName);
+        strcat(*outputFileName, ".tmp");
+        strcpy(*outputTmpFileName, *addFileName);
+        strcat(*outputTmpFileName, ".tmp.tmp");
+    }
+
     if (*outputFileName != NULL) {
         const size_t outputFileNameLen = strlen(*outputFileName); // Get the length of the original output file name
-        const size_t tmpSuffixLen = strlen(".tmp");              // Length of the ".tmp" suffix
+        const size_t tmpSuffixLen = strlen(".tmp"); // Length of the ".tmp" suffix
 
         *outputTmpFileName = malloc(outputFileNameLen + tmpSuffixLen + 1); // +1 for the null terminator
         if (*outputTmpFileName == NULL) {
@@ -1295,7 +1308,7 @@ int process_arguments(const int argc, char **argv, int *skipDirs, long long *siz
             if (i + 1 < argc && isdigit(argv[i + 1][0])) {
                 char *endptr;
                 const double sizeInMB = strtod(argv[++i], &endptr);
-                *sizeThreshold = (long long)(sizeInMB * 1024 * 1024);
+                *sizeThreshold = (long long) (sizeInMB * 1024 * 1024);
             } else {
                 fprintf(stderr, "Invalid or missing size argument after -M\n");
                 free_directories(directories);
@@ -1303,9 +1316,27 @@ int process_arguments(const int argc, char **argv, int *skipDirs, long long *siz
                 release_temporary_resources(outputTmpFileName, NULL);
                 return EXIT_FAILURE;
             }
-        } else if (strcmp(argv[i], "-o") == 0 || strcmp(argv[i], "--add") == 0) {
-            i++; // Skip these since they've already been processed above
-        } else if (argv[i][0] != '-') {
+        }
+        else if (strcmp(argv[i], "-o") == 0) {
+            // Handle the output file
+            if (i + 1 < argc) {
+                *outputFileName = strdup(argv[++i]); // Copy next argument as output file name
+                if (*outputFileName == NULL) {
+                    perror("Memory allocation failed (output file name)");
+                    free_directories(directories);
+                    free_directories(tmpFileNames);
+                    release_temporary_resources(outputTmpFileName, NULL);
+                    return EXIT_FAILURE;
+                }
+            } else {
+                fprintf(stderr, "Missing argument after -o\n");
+                free_directories(directories);
+                free_directories(tmpFileNames);
+                release_temporary_resources(outputTmpFileName, NULL);
+                return EXIT_FAILURE;
+            }
+        }
+        else if (argv[i][0] != '-' && strcmp(argv[i - 1], "--add") != 0) {
             // Treat as a directory path (non-option argument)
             *directories = realloc(*directories, sizeof(char *) * (*directoryCount + 2));
             *tmpFileNames = realloc(*tmpFileNames, sizeof(char *) * (*directoryCount + 2));
@@ -1329,7 +1360,8 @@ int process_arguments(const int argc, char **argv, int *skipDirs, long long *siz
 
             // Generate a temporary file name
             char tmpFileNameBuffer[256]; // Assumes a max temporary filename size
-            snprintf(tmpFileNameBuffer, sizeof(tmpFileNameBuffer), "%s_tmp%d", *outputFileName ? *outputFileName : "default", *directoryCount);
+            snprintf(tmpFileNameBuffer, sizeof(tmpFileNameBuffer), "%s_tmp%d",
+                     *addFileName ? *addFileName : (*outputFileName ? *outputFileName : "default"), *directoryCount);
             (*tmpFileNames)[*directoryCount] = strdup(tmpFileNameBuffer);
             if ((*tmpFileNames)[*directoryCount] == NULL) {
                 perror("Memory allocation failed (temporary file name)");
@@ -1342,6 +1374,9 @@ int process_arguments(const int argc, char **argv, int *skipDirs, long long *siz
             // Increment directory count and terminate both arrays
             (*directories)[++(*directoryCount)] = NULL;
             (*tmpFileNames)[*directoryCount] = NULL;
+        }
+        else if (strcmp(argv[i - 1], "--add") == 0 || strcmp(argv[i], "--add") == 0) {
+            // do nothing here
         } else {
             // Unknown option
             fprintf(stderr, "Unknown option: %s\n", argv[i]);
@@ -1426,7 +1461,8 @@ void printFileStatistics(const FileStatistics fileStats) {
     free(file_size_as_string);
 }
 
-int sort_and_write_results_to_file(char *tmpFileName, char *outputFileName, int *totalCount, int count, FileEntry *entries, const int acc) {
+int sort_and_write_results_to_file(char *tmpFileName, char *outputFileName, int *totalCount, int count,
+                                   FileEntry *entries, const int acc) {
     // Sorting and writing results to file
     if (count < INITIAL_ENTRIES_CAPACITY) {
         qsort(entries, count, sizeof(FileEntry), compareFileEntries);
@@ -1512,24 +1548,29 @@ int processDirectoryTask(FileStatistics *fileStats, const char *directory, char 
 }
 
 /**
- * Appends the contents of a temporary file to a specified output file.
+ * Appends the contents of a temporary file to an output file, and counts the total number of
+ * lines in the output file after the operation is completed.
  *
- * This function opens the temporary file in read mode and the output file
- * in append mode. It reads the temporary file's contents into a buffer and
- * writes them to the output file. Both files are closed after the operation
- * is complete. If an error occurs, the function ensures any opened file
- * is properly closed before returning an error status.
+ * This function opens an output file in append mode and a temporary file in read mode. If the
+ * temporary file is empty, no changes are made to the output file and the function concludes
+ * successfully. Otherwise, it reads the contents of the temporary file in chunks, writing them
+ * to the output file. After appending, the output file is reopened in read mode to count the
+ * number of newline characters, updating the total line count.
  *
- * @param tmpFileName The path to the temporary file whose contents are to
- *                    be appended.
- * @param outputFileName The path to the output file to which the contents
- *                       will be appended. The file is created if it does
- *                       not already exist.
+ * Any errors during file operations, such as opening, reading, or writing, result in appropriate
+ * error messages being displayed, and the function exits with a failure status.
  *
- * @return EXIT_SUCCESS (0) if the operation succeeded, or EXIT_FAILURE (1)
- *         if an error occurred while opening or processing the files.
+ * @param tmpFileName     The path to the temporary file whose content will be appended to the
+ *                        output file.
+ * @param outputFileName  The path to the output file, which will be created if it does not exist
+ *                        and appended to if it does.
+ * @param totalCount      A pointer to an integer that will be updated with the total number of
+ *                        lines in the output file after appending.
+ *
+ * @return                Returns EXIT_SUCCESS (0) on successful operation, or EXIT_FAILURE (non-zero)
+ *                        if any file operation fails.
  */
-int append_file(const char *tmpFileName, const char *outputFileName) {
+int append_file(const char *tmpFileName, const char *outputFileName, int *totalCount) {
     // Open the output file in append mode (create it if it doesn't exist)
     FILE *outputFile = fopen(outputFileName, "a");
     if (!outputFile) {
@@ -1564,6 +1605,23 @@ int append_file(const char *tmpFileName, const char *outputFileName) {
     // Clean up: Close both files
     fclose(tmpFile);
     fclose(outputFile);
+
+    // Now, count the number of lines in the output file
+    FILE *outputFileForCounting = fopen(outputFileName, "r");
+    if (!outputFileForCounting) {
+        perror("Error opening output file for counting");
+        return EXIT_FAILURE;
+    }
+
+    int lineCount = 0;
+    char c;
+    while ((c = (char) fgetc(outputFileForCounting)) != EOF) {
+        if (c == '\n') {
+            lineCount++;
+        }
+    }
+    fclose(outputFileForCounting);
+    *totalCount = lineCount;
 
     return EXIT_SUCCESS;
 }
@@ -1673,15 +1731,15 @@ int remove_duplicates(const char *inputFileName, const char *outputFileName) {
         return EXIT_FAILURE;
     }
 
-    char prevLine[MAX_LINE_LENGTH] = "";  // Store the previous line for duplicate check
-    char currLine[MAX_LINE_LENGTH];      // Store the current line being read
+    char prevLine[MAX_LINE_LENGTH] = ""; // Store the previous line for duplicate check
+    char currLine[MAX_LINE_LENGTH]; // Store the current line being read
 
     // Read through each line of the input file
     while (fgets(currLine, sizeof(currLine), inputFile) != NULL) {
         // If the current line is different from the previous line, write it to the output file
         if (strcmp(currLine, prevLine) != 0) {
-            fputs(currLine, outputFile);  // Write the unique line to the output file
-            strcpy(prevLine, currLine);  // Update the previous line
+            fputs(currLine, outputFile); // Write the unique line to the output file
+            strcpy(prevLine, currLine); // Update the previous line
         }
     }
     // Close files
@@ -1734,4 +1792,3 @@ int copy_file(const char *inputFileName, const char *outputFileName) {
 double get_time_difference(const struct timeval start, const struct timeval end) {
     return (end.tv_sec - start.tv_sec) + (end.tv_usec - start.tv_usec) / 1000000.0;
 }
-

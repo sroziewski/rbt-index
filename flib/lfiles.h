@@ -122,7 +122,7 @@ void printFileStatistics(FileStatistics fileStats);
 
 int processDirectoryTask(FileStatistics *fileStats, const char *directory, char *outputFileName, char *tmpFileName, long long sizeThreshold, int skipDirs, int *totalCount);
 
-int append_file(const char *tmpFileName, const char *outputFileName);
+int append_file(const char *tmpFileName, const char *outputFileName, int *totalCount);
 
 FileStatistics addFileStatistics(const FileStatistics *a, const FileStatistics *b);
 
