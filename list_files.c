@@ -63,7 +63,8 @@ int main(const int argc, char *argv[]) {
 
         FileStatistics currentFileStats = {0}; // Initialize all fields to 0
         int currentCount = 0;
-        if (processDirectoryTask(&currentFileStats, directories[i], outputFileName, tmpFileNames[i], sizeThreshold, skipDirs, &currentCount) != EXIT_SUCCESS) {
+        if (processDirectoryTask(&currentFileStats, directories[i], outputFileName, tmpFileNames[i], sizeThreshold,
+                                 skipDirs, &currentCount) != EXIT_SUCCESS) {
             fprintf(stderr, "An error occurred while processing directory: %s\n", directories[i]);
         }
         fileStats = addFileStatistics(&fileStats, &currentFileStats);
@@ -105,9 +106,13 @@ int main(const int argc, char *argv[]) {
         copy_file(outputFileName, outputTmpFileName);
         remove_duplicates(outputTmpFileName, addFileName);
     }
+    if (directoryCount > 1 || addFileName != NULL) {
+        compute_file_statistics(entries, totalCount, &fileStats);
+    }
+    printFileStatistics(fileStats);
 
     // printToStdOut(entries, totalOutputCount);
-    printFileStatistics(fileStats);
+    // printFileStatistics(fileStats);
 
     free_directories(&directories);
     free_directories(&tmpFileNames);

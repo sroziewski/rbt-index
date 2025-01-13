@@ -1792,3 +1792,113 @@ int copy_file(const char *inputFileName, const char *outputFileName) {
 double get_time_difference(const struct timeval start, const struct timeval end) {
     return (end.tv_sec - start.tv_sec) + (end.tv_usec - start.tv_usec) / 1000000.0;
 }
+
+void compute_file_statistics(const FileEntry *entries, const int count, FileStatistics *stats) {
+    // Initialize all statistics to 0
+    memset(stats, 0, sizeof(FileStatistics));
+
+    for (int i = 0; i < count; i++) {
+        const FileEntry *entry = &entries[i];
+
+        // Update global statistics
+        stats->totalSize += entry->size;
+        if (entry->isDir) {
+            stats->totalDirs++;
+        } else {
+            stats->totalFiles++;
+        }
+
+        // File type counters using string comparison
+        if (entry->isHidden) {
+            stats->hiddenFiles++;
+            stats->hiddenSize += entry->size;
+        } else if (strcmp(entry->type, "T_TEXT") == 0) {
+            stats->textFiles++;
+            stats->textSize += entry->size;
+        } else if (strcmp(entry->type, "T_MUSIC") == 0) {
+            stats->musicFiles++;
+            stats->musicSize += entry->size;
+        } else if (strcmp(entry->type, "T_FILM") == 0) {
+            stats->filmFiles++;
+            stats->filmSize += entry->size;
+        } else if (strcmp(entry->type, "T_IMAGE") == 0) {
+            stats->imageFiles++;
+            stats->imageSize += entry->size;
+        } else if (strcmp(entry->type, "T_BINARY") == 0) {
+            stats->binaryFiles++;
+            stats->binarySize += entry->size;
+        } else if (strcmp(entry->type, "T_COMPRESSED") == 0) {
+            stats->compressedFiles++;
+            stats->compressedSize += entry->size;
+        } else if (strcmp(entry->type, "T_TEX") == 0) {
+            stats->texFiles++;
+            stats->texSize += entry->size;
+        } else if (strcmp(entry->type, "T_JSON") == 0) {
+            stats->jsonFiles++;
+            stats->jsonSize += entry->size;
+        } else if (strcmp(entry->type, "T_YAML") == 0) {
+            stats->yamlFiles++;
+            stats->yamlSize += entry->size;
+        } else if (strcmp(entry->type, "T_EXE") == 0) {
+            stats->exeFiles++;
+            stats->exeSize += entry->size;
+        } else if (strcmp(entry->type, "T_TEMPLATE") == 0) {
+            stats->templateFiles++;
+            stats->templateSize += entry->size;
+        } else if (strcmp(entry->type, "T_PDF") == 0) {
+            stats->pdfFiles++;
+            stats->pdfSize += entry->size;
+        } else if (strcmp(entry->type, "T_JAR") == 0) {
+            stats->jarFiles++;
+            stats->jarSize += entry->size;
+        } else if (strcmp(entry->type, "T_HTML") == 0) {
+            stats->htmlFiles++;
+            stats->htmlSize += entry->size;
+        } else if (strcmp(entry->type, "T_XHTML") == 0) {
+            stats->xhtmlFiles++;
+            stats->xhtmlSize += entry->size;
+        } else if (strcmp(entry->type, "T_XML") == 0) {
+            stats->xmlFiles++;
+            stats->xmlSize += entry->size;
+        } else if (strcmp(entry->type, "T_TS") == 0) {
+            stats->tsFiles++;
+            stats->tsSize += entry->size;
+        } else if (strcmp(entry->type, "T_JS") == 0) {
+            stats->jsFiles++;
+            stats->jsSize += entry->size;
+        } else if (strcmp(entry->type, "T_C") == 0) {
+            stats->cFiles++;
+            stats->cSize += entry->size;
+        } else if (strcmp(entry->type, "T_PYTHON") == 0) {
+            stats->pythonFiles++;
+            stats->pythonSize += entry->size;
+        } else if (strcmp(entry->type, "T_JAVA") == 0) {
+            stats->javaFiles++;
+            stats->javaSize += entry->size;
+        } else if (strcmp(entry->type, "T_PACKAGE") == 0) {
+            stats->packageFiles++;
+            stats->packageSize += entry->size;
+        } else if (strcmp(entry->type, "T_LOG") == 0) {
+            stats->logFiles++;
+            stats->logSize += entry->size;
+        } else if (strcmp(entry->type, "T_CLASS") == 0) {
+            stats->classFiles++;
+            stats->classSize += entry->size;
+        } else if (strcmp(entry->type, "T_DOC") == 0) {
+            stats->docFiles++;
+            stats->docSize += entry->size;
+        } else if (strcmp(entry->type, "T_CALC") == 0) {
+            stats->calcFiles++;
+            stats->calcSize += entry->size;
+        } else if (strcmp(entry->type, "T_SQL") == 0) {
+            stats->sqlFiles++;
+            stats->sqlSize += entry->size;
+        } else if (strcmp(entry->type, "T_CSV") == 0) {
+            stats->csvFiles++;
+            stats->csvSize += entry->size;
+        } else if (strcmp(entry->type, "T_CSS") == 0) {
+            stats->cssFiles++;
+            stats->cssSize += entry->size;
+        }
+    }
+}
