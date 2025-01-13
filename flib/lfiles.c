@@ -1058,9 +1058,9 @@ void printToStdOut(FileEntry *entries, const int count) {
  *                 of the file to be deleted. If `filename` is NULL or invalid,
  *                 the behavior is undefined.
  */
-void deleteFile(char *filename) {
+void deleteFile(const char *filename) {
     const int result = remove(filename);
-    free(filename);
+    // free(filename);
     if (result != 0) {
         perror("Failed to delete the file");
     }

@@ -73,21 +73,21 @@ int main(const int argc, char *argv[]) {
         double elapsed = get_time_difference(start, end);
         fprintf(stdout, "Time taken to process directory '%s': %.1f seconds\n", directories[i], elapsed);
     }
+    deleteFile(outputFileName);
     for (int i = 0; directories[i] != NULL && i < argc - 2; i++) {
         if (append_file(tmpFileNames[i], outputFileName) != EXIT_SUCCESS) {
             fprintf(stderr, "Failed to append file %s to %s\n", tmpFileNames[i], outputFileName);
         }
     }
-
-    FileEntry *entries = malloc(totalCount * sizeof(FileEntry));
-    int totalOutputCount = 0;
-    read_entries(outputFileName, &entries, totalCount, &totalOutputCount);
-
-    sort_and_write_results_to_file(outputTmpFileName, outputFileName, &totalOutputCount, totalOutputCount, entries,
-                                   false);
-    copy_file(outputFileName, outputTmpFileName);
-    remove_duplicates(outputTmpFileName, outputFileName);
-
+    if (directoryCount > 1) {
+        FileEntry *entries = malloc(totalCount * sizeof(FileEntry));
+        int totalOutputCount = 0;
+        read_entries(outputFileName, &entries, totalCount, &totalOutputCount);
+        sort_and_write_results_to_file(outputTmpFileName, outputFileName, &totalOutputCount, totalOutputCount, entries,
+                                       false);
+        copy_file(outputFileName, outputTmpFileName);
+        remove_duplicates(outputTmpFileName, outputFileName);
+    }
     // printToStdOut(entries, totalOutputCount);
     printFileStatistics(fileStats);
 
