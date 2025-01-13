@@ -1483,7 +1483,7 @@ int processDirectoryTask(FileStatistics *fileStats, const char *directory, char 
     sort_and_write_results_to_file(outputFileName, tmpFileName, totalCount, count, entries, true);
 
     freeQueue(&taskQueue);
-    free(entries);
+    // free(entries);
 
     return EXIT_SUCCESS;
 }
