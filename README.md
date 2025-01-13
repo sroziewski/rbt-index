@@ -1,118 +1,93 @@
-# **Red-Black Tree File Indexer**
-This project implements a **Red-Black Tree-based File Indexing System** in **C**. The program parses file data, stores it in a Red-Black Tree for sorted management, and allows serialization and deserialization of the tree to/from files or shared memory.
-## **Features**
-1. **Red-Black Tree Implementation**:
-    - Insert and manage file data in a sorted manner using a Red-Black Tree.
-    - Each node represents a file's information (filename, size, path, and type).
+## Project Overview
+This project implements a set of programs to create, maintain, and search red-black trees (RBT). Each program serves a specific purpose, such as creating red-black trees based on filenames or file sizes, performing searches within the trees, and listing files.
+### Programs in This Project:
+1. **rbt_name_create.c**
+   A program to create a red-black tree using filenames as keys.
+2. **rbt_size_create.c**
+   A program to create a red-black tree using file sizes as keys.
+3. **rbt_search.c**
+   A program for searching red-black trees based on a name or type pattern.
+4. **list_files.c**
+   A utility program to list files in directories.
 
-2. **File Serialization**:
-    - Serialize the Red-Black Tree to a binary file for persistent storage.
-    - Files are saved with a custom `.rbt` extension.
+## File Descriptions
+### **1. rbt_name_create.c**
+The `rbt_name_create.c` program is used to create a red-black tree where filenames are the keys. The program utilizes a filename comparator (`strcmp`) to ensure proper ordering in the tree.
+- **Key Features**:
+   - Reads input arguments to initialize and populate the red-black tree.
+   - Uses `createRbt` and `insert_filename` functions to construct the tree.
+   - Stores the tree in shared memory with the prefix `"shared_memory_fname_"`.
 
-3. **File Deserialization**:
-    - Load a previously serialized Red-Black Tree from binary files.
+- **Relevant Function**:
+   - `main()`:
+      - Serves as the entry point to the program.
+      - Calls `createRbt()` with filename-specific parameters to populate the red-black tree.
 
-4. **Shared Memory**:
-    - Write the Red-Black Tree structure to shared memory for inter-process communication.
+### **2. rbt_size_create.c**
+The `rbt_size_create.c` program implements functionality to create a red-black tree using file sizes as keys. It defines a numeric comparator to handle ordering by file size.
+- **Key Features**:
+   - Initializes the program with input arguments and creates the RBT.
+   - Uses `createRbt` and `insert_filesize` functions to construct the tree.
+   - Stores the tree in shared memory with the prefix `"shared_memory_fsize_"`.
 
-5. **Command-Line Interface**:
-    - Load: `--load <file>`
-    - Store: `--store`
+- **Relevant Function**:
+   - `main()`:
+      - Acts as the starting point for creating the tree.
+      - Calls `createRbt()` with file size as the sorting key.
 
-6. **Built-in Memory Management**:
-    - Includes utility functions to free all memory used by the Red-Black Tree.
+### **3. rbt_search.c**
+The `rbt_search.c` program allows for advanced searching of red-black trees. It supports searching nodes by filename patterns or file types.
+- **Key Features**:
+   - Implements multithreaded search functionality with thread synchronization.
+   - Supports search functions for name (`search_tree_for_name_and_type`) and type.
+   - Allows users to search the tree while utilizing a thread pool for concurrent operations.
 
-## **Project Structure**
-``` 
-rbt_index/
-├── main.c                   # Main program entry point
-├── red_black_tree.c         # Core Red-Black Tree implementation
-├── serialization.c          # Serialization and deserialization functions
-├── shared_memory.c          # Shared memory operations
-├── utils.c                  # Utility functions (e.g., string management)
-├── CMakeLists.txt           # Build configuration for CMake
-└── README.md                # Project documentation
-```
-## **Requirements**
-- **Operating System**: Linux (tested on Ubuntu). Shared memory features may be OS-dependent.
-- **Development Tools**:
-    - GCC or Clang (for compiling C code)
-    - `make` and `cmake` (for the build system)
+- **Important Functions**:
+   - `void search_tree_for_name_and_type(Node *root, const char *namePattern, const char *targetType)`: Performs a search operation on the tree using specific patterns for filenames and file types.
+   - `void initialize_threads()`: Initializes threading structures.
+   - `int main(int argc, char *argv[])`: Coordinates program initialization and execution of the search functionality.
 
-- **Libraries**: None required (uses standard C libraries)
-- Tested IDE: IntelliJ or Clion.
+### **4. list_files.c**
+The `list_files.c` program is a utility to list files in a directory structure. It interacts with the tree creation and management programs to list relevant files.
+- **Relevant Function**:
+   - `int main(const int argc, char *argv[])`: The starting point of the program, responsible for parsing arguments and listing files.
 
-## **Setup and Build Instructions**
-1. **Clone the Repository**:
+## Compilation
+Use a build system of your choice to compile the project. Ensure the required C standard libraries are included in your system.
+For example, using `gcc`:
 ``` sh
-   git clone https://github.com/your-username/rbt_index.git
-   cd rbt_index
+gcc rbt_name_create.c -o rbt_name_create
+gcc rbt_size_create.c -o rbt_size_create
+gcc rbt_search.c -o rbt_search -pthread
+gcc list_files.c -o list_files
 ```
-1. **Build the Project**:
+## Usage
+Below is an example of how to use each program:
+### **1. rbt_name_create**
 ``` sh
-   mkdir build
-   cd build
-   cmake ..
-   make
+./rbt_name_create [arguments]
 ```
-1. **Run the Program**:
+Creates a red-black tree where filenames are used as keys and stores it in shared memory.
+### **2. rbt_size_create**
 ``` sh
-   ./rbt_index <file> [--store] [--load filename]
+./rbt_size_create [arguments]
 ```
-## **Usage**
-### **Command-Line Arguments**:
-1. **Load a Tree from a File**:
+Creates a red-black tree where file sizes are used as keys and stores it in shared memory.
+### **3. rbt_search**
 ``` sh
-      ./rbt_index --load mytree.rbt
+./rbt_search [arguments]
 ```
-1. **Store Tree to a File**: After processing input, save the Red-Black Tree to a file:
+Searches the red-black tree for specific patterns or types. Use appropriate command-line arguments to specify the target tree and search parameters.
+### **4. list_files**
 ``` sh
-      ./rbt_index input_file.txt --store
+./list_files [arguments]
 ```
-1. **Default Behavior (In-Memory Processing)**: Processes input and stores the Red-Black Tree in shared memory.
-``` sh
-      ./rbt_index input_file.txt
-```
-## **File Input Format**
-Input file data must have the following format for each line:
-``` 
-<filepath><SEP><filesize><SEP><filetype>
-```
-- `<SEP>` = delimiter between values (`<SEP>` can be customized in the code).
-- **Example**:
-``` 
-  /path/to/file1<SEP>12345<SEP>text/plain
-  /path/to/file2<SEP>67890<SEP>image/png
-```
-## **How It Works**
-1. **File Parsing**:
-    - Reads file data from the given input text file.
-    - Parses and extracts `filepath`, `filesize`, and `filetype`.
+Lists files in a directory based on the supplied arguments.
+## Multithreading in rbt_search
+The program `rbt_search.c` leverages multithreading for improved performance when searching the red-black tree. It uses:
+- Synchronization via `PTHREAD_MUTEX_INITIALIZER`.
+- A global thread counter to manage active threads.
 
-2. **Red-Black Tree Insertion**:
-    - Inserts these extracted values into the Red-Black Tree.
-    - Nodes are sorted by filenames to maintain order.
-
-3. **Serialization/Deserialization**:
-    - Serialize the Red-Black Tree into a binary file for storage.
-    - Deserialize it back into memory when needed.
-
-4. **Shared Memory**:
-    - Writes serialized tree data to a shared memory segment for inter-process communication.
-
-## **Contributing**
-Contributions are welcome! If you'd like to contribute:
-1. Fork the repository.
-2. Create a new feature branch:
-``` sh
-   git checkout -b feature-name
-```
-1. Commit your changes:
-``` sh
-   git commit -m "Describe the feature"
-```
-1. Push the branch:
-``` sh
-   git push origin feature-name
-```
-1. Open a Pull Request on GitHub.
+## Notes
+- Ensure the input arguments are valid and match the expected format for each function.
+- The shared memory prefixes (`shared_memory_fname_` and `shared_memory_fsize_`) allow for organized tree storage.
