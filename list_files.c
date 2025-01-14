@@ -54,20 +54,17 @@ int main(const int argc, char *argv[]) {
     omp_set_num_threads(numCores);
     fprintf(stdout, "Using %d cores.\n", numCores);
     int totalCount = 0;
-    FileStatistics fileStats = {0};
     for (int i = 0; directories[i] != NULL && i < argc - 2; i++) {
         fprintf(stdout, "\nProcessing directory: %s\n", directories[i]);
         // Start Timer
         struct timeval start, end;
         gettimeofday(&start, NULL);
 
-        FileStatistics currentFileStats = {0}; // Initialize all fields to 0
         int currentCount = 0;
-        if (processDirectoryTask(&currentFileStats, directories[i], outputFileName, tmpFileNames[i], sizeThreshold,
+        if (processDirectoryTask(directories[i], outputFileName, tmpFileNames[i], sizeThreshold,
                                  skipDirs, &currentCount) != EXIT_SUCCESS) {
             fprintf(stderr, "An error occurred while processing directory: %s\n", directories[i]);
         }
-        fileStats = addFileStatistics(&fileStats, &currentFileStats);
         totalCount += currentCount;
         // End Timer
         gettimeofday(&end, NULL);
@@ -107,6 +104,7 @@ int main(const int argc, char *argv[]) {
         remove_duplicates(outputTmpFileName, addFileName);
     }
     read_entries(outputFileName, &entries, totalCount, &totalCount);
+    FileStatistics fileStats;
     compute_file_statistics(entries, totalCount, &fileStats, directories);
 
     printFileStatistics(fileStats);

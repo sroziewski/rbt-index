@@ -261,7 +261,7 @@ char *getFileName(const char *path) {
 int compareFileEntries(const void *a, const void *b) {
     const FileEntry *entryA = (FileEntry *) a;
     const FileEntry *entryB = (FileEntry *) b;
-    return strcasecmp(entryA->path, entryB->path); // Case-insensitive comparison
+    return strcmp(entryA->path, entryB->path); // Case-sensitive comparison
 }
 
 void initQueue(TaskQueue *queue, const int capacity) {
@@ -354,15 +354,12 @@ int findEntryIndexAdded(const FileEntry *entries, const int count, const char *p
  * @param capacity       A pointer to an integer representing the current capacity of the
  *                       `entries` array. The array is resized by multiplying its size by
  *                       RESIZE_FACTOR whenever more capacity is needed.
- * @param fileStats      A pointer to a FileStatistics structure that is updated as files and
- *                       directories are processed. This structure tracks various counts and
- *                       sizes of files, directories, and file categories.
  * @param sizeThreshold  The minimum file size (in bytes) for files to be included in the
  *                       `entries` array and statistics.
  * @param skipDirs       An integer flag (0 or 1) to determine whether directories should be
  *                       included in the `entries` array and counted in statistics.
  */
-void processDirectory(TaskQueue *taskQueue, FileEntry **entries, int *count, int *capacity, FileStatistics *fileStats,
+void processDirectory(TaskQueue *taskQueue, FileEntry **entries, int *count, int *capacity,
                       const long long sizeThreshold, const int skipDirs) {
     char **dirEntries = malloc(INITIAL_CAPACITY * sizeof(char *));
     if (!dirEntries) {
@@ -391,9 +388,6 @@ void processDirectory(TaskQueue *taskQueue, FileEntry **entries, int *count, int
             free(currentPath);
             continue;
         }
-
-#pragma omp atomic
-        fileStats->totalDirs++;
 
         int childrenCount = 0; // Count files and directories for the current directory
         while ((entry = readdir(dp)) != NULL) {
@@ -476,165 +470,6 @@ void processDirectory(TaskQueue *taskQueue, FileEntry **entries, int *count, int
                                     (*entries)[current].childrenCount = 0; // Files don't have children
                                     snprintf((*entries)[current].type, sizeof((*entries)[current].type), "%s",
                                              getFileTypeCategory(mimeType, fullPath));
-                                }
-#pragma omp atomic
-                                fileStats->totalSize += fileStat.st_size;
-
-#pragma omp atomic
-                                fileStats->totalFiles++;
-
-                                const char *fileType = getFileTypeCategory(mimeType, fullPath);
-                                if (dirEntries[i][0] == '.') {
-#pragma omp atomic
-                                    fileStats->hiddenFiles++;
-#pragma omp atomic
-                                    fileStats->hiddenFilesSize += fileStat.st_size;
-                                }
-                                if (strcmp(fileType, "T_TEXT") == 0) {
-#pragma omp atomic
-                                    fileStats->textFiles++;
-#pragma omp atomic
-                                    fileStats->textSize += fileStat.st_size;
-                                } else if (strcmp(fileType, "T_JSON") == 0) {
-#pragma omp atomic
-                                    fileStats->jsonFiles++;
-#pragma omp atomic
-                                    fileStats->jsonSize += fileStat.st_size;
-                                } else if (strcmp(fileType, "T_AUDIO") == 0) {
-#pragma omp atomic
-                                    fileStats->musicFiles++;
-#pragma omp atomic
-                                    fileStats->musicSize += fileStat.st_size;
-                                } else if (strcmp(fileType, "T_FILM") == 0) {
-#pragma omp atomic
-                                    fileStats->filmFiles++;
-#pragma omp atomic
-                                    fileStats->filmSize += fileStat.st_size;
-                                } else if (strcmp(fileType, "T_IMAGE") == 0) {
-#pragma omp atomic
-                                    fileStats->imageFiles++;
-#pragma omp atomic
-                                    fileStats->imageSize += fileStat.st_size;
-                                } else if (strcmp(fileType, "T_COMPRESSED") == 0) {
-#pragma omp atomic
-                                    fileStats->compressedFiles++;
-#pragma omp atomic
-                                    fileStats->compressedSize += fileStat.st_size;
-                                } else if (strcmp(fileType, "T_YAML") == 0) {
-#pragma omp atomic
-                                    fileStats->yamlFiles++;
-#pragma omp atomic
-                                    fileStats->yamlSize += fileStat.st_size;
-                                } else if (strcmp(fileType, "T_EXE") == 0) {
-#pragma omp atomic
-                                    fileStats->exeFiles++;
-#pragma omp atomic
-                                    fileStats->exeSize += fileStat.st_size;
-                                } else if (strcmp(fileType, "T_C") == 0) {
-#pragma omp atomic
-                                    fileStats->cFiles++;
-#pragma omp atomic
-                                    fileStats->cSize += fileStat.st_size;
-                                } else if (strcmp(fileType, "T_PYTHON") == 0) {
-#pragma omp atomic
-                                    fileStats->pythonFiles++;
-#pragma omp atomic
-                                    fileStats->pythonSize += fileStat.st_size;
-                                } else if (strcmp(fileType, "T_JAVA") == 0) {
-#pragma omp atomic
-                                    fileStats->javaFiles++;
-#pragma omp atomic
-                                    fileStats->javaSize += fileStat.st_size;
-                                } else if (strcmp(fileType, "T_LOG") == 0) {
-#pragma omp atomic
-                                    fileStats->logFiles++;
-#pragma omp atomic
-                                    fileStats->logSize += fileStat.st_size;
-                                } else if (strcmp(fileType, "T_PACKAGE") == 0) {
-#pragma omp atomic
-                                    fileStats->packageFiles++;
-#pragma omp atomic
-                                    fileStats->packageSize += fileStat.st_size;
-                                } else if (strcmp(fileType, "T_CLASS") == 0) {
-#pragma omp atomic
-                                    fileStats->classFiles++;
-#pragma omp atomic
-                                    fileStats->classSize += fileStat.st_size;
-                                } else if (strcmp(fileType, "T_TEMPLATE") == 0) {
-#pragma omp atomic
-                                    fileStats->templateFiles++;
-#pragma omp atomic
-                                    fileStats->templateSize += fileStat.st_size;
-                                } else if (strcmp(fileType, "T_PDF") == 0) {
-#pragma omp atomic
-                                    fileStats->pdfFiles++;
-#pragma omp atomic
-                                    fileStats->pdfSize += fileStat.st_size;
-                                } else if (strcmp(fileType, "T_JAR") == 0) {
-#pragma omp atomic
-                                    fileStats->jarFiles++;
-#pragma omp atomic
-                                    fileStats->jarSize += fileStat.st_size;
-                                } else if (strcmp(fileType, "T_HTML") == 0) {
-#pragma omp atomic
-                                    fileStats->htmlFiles++;
-#pragma omp atomic
-                                    fileStats->htmlSize += fileStat.st_size;
-                                } else if (strcmp(fileType, "T_XML") == 0) {
-#pragma omp atomic
-                                    fileStats->xmlFiles++;
-#pragma omp atomic
-                                    fileStats->xmlSize += fileStat.st_size;
-                                } else if (strcmp(fileType, "T_XHTML") == 0) {
-#pragma omp atomic
-                                    fileStats->xhtmlFiles++;
-#pragma omp atomic
-                                    fileStats->xhtmlSize += fileStat.st_size;
-                                } else if (strcmp(fileType, "T_TS") == 0) {
-#pragma omp atomic
-                                    fileStats->tsFiles++;
-#pragma omp atomic
-                                    fileStats->tsSize += fileStat.st_size;
-                                } else if (strcmp(fileType, "T_JS") == 0) {
-#pragma omp atomic
-                                    fileStats->jarFiles++;
-#pragma omp atomic
-                                    fileStats->jarSize += fileStat.st_size;
-                                } else if (strcmp(fileType, "T_DOC") == 0) {
-#pragma omp atomic
-                                    fileStats->docFiles++;
-#pragma omp atomic
-                                    fileStats->docSize += fileStat.st_size;
-                                } else if (strcmp(fileType, "T_CALC") == 0) {
-#pragma omp atomic
-                                    fileStats->calcFiles++;
-#pragma omp atomic
-                                    fileStats->calcSize += fileStat.st_size;
-                                } else if (strcmp(fileType, "T_LATEX") == 0) {
-#pragma omp atomic
-                                    fileStats->textFiles++;
-#pragma omp atomic
-                                    fileStats->textSize += fileStat.st_size;
-                                } else if (strcmp(fileType, "T_SQL") == 0) {
-#pragma omp atomic
-                                    fileStats->sqlFiles++;
-#pragma omp atomic
-                                    fileStats->sqlSize += fileStat.st_size;
-                                } else if (strcmp(fileType, "T_CSV") == 0) {
-#pragma omp atomic
-                                    fileStats->csvFiles++;
-#pragma omp atomic
-                                    fileStats->csvSize += fileStat.st_size;
-                                } else if (strcmp(fileType, "T_CSS") == 0) {
-#pragma omp atomic
-                                    fileStats->cssFiles++;
-#pragma omp atomic
-                                    fileStats->cssSize += fileStat.st_size;
-                                } else {
-#pragma omp atomic
-                                    fileStats->binaryFiles++;
-#pragma omp atomic
-                                    fileStats->binarySize += fileStat.st_size;
                                 }
                             }
                         }
@@ -1131,19 +966,42 @@ void accumulateChildrenAndSize(FileEntry *entries, const size_t count) {
             entries[i].childrenCount = 0; // Reset the children count
             entries[i].size = 4096; // Reset the size (to accumulate later)
             // Check subsequent entries to see if they belong to this directory
+            if (strcmp(entries[i].path, "/home/simon/playground/trading/share/terminfo/X") == 0) {
+                int a = 1;
+            }
+            if (strcmp(entries[i].path, "/home/simon/playground/trading/share/terminfo/e") == 0) {
+                int a = 1;
+            }
+            if (strcmp(entries[i].path, "/home/simon/playground/trading/share/terminfo/n") == 0) {
+                int a = 1;
+            }
+            if (strcmp(entries[i].path, "/home/simon/playground/trading/share/terminfo/m") == 0) {
+                int a = 1;
+            }
+            if (strcmp(entries[i].path, "/home/simon/playground/trading/share/terminfo/x") == 0) {
+                int a = 1;
+            }
             for (size_t j = i + 1; j < count; j++) {
-                // Check if the current entry's path is part of the directory
                 if (strstr(entries[j].path, entries[i].path) == entries[j].path &&
                     entries[j].path[strlen(entries[i].path)] == '/') {
                     // Current directory is a parent of entries[j]
                     entries[i].childrenCount++;
                     entries[i].size += entries[j].size;
-                } else {
-                    if (strstr(entries[j].path, entries[i].path) != entries[j].path) {
-                        // Stop checking if subsequent paths are no longer under this directory
-                        break;
+                    } else if (j + 1 < count) {
+                        bool stop = true;
+                        for (int k = 0; k < 3 && j + k < count; k++) {
+                            const char *res = strstr(entries[j + k].path, entries[i].path);
+                            if (res && strcmp(res, entries[j + k].path) == 0) {
+                                // At least one path matches within the next 10 entries
+                                stop = false;
+                                break;
+                            }
+                        }
+                        if (stop) {
+                            // Break out of the outer loop
+                            break;
+                        }
                     }
-                }
             }
         }
     }
@@ -1489,33 +1347,153 @@ int sort_and_write_results_to_file(char *tmpFileName, char *outputFileName, int 
     return EXIT_SUCCESS;
 }
 
+void compute_file_statistics(const FileEntry *entries, const int count, FileStatistics *stats, char **directories) {
+    // Initialize all statistics to 0
+    memset(stats, 0, sizeof(FileStatistics));
+
+    for (int i = 0; i < count; i++) {
+        const FileEntry *entry = &entries[i];
+
+        // Update global statistics
+        for (size_t j = 0; directories[j] != NULL; j++) {
+            if (strcmp(entry->path, directories[j]) == 0) {
+                stats->totalSize += entry->size;
+            }
+        }
+        if (entry->isDir) {
+            stats->totalDirs++;
+        } else {
+            stats->totalFiles++;
+        }
+
+        // File type counters using string comparison
+        if (entry->isHidden && !entry->isDir) {
+            stats->hiddenFiles++;
+            stats->hiddenFilesSize += entry->size;
+        } else if (entry->isHidden && entry->isDir) {
+            stats->hiddenDirs++;
+            stats->hiddenDirsSize += entry->size;
+        }
+        if (strcmp(entry->type, "T_TEXT") == 0) {
+            stats->textFiles++;
+            stats->textSize += entry->size;
+        } else if (strcmp(entry->type, "T_JSON") == 0) {
+            stats->jsonFiles++;
+            stats->jsonSize += entry->size;
+        } else if (strcmp(entry->type, "T_AUDIO") == 0) {
+            stats->musicFiles++;
+            stats->musicSize += entry->size;
+        } else if (strcmp(entry->type, "T_FILM") == 0) {
+            stats->filmFiles++;
+            stats->filmSize += entry->size;
+        } else if (strcmp(entry->type, "T_IMAGE") == 0) {
+            stats->imageFiles++;
+            stats->imageSize += entry->size;
+        } else if (strcmp(entry->type, "T_COMPRESSED") == 0) {
+            stats->compressedFiles++;
+            stats->compressedSize += entry->size;
+        } else if (strcmp(entry->type, "T_YAML") == 0) {
+            stats->yamlFiles++;
+            stats->yamlSize += entry->size;
+        } else if (strcmp(entry->type, "T_EXE") == 0) {
+            stats->exeFiles++;
+            stats->exeSize += entry->size;
+        } else if (strcmp(entry->type, "T_C") == 0) {
+            stats->cFiles++;
+            stats->cSize += entry->size;
+        } else if (strcmp(entry->type, "T_PYTHON") == 0) {
+            stats->pythonFiles++;
+            stats->pythonSize += entry->size;
+        } else if (strcmp(entry->type, "T_JAVA") == 0) {
+            stats->javaFiles++;
+            stats->javaSize += entry->size;
+        } else if (strcmp(entry->type, "T_LOG") == 0) {
+            stats->logFiles++;
+            stats->logSize += entry->size;
+        } else if (strcmp(entry->type, "T_PACKAGE") == 0) {
+            stats->packageFiles++;
+            stats->packageSize += entry->size;
+        } else if (strcmp(entry->type, "T_CLASS") == 0) {
+            stats->classFiles++;
+            stats->classSize += entry->size;
+        } else if (strcmp(entry->type, "T_TEMPLATE") == 0) {
+            stats->templateFiles++;
+            stats->templateSize += entry->size;
+        } else if (strcmp(entry->type, "T_PDF") == 0) {
+            stats->pdfFiles++;
+            stats->pdfSize += entry->size;
+        } else if (strcmp(entry->type, "T_JAR") == 0) {
+            stats->jarFiles++;
+            stats->jarSize += entry->size;
+        } else if (strcmp(entry->type, "T_HTML") == 0) {
+            stats->htmlFiles++;
+            stats->htmlSize += entry->size;
+        } else if (strcmp(entry->type, "T_XML") == 0) {
+            stats->xmlFiles++;
+            stats->xmlSize += entry->size;
+        } else if (strcmp(entry->type, "T_XHTML") == 0) {
+            stats->xhtmlFiles++;
+            stats->xhtmlSize += entry->size;
+        } else if (strcmp(entry->type, "T_TS") == 0) {
+            stats->tsFiles++;
+            stats->tsSize += entry->size;
+        } else if (strcmp(entry->type, "T_JAR") == 0) {
+            stats->jarFiles++;
+            stats->jarSize += entry->size;
+        } else if (strcmp(entry->type, "T_DOC") == 0) {
+            stats->docFiles++;
+            stats->docSize += entry->size;
+        } else if (strcmp(entry->type, "T_CALC") == 0) {
+            stats->calcFiles++;
+            stats->calcSize += entry->size;
+        } else if (strcmp(entry->type, "T_LATEX") == 0) {
+            stats->textFiles++;
+            stats->textSize += entry->size;
+        } else if (strcmp(entry->type, "T_SQL") == 0) {
+            stats->sqlFiles++;
+            stats->sqlSize += entry->size;
+        } else if (strcmp(entry->type, "T_CSV") == 0) {
+            stats->csvFiles++;
+            stats->csvSize += entry->size;
+        } else if (strcmp(entry->type, "T_CSS") == 0) {
+            stats->cssFiles++;
+            stats->cssSize += entry->size;
+        } else {
+            stats->binaryFiles++;
+            stats->binarySize += entry->size;
+        }
+    }
+}
+
 /**
- * Processes a directory and performs various operations including sorting,
- * post-processing, and writing results to specified files.
+ * Processes a directory and its contents while generating file statistics and managing output files.
  *
- * The function initializes a task queue to process the given directory and its
- * subdirectories, allocates memory for file entries, and computes file data.
- * Depending on the number of entries, it either sorts them in-memory or writes
- * intermediate results to temporary files for sorting using external commands.
- * Final post-processing computes statistics and writes the results to output files.
- * Resource cleanup is performed at the end to release allocated memory.
+ * This function initializes and manages a dynamic task queue to handle directories and their contents.
+ * It dynamically allocates memory for file entry structures, processes directories to collect files and subdirectories,
+ * sorts the file entries, writes the results to output files, and computes statistical data for files.
  *
- * @param fileStats Pointer to a FileStatistics structure that is updated with
- *                  computed statistics about files and directories.
- * @param directory The path to the root directory to process.
- * @param outputFileName The name of the output file where results will be written.
- *                       This file may temporarily be used for intermediate operations.
- * @param tmpFileName The name of a temporary file for intermediate sorting or storage
- *                    when the number of entries exceeds a predefined capacity.
- * @param sizeThreshold The size threshold in bytes to filter files based on size.
- * @param skipDirs A flag indicating whether to skip directories (non-zero to enable, 0 to disable).
- * @param totalCount Pointer to an integer that will store the total count of
- *                   processed file entries after all operations.
+ * Tasks include:
+ * - Creating and initializing a task queue for directory processing.
+ * - Dynamically allocating an array of FileEntry structures to store processed directory and file information.
+ * - Adding the given directory to the task queue and removing trailing slashes for consistency.
+ * - Processing all directories from the queue while dynamically resizing the FileEntry array as needed.
+ * - Sorting and writing the collected file entries to output files using the specified temporary and final file names.
+ * - Computing file statistics based on processed entries and updating provided statistics structures.
+ * - Freeing allocated resources, including task queues and memory for file entries, to avoid memory leaks.
  *
- * @return EXIT_SUCCESS (0) if the task was completed successfully, or
- *         EXIT_FAILURE (1) if an error occurred during processing.
+ * The function ensures thread safety and handles critical errors, such as memory allocation failures or directory processing issues,
+ * gracefully by freeing resources and returning an error code.
+ *
+ * @param directory     A string representing the directory path to be processed.
+ * @param outputFileName A string representing the name of the output file to store sorted results.
+ * @param tmpFileName   A string representing the temporary file name used during sorting and writing.
+ * @param sizeThreshold A long long integer defining the minimum file size (in bytes) to be considered during processing.
+ * @param skipDirs      An integer flag (0 or 1) to specify whether to include directories in results and statistics.
+ * @param totalCount    A pointer to an integer where the total count of processed entries will be updated.
+ *
+ * @return Returns EXIT_SUCCESS on successful completion, or EXIT_FAILURE in case of an error.
  */
-int processDirectoryTask(FileStatistics *fileStats, const char *directory, char *outputFileName, char *tmpFileName,
+int processDirectoryTask(const char *directory, char *outputFileName, char *tmpFileName,
                          const long long sizeThreshold, const int skipDirs, int *totalCount) {
     // Initialize task queue
     TaskQueue taskQueue;
@@ -1531,11 +1509,9 @@ int processDirectoryTask(FileStatistics *fileStats, const char *directory, char 
         return EXIT_FAILURE;
     }
     // Process all directories in the queue
-    processDirectory(&taskQueue, &entries, &count, &capacity, fileStats, sizeThreshold, skipDirs);
-    fileStats->totalDirs -= 1; // Exclude the root directory
+    processDirectory(&taskQueue, &entries, &count, &capacity, sizeThreshold, skipDirs);
     printf("### Total counts before qsort for directory: %s ### %d ###\n", directory, count);
     sort_and_write_results_to_file(outputFileName, tmpFileName, totalCount, count, entries, true);
-
     freeQueue(&taskQueue);
     // free(entries);
 
@@ -1788,123 +1764,4 @@ int copy_file(const char *inputFileName, const char *outputFileName) {
 
 double get_time_difference(const struct timeval start, const struct timeval end) {
     return (end.tv_sec - start.tv_sec) + (end.tv_usec - start.tv_usec) / 1000000.0;
-}
-
-void compute_file_statistics(const FileEntry *entries, const int count, FileStatistics *stats, char **directories) {
-    // Initialize all statistics to 0
-    memset(stats, 0, sizeof(FileStatistics));
-
-    for (int i = 0; i < count; i++) {
-        const FileEntry *entry = &entries[i];
-
-        // Update global statistics
-        for (size_t j = 0; directories[j] != NULL; j++) {
-            if (strcmp(entry->path, directories[j]) == 0) {
-                stats->totalSize += entry->size;
-            }
-        }
-        if (entry->isDir) {
-            stats->totalDirs++;
-        } else {
-            stats->totalFiles++;
-        }
-
-        // File type counters using string comparison
-        if (entry->isHidden && !entry->isDir) {
-            stats->hiddenFiles++;
-            stats->hiddenFilesSize += entry->size;
-        }
-        else if (entry->isHidden && entry->isDir) {
-            stats->hiddenDirs++;
-            stats->hiddenDirsSize += entry->size;
-        }
-        else if (strcmp(entry->type, "T_TEXT") == 0) {
-            stats->textFiles++;
-            stats->textSize += entry->size;
-        } else if (strcmp(entry->type, "T_MUSIC") == 0) {
-            stats->musicFiles++;
-            stats->musicSize += entry->size;
-        } else if (strcmp(entry->type, "T_FILM") == 0) {
-            stats->filmFiles++;
-            stats->filmSize += entry->size;
-        } else if (strcmp(entry->type, "T_IMAGE") == 0) {
-            stats->imageFiles++;
-            stats->imageSize += entry->size;
-        } else if (strcmp(entry->type, "T_BINARY") == 0) {
-            stats->binaryFiles++;
-            stats->binarySize += entry->size;
-        } else if (strcmp(entry->type, "T_COMPRESSED") == 0) {
-            stats->compressedFiles++;
-            stats->compressedSize += entry->size;
-        } else if (strcmp(entry->type, "T_TEX") == 0) {
-            stats->texFiles++;
-            stats->texSize += entry->size;
-        } else if (strcmp(entry->type, "T_JSON") == 0) {
-            stats->jsonFiles++;
-            stats->jsonSize += entry->size;
-        } else if (strcmp(entry->type, "T_YAML") == 0) {
-            stats->yamlFiles++;
-            stats->yamlSize += entry->size;
-        } else if (strcmp(entry->type, "T_EXE") == 0) {
-            stats->exeFiles++;
-            stats->exeSize += entry->size;
-        } else if (strcmp(entry->type, "T_TEMPLATE") == 0) {
-            stats->templateFiles++;
-            stats->templateSize += entry->size;
-        } else if (strcmp(entry->type, "T_PDF") == 0) {
-            stats->pdfFiles++;
-            stats->pdfSize += entry->size;
-        } else if (strcmp(entry->type, "T_JAR") == 0) {
-            stats->jarFiles++;
-            stats->jarSize += entry->size;
-        } else if (strcmp(entry->type, "T_HTML") == 0) {
-            stats->htmlFiles++;
-            stats->htmlSize += entry->size;
-        } else if (strcmp(entry->type, "T_XHTML") == 0) {
-            stats->xhtmlFiles++;
-            stats->xhtmlSize += entry->size;
-        } else if (strcmp(entry->type, "T_XML") == 0) {
-            stats->xmlFiles++;
-            stats->xmlSize += entry->size;
-        } else if (strcmp(entry->type, "T_TS") == 0) {
-            stats->tsFiles++;
-            stats->tsSize += entry->size;
-        } else if (strcmp(entry->type, "T_JS") == 0) {
-            stats->jsFiles++;
-            stats->jsSize += entry->size;
-        } else if (strcmp(entry->type, "T_C") == 0) {
-            stats->cFiles++;
-            stats->cSize += entry->size;
-        } else if (strcmp(entry->type, "T_PYTHON") == 0) {
-            stats->pythonFiles++;
-            stats->pythonSize += entry->size;
-        } else if (strcmp(entry->type, "T_JAVA") == 0) {
-            stats->javaFiles++;
-            stats->javaSize += entry->size;
-        } else if (strcmp(entry->type, "T_PACKAGE") == 0) {
-            stats->packageFiles++;
-            stats->packageSize += entry->size;
-        } else if (strcmp(entry->type, "T_LOG") == 0) {
-            stats->logFiles++;
-            stats->logSize += entry->size;
-        } else if (strcmp(entry->type, "T_CLASS") == 0) {
-            stats->classFiles++;
-            stats->classSize += entry->size;
-        } else if (strcmp(entry->type, "T_DOC") == 0) {
-            stats->docFiles++;
-            stats->docSize += entry->size;
-        } else if (strcmp(entry->type, "T_CALC") == 0) {
-            stats->calcFiles++;
-            stats->calcSize += entry->size;
-        } else if (strcmp(entry->type, "T_SQL") == 0) {
-            stats->sqlFiles++;
-            stats->sqlSize += entry->size;
-        } else if (strcmp(entry->type, "T_CSV") == 0) {
-            stats->csvFiles++;
-            stats->csvSize += entry->size;
-        } else if (strcmp(entry->type, "T_CSS") == 0) {
-            stats->cssFiles++;
-            stats->cssSize += entry->size;
-        }
-    }
 }
