@@ -53,6 +53,7 @@ int main(const int argc, char *argv[]) {
     const int numCores = omp_get_max_threads();
     omp_set_num_threads(numCores);
     fprintf(stdout, "Using %d cores.\n", numCores);
+    fprintf(stdout, "\n* The result will be merged with existing output file: %s\n", addFileName);
     int totalCount = 0;
     for (int i = 0; directories[i] != NULL && i < argc - 2; i++) {
         fprintf(stdout, "\nProcessing directory: %s\n", directories[i]);

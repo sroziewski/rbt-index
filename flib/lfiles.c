@@ -1344,20 +1344,21 @@ int sort_and_write_results_to_file(char *tmpFileName, char *outputFileName, int 
     return EXIT_SUCCESS;
 }
 
-char **remove_duplicate_directories(const char **directories, const int count, int *new_count) {
+char **remove_duplicate_directories(char **directories, const int count, int *new_count) {
     char **unique_directories = malloc(count * sizeof(char *)); // Allocate memory for new array
     if (!unique_directories) {
         perror("Failed to allocate memory");
+        free_directories(&unique_directories);
         exit(EXIT_FAILURE);
     }
 
-    size_t unique_index = 0;
+    int unique_index = 0;
 
-    for (size_t i = 0; i < count; i++) {
+    for (int i = 0; i < count; i++) {
         int is_duplicate = 0;
 
         // Check if the current directory is already in the unique array
-        for (size_t j = 0; j < unique_index; j++) {
+        for (int j = 0; j < unique_index; j++) {
             if (strcmp(directories[i], unique_directories[j]) == 0) {
                 is_duplicate = 1;
                 break;
@@ -1369,6 +1370,7 @@ char **remove_duplicate_directories(const char **directories, const int count, i
             unique_directories[unique_index] = malloc(strlen(directories[i]) + 1); // Allocate memory for the string
             if (!unique_directories[unique_index]) {
                 perror("Failed to allocate memory for unique directory");
+                free_directories(&unique_directories);
                 exit(EXIT_FAILURE);
             }
             strcpy(unique_directories[unique_index], directories[i]);
@@ -1382,6 +1384,7 @@ char **remove_duplicate_directories(const char **directories, const int count, i
     unique_directories = realloc(unique_directories, unique_index * sizeof(char *));
     if (!unique_directories) {
         perror("Failed to reallocate memory");
+        free_directories(&unique_directories);
         exit(EXIT_FAILURE);
     }
     return unique_directories;
@@ -1511,7 +1514,7 @@ void compute_file_statistics(const FileEntry *entries, const int count, FileStat
             stats->binarySize += entry->size;
         }
     }
-    free(unique_directories);
+    free_directories(&unique_directories);
 }
 
 /**
