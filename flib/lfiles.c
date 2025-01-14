@@ -785,7 +785,6 @@ void read_entries(const char *filename, FileEntry **entries, const size_t fixed_
         }
     }
 
-    printf("Read %ld entries from the file\n", i);
     fclose(file);
 }
 
@@ -1345,7 +1344,58 @@ int sort_and_write_results_to_file(char *tmpFileName, char *outputFileName, int 
     return EXIT_SUCCESS;
 }
 
+char **remove_duplicate_directories(const char **directories, const int count, int *new_count) {
+    char **unique_directories = malloc(count * sizeof(char *)); // Allocate memory for new array
+    if (!unique_directories) {
+        perror("Failed to allocate memory");
+        exit(EXIT_FAILURE);
+    }
+
+    size_t unique_index = 0;
+
+    for (size_t i = 0; i < count; i++) {
+        int is_duplicate = 0;
+
+        // Check if the current directory is already in the unique array
+        for (size_t j = 0; j < unique_index; j++) {
+            if (strcmp(directories[i], unique_directories[j]) == 0) {
+                is_duplicate = 1;
+                break;
+            }
+        }
+
+        // If it's not a duplicate, add it to the unique array
+        if (!is_duplicate) {
+            unique_directories[unique_index] = malloc(strlen(directories[i]) + 1); // Allocate memory for the string
+            if (!unique_directories[unique_index]) {
+                perror("Failed to allocate memory for unique directory");
+                exit(EXIT_FAILURE);
+            }
+            strcpy(unique_directories[unique_index], directories[i]);
+            unique_index++;
+        }
+    }
+
+    *new_count = unique_index; // Set the new count of unique directories
+
+    // Reallocate memory to adjust to the actual size
+    unique_directories = realloc(unique_directories, unique_index * sizeof(char *));
+    if (!unique_directories) {
+        perror("Failed to reallocate memory");
+        exit(EXIT_FAILURE);
+    }
+    return unique_directories;
+}
+
 void compute_file_statistics(const FileEntry *entries, const int count, FileStatistics *stats, char **directories) {
+
+    int dirCount = 0;
+    for (size_t j = 0; directories[j] != NULL; j++) {
+        dirCount++;
+    }
+    int newCount = 0;
+    char **unique_directories = remove_duplicate_directories(directories, dirCount, &newCount);
+
     // Initialize all statistics to 0
     memset(stats, 0, sizeof(FileStatistics));
 
@@ -1353,8 +1403,8 @@ void compute_file_statistics(const FileEntry *entries, const int count, FileStat
         const FileEntry *entry = &entries[i];
 
         // Update global statistics
-        for (size_t j = 0; directories[j] != NULL; j++) {
-            if (strcmp(entry->path, directories[j]) == 0) {
+        for (size_t j = 0; unique_directories[j] != NULL; j++) {
+            if (strcmp(entry->path, removeTrailingSlash(unique_directories[j])) == 0) {
                 stats->totalSize += entry->size;
             }
         }
@@ -1461,6 +1511,7 @@ void compute_file_statistics(const FileEntry *entries, const int count, FileStat
             stats->binarySize += entry->size;
         }
     }
+    free(unique_directories);
 }
 
 /**

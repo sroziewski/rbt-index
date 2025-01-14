@@ -138,4 +138,6 @@ void initializeFileEntries(FileEntry *entries, size_t count);
 
 void compute_file_statistics(const FileEntry *entries, int count, FileStatistics *stats, char **directories);
 
+char **remove_duplicate_directories(const char **directories, int count, int *new_count);
+
 #endif // L_FILES_H
