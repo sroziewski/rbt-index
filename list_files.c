@@ -107,9 +107,7 @@ int main(const int argc, char *argv[]) {
         remove_duplicates(outputTmpFileName, addFileName);
     }
     read_entries(outputFileName, &entries, totalCount, &totalCount);
-    // if (directoryCount > 1 || addFileName != NULL) {
-        compute_file_statistics(entries, totalCount, &fileStats, directories);
-    // }
+    compute_file_statistics(entries, totalCount, &fileStats, directories);
 
     printFileStatistics(fileStats);
 

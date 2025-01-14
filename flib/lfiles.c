@@ -486,9 +486,9 @@ void processDirectory(TaskQueue *taskQueue, FileEntry **entries, int *count, int
                                 const char *fileType = getFileTypeCategory(mimeType, fullPath);
                                 if (dirEntries[i][0] == '.') {
 #pragma omp atomic
-                                    fileStats->hiddenDirs++;
+                                    fileStats->hiddenFiles++;
 #pragma omp atomic
-                                    fileStats->hiddenDirsSize += fileStat.st_size;
+                                    fileStats->hiddenFilesSize += fileStat.st_size;
                                 }
                                 if (strcmp(fileType, "T_TEXT") == 0) {
 #pragma omp atomic
@@ -880,6 +880,10 @@ void read_entries(const char *filename, FileEntry **entries, const size_t fixed_
 
         // Parse the line using `strtok` for the `|` delimiter
         FileEntry entry = {0}; // Ensure to initialize all fields
+        // Look for hidden flag f
+        if (strstr(buffer, "F_HIDDEN") != NULL) {
+            entry.isHidden = true;
+        }
         char *token = strtok(buffer, "|");
         if (!token) {
             fprintf(stderr, "Error parsing path in line: %s\n", buffer);
@@ -937,11 +941,6 @@ void read_entries(const char *filename, FileEntry **entries, const size_t fixed_
             } else if (i >= 2 && strcmp((*entries)[i - 2].path, entry.path) == 0 && (*entries)[i - 2].isDir == 1) {
                 (*entries)[i - 2] = entry;
                 isAdded = true;
-            }
-        } else {
-            // Look for hidden flag for non-directory entries
-            if (strstr(entry.type, "F_HIDDEN") != NULL) {
-                entry.isHidden = true;
             }
         }
         // Store the entry in the array
@@ -1676,6 +1675,7 @@ FileStatistics addFileStatistics(const FileStatistics *a, const FileStatistics *
     result.csvFiles = a->csvFiles + b->csvFiles;
     result.cssFiles = a->cssFiles + b->cssFiles;
     result.hiddenFiles = a->hiddenFiles + b->hiddenFiles;
+    result.hiddenDirs = a->hiddenDirs + b->hiddenDirs;
 
     // Add file type sizes
     result.textSize = a->textSize + b->textSize;
@@ -1708,6 +1708,7 @@ FileStatistics addFileStatistics(const FileStatistics *a, const FileStatistics *
     result.csvSize = a->csvSize + b->csvSize;
     result.cssSize = a->cssSize + b->cssSize;
     result.hiddenFilesSize = a->hiddenFilesSize + b->hiddenFilesSize;
+    result.hiddenDirsSize = a->hiddenDirsSize + b->hiddenDirsSize;
 
     return result;
 }
