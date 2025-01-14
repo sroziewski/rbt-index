@@ -1340,8 +1340,6 @@ int sort_and_write_results_to_file(char *tmpFileName, char *outputFileName, int 
         accumulateChildrenAndSize(entries, outputCount);
     }
     *totalCount = outputCount;
-    printf("### Total counts after accumulateChildrenAndSize for directory: ### %d ###\n", outputCount);
-    // print results after processing children
     printToFile(entries, outputCount, outputFileName, NEW);
 
     return EXIT_SUCCESS;
@@ -1510,7 +1508,6 @@ int processDirectoryTask(const char *directory, char *outputFileName, char *tmpF
     }
     // Process all directories in the queue
     processDirectory(&taskQueue, &entries, &count, &capacity, sizeThreshold, skipDirs);
-    printf("### Total counts before qsort for directory: %s ### %d ###\n", directory, count);
     sort_and_write_results_to_file(outputFileName, tmpFileName, totalCount, count, entries, true);
     freeQueue(&taskQueue);
     // free(entries);
