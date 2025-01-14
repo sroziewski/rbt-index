@@ -106,9 +106,11 @@ int main(const int argc, char *argv[]) {
         copy_file(outputFileName, outputTmpFileName);
         remove_duplicates(outputTmpFileName, addFileName);
     }
-    if (directoryCount > 1 || addFileName != NULL) {
-        compute_file_statistics(entries, totalCount, &fileStats);
-    }
+    read_entries(outputFileName, &entries, totalCount, &totalCount);
+    // if (directoryCount > 1 || addFileName != NULL) {
+        compute_file_statistics(entries, totalCount, &fileStats, directories);
+    // }
+
     printFileStatistics(fileStats);
 
     // printToStdOut(entries, totalOutputCount);

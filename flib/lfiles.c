@@ -486,9 +486,9 @@ void processDirectory(TaskQueue *taskQueue, FileEntry **entries, int *count, int
                                 const char *fileType = getFileTypeCategory(mimeType, fullPath);
                                 if (dirEntries[i][0] == '.') {
 #pragma omp atomic
-                                    fileStats->hiddenFiles++;
+                                    fileStats->hiddenDirs++;
 #pragma omp atomic
-                                    fileStats->hiddenSize += fileStat.st_size;
+                                    fileStats->hiddenDirsSize += fileStat.st_size;
                                 }
                                 if (strcmp(fileType, "T_TEXT") == 0) {
 #pragma omp atomic
@@ -852,7 +852,7 @@ void read_entries(const char *filename, FileEntry **entries, const size_t fixed_
     // Reset the current entries
     size_t i = 0;
     if (*entries) {
-        free(*entries);
+        // free(*entries);
     }
 
     // Allocate memory for the fixed amount of entries
@@ -1043,24 +1043,17 @@ void printToStdOut(FileEntry *entries, const int count) {
 }
 
 /**
- * Deletes the specified file and releases the memory allocated for the filename.
+ * Deletes the specified file from the file system.
  *
- * This function attempts to delete the file specified by the given `filename` using
- * the standard `remove` function. After attempting the file deletion, it deallocates
- * the memory associated with the `filename` using `free`. If the file deletion fails,
- * an error message is printed to standard error using `perror`.
+ * This function attempts to remove a file identified by its file path. If the operation fails,
+ * an error message is printed to the standard error stream using perror.
  *
- * It is the caller's responsibility to ensure that `filename` is dynamically allocated
- * before passing it to this function, as `free` is called on the provided pointer.
- * Passing an invalid or statically allocated string could result in undefined behavior.
- *
- * @param filename A pointer to a dynamically allocated string representing the name
- *                 of the file to be deleted. If `filename` is NULL or invalid,
- *                 the behavior is undefined.
+ * @param filename  A pointer to a null-terminated string containing the path of the file to be deleted.
+ *                  The path must be accessible and the calling program must have the necessary permissions
+ *                  to delete the file.
  */
 void deleteFile(const char *filename) {
     const int result = remove(filename);
-    // free(filename);
     if (result != 0) {
         perror("Failed to delete the file");
     }
@@ -1316,8 +1309,7 @@ int process_arguments(const int argc, char **argv, int *skipDirs, long long *siz
                 release_temporary_resources(outputTmpFileName, NULL);
                 return EXIT_FAILURE;
             }
-        }
-        else if (strcmp(argv[i], "-o") == 0) {
+        } else if (strcmp(argv[i], "-o") == 0) {
             // Handle the output file
             if (i + 1 < argc) {
                 *outputFileName = strdup(argv[++i]); // Copy next argument as output file name
@@ -1335,8 +1327,7 @@ int process_arguments(const int argc, char **argv, int *skipDirs, long long *siz
                 release_temporary_resources(outputTmpFileName, NULL);
                 return EXIT_FAILURE;
             }
-        }
-        else if (argv[i][0] != '-' && strcmp(argv[i - 1], "--add") != 0) {
+        } else if (argv[i][0] != '-' && strcmp(argv[i - 1], "--add") != 0) {
             // Treat as a directory path (non-option argument)
             *directories = realloc(*directories, sizeof(char *) * (*directoryCount + 2));
             *tmpFileNames = realloc(*tmpFileNames, sizeof(char *) * (*directoryCount + 2));
@@ -1374,8 +1365,7 @@ int process_arguments(const int argc, char **argv, int *skipDirs, long long *siz
             // Increment directory count and terminate both arrays
             (*directories)[++(*directoryCount)] = NULL;
             (*tmpFileNames)[*directoryCount] = NULL;
-        }
-        else if (strcmp(argv[i - 1], "--add") == 0 || strcmp(argv[i], "--add") == 0) {
+        } else if (strcmp(argv[i - 1], "--add") == 0 || strcmp(argv[i], "--add") == 0) {
             // do nothing here
         } else {
             // Unknown option
@@ -1417,11 +1407,6 @@ void initializeFileStatistics(FileStatistics *fileStats) {
  */
 void printFileStatistics(const FileStatistics fileStats) {
     printf("\nSummary:\n");
-    if (fileStats.hiddenFiles > 0) {
-        printf("Total Number of Hidden Files: %d\n", fileStats.hiddenFiles);
-        printf("Total Size of Hidden Files: %s (%lld bytes) \n", getFileSizeAsString(fileStats.hiddenSize),
-               fileStats.hiddenSize);
-    }
     printSizeDetails("Text", fileStats.textFiles, fileStats.textSize);
     printSizeDetails("Music", fileStats.musicFiles, fileStats.musicSize);
     printSizeDetails("Film", fileStats.filmFiles, fileStats.filmSize);
@@ -1451,12 +1436,23 @@ void printFileStatistics(const FileStatistics fileStats) {
     printSizeDetails("Jar", fileStats.jarFiles, fileStats.jarSize);
     printSizeDetails("C Source", fileStats.cFiles, fileStats.cSize);
     printSizeDetails("EXE", fileStats.exeFiles, fileStats.exeSize);
-
+    printf("------------------------------------\n");
+    if (fileStats.hiddenFiles > 0) {
+        printf("Total Number of Hidden Files: %d\n", fileStats.hiddenFiles);
+        printf("Total Size of Hidden Files: %s (%lld bytes) \n", getFileSizeAsString(fileStats.hiddenFilesSize),
+               fileStats.hiddenFilesSize);
+    }
+    if (fileStats.hiddenDirs > 0) {
+        printf("Total Number of Hidden Directories: %d\n", fileStats.hiddenDirs);
+        printf("Total Size of Hidden Directories: %s (%lld bytes) \n", getFileSizeAsString(fileStats.hiddenDirsSize),
+               fileStats.hiddenDirsSize);
+    }
     char *file_size_as_string = getFileSizeAsString(fileStats.totalSize);
 
     printf("------------------------------------\n");
     printf("Total Number of Directories: %d\n", fileStats.totalDirs);
     printf("Total Number of Files: %d\n", fileStats.totalFiles);
+    printf("Total Number of Files and Directories: %d\n", fileStats.totalDirs + fileStats.totalFiles);
     printf("Total Size of Files: %lld bytes (%s)\n", fileStats.totalSize, file_size_as_string);
     free(file_size_as_string);
 }
@@ -1711,7 +1707,7 @@ FileStatistics addFileStatistics(const FileStatistics *a, const FileStatistics *
     result.sqlSize = a->sqlSize + b->sqlSize;
     result.csvSize = a->csvSize + b->csvSize;
     result.cssSize = a->cssSize + b->cssSize;
-    result.hiddenSize = a->hiddenSize + b->hiddenSize;
+    result.hiddenFilesSize = a->hiddenFilesSize + b->hiddenFilesSize;
 
     return result;
 }
@@ -1793,7 +1789,7 @@ double get_time_difference(const struct timeval start, const struct timeval end)
     return (end.tv_sec - start.tv_sec) + (end.tv_usec - start.tv_usec) / 1000000.0;
 }
 
-void compute_file_statistics(const FileEntry *entries, const int count, FileStatistics *stats) {
+void compute_file_statistics(const FileEntry *entries, const int count, FileStatistics *stats, char **directories) {
     // Initialize all statistics to 0
     memset(stats, 0, sizeof(FileStatistics));
 
@@ -1801,7 +1797,11 @@ void compute_file_statistics(const FileEntry *entries, const int count, FileStat
         const FileEntry *entry = &entries[i];
 
         // Update global statistics
-        stats->totalSize += entry->size;
+        for (size_t j = 0; directories[j] != NULL; j++) {
+            if (strcmp(entry->path, directories[j]) == 0) {
+                stats->totalSize += entry->size;
+            }
+        }
         if (entry->isDir) {
             stats->totalDirs++;
         } else {
@@ -1809,10 +1809,15 @@ void compute_file_statistics(const FileEntry *entries, const int count, FileStat
         }
 
         // File type counters using string comparison
-        if (entry->isHidden) {
+        if (entry->isHidden && !entry->isDir) {
             stats->hiddenFiles++;
-            stats->hiddenSize += entry->size;
-        } else if (strcmp(entry->type, "T_TEXT") == 0) {
+            stats->hiddenFilesSize += entry->size;
+        }
+        else if (entry->isHidden && entry->isDir) {
+            stats->hiddenDirs++;
+            stats->hiddenDirsSize += entry->size;
+        }
+        else if (strcmp(entry->type, "T_TEXT") == 0) {
             stats->textFiles++;
             stats->textSize += entry->size;
         } else if (strcmp(entry->type, "T_MUSIC") == 0) {

@@ -136,6 +136,6 @@ double get_time_difference(struct timeval start, struct timeval end);
 
 void initializeFileEntries(FileEntry *entries, size_t count);
 
-void compute_file_statistics(const FileEntry *entries, int count, FileStatistics *stats);
+void compute_file_statistics(const FileEntry *entries, int count, FileStatistics *stats, char **directories);
 
 #endif // L_FILES_H
