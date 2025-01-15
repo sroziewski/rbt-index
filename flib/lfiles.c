@@ -1066,35 +1066,52 @@ void free_multiple_arrays(char ***first_directory, ...) {
     va_end(args); // Clean up the argument list
 }
 
+int belongs_to_mergeFileNames(const char *arg, const char *mergeFileNames[], const int size) {
+    for (int i = 0; i < size; ++i) {
+        if (strcmp(arg, mergeFileNames[i]) == 0) {
+            return 1; // Found
+        }
+    }
+    return 0; // Not found
+}
+
 /**
- * Processes command-line arguments for a program and initializes configuration parameters.
+ * Processes command-line arguments to initialize configuration options for file and directory processing.
  *
- * This function parses the provided command-line arguments to configure settings such as directory
- * skipping, file size threshold, input directories, output file names, and temporary file names.
- * It validates the input, ensures necessary options are provided, and handles memory allocation for
- * storing directory names and temporary file paths. Errors or missing arguments will result in early
- * termination with appropriate messages.
+ * This function parses and validates the provided arguments, storing configuration data for output files,
+ * directories, merge files, size thresholds, and operational flags. It enforces mutually exclusive options,
+ * validates file existence, and handles memory allocation for dynamically updated arrays as needed.
+ * Errors encountered in arguments or memory allocation are reported, and processing halts with an appropriate
+ * exit code.
  *
- * @param argc              The number of command-line arguments.
- * @param argv              An array of argument strings.
- * @param skipDirs          A pointer to an integer flag (0 or 1) indicating whether directories should
- *                           be skipped.
- * @param sizeThreshold     A pointer to a long long integer specifying the minimum file size (in bytes)
- *                           for processed files.
- * @param outputFileName    A pointer to a string that will store the name of the output file, if provided.
- * @param outputTmpFileName A pointer to a string that will store the name of the temporary output file,
- *                           if generated.
- * @param tmpFileNames      A pointer to an array of strings for storing temporary file names for each
- *                           directory.
- * @param directories       A pointer to an array of strings for storing the directory paths provided as
- *                           arguments.
- * @param directoryCount    A pointer to an integer that tracks the total number of directories processed.
- * @param addFileName       A pointer to a string that will store the file name provided with the `--add`
- *                           argument, if present.
+ * Supported command-line options include:
+ * - `-o`: Specifies the output file name.
+ * - `--merge`: Processes a single file name for merging.
+ * - `-m`: Specifies multiple merge file names.
+ * - `-M`: Sets a size threshold in MB.
+ * - `--skip-dirs`: Excludes directories from processing.
  *
- * @return                  EXIT_SUCCESS (0) if the arguments are successfully processed and resources are
- *                           initialized. Returns EXIT_FAILURE (non-zero value) if an error occurs during
- *                           processing or memory allocation.
+ * Errors are raised for invalid combinations of flags, missing arguments for required options, or if file operations
+ * (e.g., memory allocation or access checks) fail.
+ *
+ * @param argc              The number of command-line arguments passed.
+ * @param argv              An array of strings representing the command-line arguments.
+ * @param skipDirs          A pointer to an integer flag (0 or 1) indicating whether directories should be skipped.
+ * @param sizeThreshold     A pointer to a long long representing the size threshold in bytes for file selection.
+ * @param outputFileName    A pointer to a string storing the output file name (if specified).
+ * @param outputTmpFileName A pointer to a string storing the name of the temporary output file (if applicable).
+ * @param tmpFileNames      A pointer to an array of strings for storing temporary file names (dynamically allocated).
+ * @param directories       A pointer to an array of strings for directory paths passed as input arguments.
+ * @param mergeFileNames    A pointer to an array of strings for file names used in merging operations.
+ * @param directoryCount    A pointer to an integer that tracks the number of directories processed.
+ * @param addFileName       A pointer to a string storing the file name for the `--merge` parameter.
+ *
+ * @return An integer status code indicating success (`EXIT_SUCCESS`) or failure (`EXIT_FAILURE`). Reasons for
+ *         failure include:
+ *         - Missing or invalid arguments.
+ *         - Memory allocation errors.
+ *         - Invalid combinations of mutually exclusive options.
+ *         - Nonexistent file paths in the merge file arguments.
  */
 int process_arguments(const int argc, char **argv, int *skipDirs, long long *sizeThreshold, char **outputFileName,
                       char **outputTmpFileName,
@@ -1287,7 +1304,7 @@ int process_arguments(const int argc, char **argv, int *skipDirs, long long *siz
                 release_temporary_resources(outputTmpFileName, NULL);
                 return EXIT_FAILURE;
             }
-        } else if (argv[i][0] != '-' && strcmp(argv[i - 1], "--add") != 0) {
+        } else if (argv[i][0] != '-' && *mergeFileNames == NULL && strcmp(argv[i - 1], "--add") != 0) {
             // Treat as a directory path (non-option argument)
             *directories = realloc(*directories, sizeof(char *) * (*directoryCount + 2));
             *tmpFileNames = realloc(*tmpFileNames, sizeof(char *) * (*directoryCount + 2));
@@ -1327,11 +1344,12 @@ int process_arguments(const int argc, char **argv, int *skipDirs, long long *siz
         } else if (strcmp(argv[i], "-m") == 0) {
             // do nothing here
         } else {
-            // Unknown option
-            fprintf(stderr, "Unknown option: %s\n", argv[i]);
-            free_multiple_arrays(directories, tmpFileNames, mergeFileNames, NULL);
-            release_temporary_resources(outputTmpFileName, NULL);
-            return EXIT_FAILURE;
+            if (!belongs_to_mergeFileNames(argv[i], *mergeFileNames, mergeFileCount)) {
+                fprintf(stderr, "Unknown option: %s\n", argv[i]);
+                free_multiple_arrays(directories, tmpFileNames, mergeFileNames, NULL);
+                release_temporary_resources(outputTmpFileName, NULL);
+                return EXIT_FAILURE;
+            }
         }
     }
 
