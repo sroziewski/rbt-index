@@ -14,6 +14,7 @@
 #include <ctype.h>
 #include <time.h>
 #include <sys/time.h>
+
 #include "../shared/lconsts.h"
 
 // File type detection functions

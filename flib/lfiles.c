@@ -11,6 +11,7 @@
 #include <stdarg.h>
 #include <omp.h>
 #include <stdbool.h>
+#include <unistd.h>
 
 #include "../shared/lconsts.h"
 
@@ -1099,7 +1100,9 @@ int process_arguments(const int argc, char **argv, int *skipDirs, long long *siz
     *directoryCount = 0;
     *addFileName = NULL; // For the --add parameter
 
-    // First, process the `-o` and `--add` options
+    int mergeFileCount = 0;
+
+    // First pass: process output-related options and other mutual exclusions
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "-o") == 0) {
             if (i + 1 < argc) {
@@ -1117,12 +1120,61 @@ int process_arguments(const int argc, char **argv, int *skipDirs, long long *siz
                 free_multiple_arrays(directories, tmpFileNames, mergeFileNames, NULL);
                 return EXIT_FAILURE;
             }
+        } else if (strcmp(argv[i], "-m") == 0) {
+            // Signal the use of the -m flag
+            if (*outputFileName != NULL || *addFileName != NULL) {
+                fprintf(stderr, "Error: -m cannot be used with -o or --merge.\n");
+                free_multiple_arrays(directories, tmpFileNames, mergeFileNames, NULL);
+                return EXIT_FAILURE;
+            }
+
+            // Parse file names that follow -m
+            for (int j = i + 1; j < argc; j++) {
+                if (argv[j][0] == '-') {
+                    // Stop processing on the next flag
+                    break;
+                }
+
+                // Allocate and store merge file names
+                *mergeFileNames = realloc(*mergeFileNames, sizeof(char *) * (mergeFileCount + 2));
+                if (*mergeFileNames == NULL) {
+                    perror("Memory allocation failed for mergeFileNames");
+                    free_multiple_arrays(directories, tmpFileNames, mergeFileNames, NULL);
+                    return EXIT_FAILURE;
+                }
+
+                // Store the file name
+                (*mergeFileNames)[mergeFileCount] = strdup(argv[j]);
+                if ((*mergeFileNames)[mergeFileCount] == NULL) {
+                    perror("Memory allocation failed for mergeFileNames entry");
+                    free_multiple_arrays(directories, tmpFileNames, mergeFileNames, NULL);
+                    return EXIT_FAILURE;
+                }
+
+                mergeFileCount++;
+                // Ensure NULL-termination
+                (*mergeFileNames)[mergeFileCount] = NULL;
+                i = j; // Move index to the last processed argument
+            }
+
+            // Ensure at least one file was provided after -m
+            if (mergeFileCount == 0) {
+                fprintf(stderr, "Error: -m requires at least one file name.\n");
+                free_multiple_arrays(directories, tmpFileNames, mergeFileNames, NULL);
+                return EXIT_FAILURE;
+            }
         }
     }
 
     // Ensure --add and -o are not used simultaneously
     if (*outputFileName != NULL && *addFileName != NULL) {
         fprintf(stderr, "Error: --merge and -o cannot be used together.\n");
+        free_multiple_arrays(directories, tmpFileNames, mergeFileNames, NULL);
+        return EXIT_FAILURE;
+    }
+
+    if (*mergeFileNames != NULL && *addFileName != NULL) {
+        fprintf(stderr, "Error: -m cannot be used with --merge.\n");
         free_multiple_arrays(directories, tmpFileNames, mergeFileNames, NULL);
         return EXIT_FAILURE;
     }
@@ -1136,6 +1188,28 @@ int process_arguments(const int argc, char **argv, int *skipDirs, long long *siz
         }
         free_multiple_arrays(directories, tmpFileNames, mergeFileNames, NULL);
         return EXIT_FAILURE;
+    }
+
+    // Check if outputFileName is equal to one of the merge files
+    if (*outputFileName != NULL && *mergeFileNames != NULL) {
+        for (int i = 0; (*mergeFileNames)[i] != NULL; i++) {
+            if (strcmp(*outputFileName, (*mergeFileNames)[i]) == 0) {
+                fprintf(stderr, "Error: outputFileName '%s' cannot be the same as a merge file '%s'\n", *outputFileName, (*mergeFileNames)[i]);
+                free_multiple_arrays(directories, tmpFileNames, mergeFileNames, NULL);
+                return EXIT_FAILURE;
+            }
+        }
+    }
+
+    // Check if all merge files exist
+    if (*mergeFileNames != NULL) {
+        for (int i = 0; (*mergeFileNames)[i] != NULL; i++) {
+            if (access((*mergeFileNames)[i], F_OK) != 0) {
+                fprintf(stderr, "Error: Merge file '%s' does not exist.\n", (*mergeFileNames)[i]);
+                free_multiple_arrays(directories, tmpFileNames, mergeFileNames, NULL);
+                return EXIT_FAILURE;
+            }
+        }
     }
 
     // Prepare a temporary output file name if -o is provided
@@ -1236,7 +1310,11 @@ int process_arguments(const int argc, char **argv, int *skipDirs, long long *siz
             (*tmpFileNames)[*directoryCount] = NULL;
         } else if (strcmp(argv[i - 1], "--add") == 0 || strcmp(argv[i], "--add") == 0) {
             // do nothing here
-        } else {
+        }
+        else if (strcmp(argv[i], "-m") == 0) {
+            // do nothing here
+        }
+        else {
             // Unknown option
             fprintf(stderr, "Unknown option: %s\n", argv[i]);
             free_multiple_arrays(directories, tmpFileNames, mergeFileNames, NULL);
