@@ -1019,7 +1019,7 @@ void accumulateChildrenAndSize(FileEntry *entries, const size_t count) {
  *                    The provided pointer and all its elements will be set to NULL
  *                    after memory is freed.
  */
-void free_directories(char ***directories) {
+void free_array(char ***directories) {
     if (directories && *directories) {
         // Free each string in the array
         for (int i = 0; (*directories)[i] != NULL; i++) {
@@ -1030,6 +1030,30 @@ void free_directories(char ***directories) {
         free(*directories);
         *directories = NULL; // Avoid dangling pointer
     }
+}
+
+void free_multiple_arrays(char ***first_directory, ...) {
+    va_list args;
+    va_start(args, first_directory); // Initialize the argument list
+
+    char ***current_directory = first_directory;
+
+    while (current_directory != NULL) {
+        if (*current_directory) {
+            // Free each string in the array
+            for (int i = 0; (*current_directory)[i] != NULL; i++) {
+                free((*current_directory)[i]); // Free each string
+                (*current_directory)[i] = NULL; // Avoid dangling pointer
+            }
+            // Free the array itself
+            free(*current_directory);
+            *current_directory = NULL; // Avoid dangling pointer
+        }
+        // Get the next argument (char ***)
+        current_directory = va_arg(args, char ***);
+    }
+
+    va_end(args); // Clean up the argument list
 }
 
 /**
@@ -1064,13 +1088,14 @@ void free_directories(char ***directories) {
  */
 int process_arguments(const int argc, char **argv, int *skipDirs, long long *sizeThreshold, char **outputFileName,
                       char **outputTmpFileName,
-                      char ***tmpFileNames, char ***directories, int *directoryCount, char **addFileName) {
+                      char ***tmpFileNames, char ***directories, char ***mergeFileNames, int *directoryCount, char **addFileName) {
     *skipDirs = 0; // Default: don't skip directories
     *sizeThreshold = 0; // Default: no size threshold
     *outputFileName = NULL;
     *outputTmpFileName = NULL;
     *directories = NULL;
     *tmpFileNames = NULL;
+    *mergeFileNames = NULL;
     *directoryCount = 0;
     *addFileName = NULL; // For the --add parameter
 
@@ -1081,8 +1106,7 @@ int process_arguments(const int argc, char **argv, int *skipDirs, long long *siz
                 *outputFileName = argv[++i];
             } else {
                 fprintf(stderr, "Output file name expected after -o\n");
-                free_directories(directories);
-                free_directories(tmpFileNames);
+                free_multiple_arrays(directories, tmpFileNames, mergeFileNames, NULL);
                 return EXIT_FAILURE;
             }
         } else if (strcmp(argv[i], "--merge") == 0) {
@@ -1090,8 +1114,7 @@ int process_arguments(const int argc, char **argv, int *skipDirs, long long *siz
                 *addFileName = argv[++i];
             } else {
                 fprintf(stderr, "File name for --merge is missing\n");
-                free_directories(directories);
-                free_directories(tmpFileNames);
+                free_multiple_arrays(directories, tmpFileNames, mergeFileNames, NULL);
                 return EXIT_FAILURE;
             }
         }
@@ -1100,8 +1123,7 @@ int process_arguments(const int argc, char **argv, int *skipDirs, long long *siz
     // Ensure --add and -o are not used simultaneously
     if (*outputFileName != NULL && *addFileName != NULL) {
         fprintf(stderr, "Error: --merge and -o cannot be used together.\n");
-        free_directories(directories);
-        free_directories(tmpFileNames);
+        free_multiple_arrays(directories, tmpFileNames, mergeFileNames, NULL);
         return EXIT_FAILURE;
     }
 
@@ -1112,8 +1134,7 @@ int process_arguments(const int argc, char **argv, int *skipDirs, long long *siz
         if (argc == 1) {
             exit(EXIT_FAILURE);
         }
-        free_directories(directories);
-        free_directories(tmpFileNames);
+        free_multiple_arrays(directories, tmpFileNames, mergeFileNames, NULL);
         return EXIT_FAILURE;
     }
 
@@ -1125,8 +1146,7 @@ int process_arguments(const int argc, char **argv, int *skipDirs, long long *siz
         *outputTmpFileName = malloc(outputFileNameLen + tmpSuffixLen + 1); // +1 for the null terminator
         *outputFileName = malloc(outputFileNameLen + tmpSuffixLen + 1); // +1 for the null terminator
         if (*outputTmpFileName == NULL) {
-            free_directories(directories);
-            free_directories(tmpFileNames);
+            free_multiple_arrays(directories, tmpFileNames, mergeFileNames, NULL);
             return EXIT_FAILURE; // Exit on memory allocation failure
         }
         strcpy(*outputFileName, *addFileName);
@@ -1141,8 +1161,7 @@ int process_arguments(const int argc, char **argv, int *skipDirs, long long *siz
 
         *outputTmpFileName = malloc(outputFileNameLen + tmpSuffixLen + 1); // +1 for the null terminator
         if (*outputTmpFileName == NULL) {
-            free_directories(directories);
-            free_directories(tmpFileNames);
+            free_multiple_arrays(directories, tmpFileNames, mergeFileNames, NULL);
             return EXIT_FAILURE; // Exit on memory allocation failure
         }
         strcpy(*outputTmpFileName, *outputFileName);
@@ -1160,8 +1179,7 @@ int process_arguments(const int argc, char **argv, int *skipDirs, long long *siz
                 *sizeThreshold = (long long) (sizeInMB * 1024 * 1024);
             } else {
                 fprintf(stderr, "Invalid or missing size argument after -M\n");
-                free_directories(directories);
-                free_directories(tmpFileNames);
+                free_multiple_arrays(directories, tmpFileNames, mergeFileNames, NULL);
                 release_temporary_resources(outputTmpFileName, NULL);
                 return EXIT_FAILURE;
             }
@@ -1171,15 +1189,13 @@ int process_arguments(const int argc, char **argv, int *skipDirs, long long *siz
                 *outputFileName = strdup(argv[++i]); // Copy next argument as output file name
                 if (*outputFileName == NULL) {
                     perror("Memory allocation failed (output file name)");
-                    free_directories(directories);
-                    free_directories(tmpFileNames);
+                    free_multiple_arrays(directories, tmpFileNames, mergeFileNames, NULL);
                     release_temporary_resources(outputTmpFileName, NULL);
                     return EXIT_FAILURE;
                 }
             } else {
                 fprintf(stderr, "Missing argument after -o\n");
-                free_directories(directories);
-                free_directories(tmpFileNames);
+                free_multiple_arrays(directories, tmpFileNames, mergeFileNames, NULL);
                 release_temporary_resources(outputTmpFileName, NULL);
                 return EXIT_FAILURE;
             }
@@ -1189,8 +1205,7 @@ int process_arguments(const int argc, char **argv, int *skipDirs, long long *siz
             *tmpFileNames = realloc(*tmpFileNames, sizeof(char *) * (*directoryCount + 2));
             if (*directories == NULL || *tmpFileNames == NULL) {
                 perror("Memory allocation failed");
-                free_directories(directories);
-                free_directories(tmpFileNames);
+                free_multiple_arrays(directories, tmpFileNames, mergeFileNames, NULL);
                 release_temporary_resources(outputTmpFileName, NULL);
                 return EXIT_FAILURE;
             }
@@ -1199,8 +1214,7 @@ int process_arguments(const int argc, char **argv, int *skipDirs, long long *siz
             (*directories)[*directoryCount] = strdup(argv[i]);
             if ((*directories)[*directoryCount] == NULL) {
                 perror("Memory allocation failed (directory entry)");
-                free_directories(directories);
-                free_directories(tmpFileNames);
+                free_multiple_arrays(directories, tmpFileNames, mergeFileNames, NULL);
                 release_temporary_resources(outputTmpFileName, NULL);
                 return EXIT_FAILURE;
             }
@@ -1212,8 +1226,7 @@ int process_arguments(const int argc, char **argv, int *skipDirs, long long *siz
             (*tmpFileNames)[*directoryCount] = strdup(tmpFileNameBuffer);
             if ((*tmpFileNames)[*directoryCount] == NULL) {
                 perror("Memory allocation failed (temporary file name)");
-                free_directories(directories);
-                free_directories(tmpFileNames);
+                free_multiple_arrays(directories, tmpFileNames, mergeFileNames, NULL);
                 release_temporary_resources(outputTmpFileName, NULL);
                 return EXIT_FAILURE;
             }
@@ -1226,8 +1239,7 @@ int process_arguments(const int argc, char **argv, int *skipDirs, long long *siz
         } else {
             // Unknown option
             fprintf(stderr, "Unknown option: %s\n", argv[i]);
-            free_directories(directories);
-            free_directories(tmpFileNames);
+            free_multiple_arrays(directories, tmpFileNames, mergeFileNames, NULL);
             release_temporary_resources(outputTmpFileName, NULL);
             return EXIT_FAILURE;
         }
@@ -1348,7 +1360,7 @@ char **remove_duplicate_directories(char **directories, const int count, int *ne
     char **unique_directories = malloc(count * sizeof(char *)); // Allocate memory for new array
     if (!unique_directories) {
         perror("Failed to allocate memory");
-        free_directories(&unique_directories);
+        free_array(&unique_directories);
         exit(EXIT_FAILURE);
     }
 
@@ -1370,7 +1382,7 @@ char **remove_duplicate_directories(char **directories, const int count, int *ne
             unique_directories[unique_index] = malloc(strlen(directories[i]) + 1); // Allocate memory for the string
             if (!unique_directories[unique_index]) {
                 perror("Failed to allocate memory for unique directory");
-                free_directories(&unique_directories);
+                free_array(&unique_directories);
                 exit(EXIT_FAILURE);
             }
             strcpy(unique_directories[unique_index], directories[i]);
@@ -1384,7 +1396,7 @@ char **remove_duplicate_directories(char **directories, const int count, int *ne
     unique_directories = realloc(unique_directories, unique_index * sizeof(char *));
     if (!unique_directories) {
         perror("Failed to reallocate memory");
-        free_directories(&unique_directories);
+        free_array(&unique_directories);
         exit(EXIT_FAILURE);
     }
     return unique_directories;
@@ -1514,7 +1526,7 @@ void compute_file_statistics(const FileEntry *entries, const int count, FileStat
             stats->binarySize += entry->size;
         }
     }
-    free_directories(&unique_directories);
+    free_array(&unique_directories);
 }
 
 /**

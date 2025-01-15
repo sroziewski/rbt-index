@@ -96,7 +96,7 @@ void printSizeDetails(const char *type, int count, long long size);
 
 void release_temporary_resources(char **first, ...);
 
-void free_directories(char ***directories);
+void free_array(char ***directories);
 
 void read_entries(const char *filename, FileEntry **entries, size_t fixed_count, int *count);
 
@@ -114,7 +114,7 @@ void resizeEntries(FileEntry **entries, int *count);
 
 void accumulateChildrenAndSize(FileEntry *entries, size_t count);
 
-int process_arguments(int argc, char **argv, int *skipDirs, long long *sizeThreshold, char **outputFileName, char **outputTmpFileName, char ***tmpFileNames, char ***directories, int *directoryCount, char **addFileName);
+int process_arguments(int argc, char **argv, int *skipDirs, long long *sizeThreshold, char **outputFileName, char **outputTmpFileName, char ***tmpFileNames, char ***directories, char ***mergeFileNames, int *directoryCount, char **addFileName);
 
 void initializeFileStatistics(FileStatistics *fileStats);
 
@@ -139,5 +139,7 @@ void initializeFileEntries(FileEntry *entries, size_t count);
 void compute_file_statistics(const FileEntry *entries, int count, FileStatistics *stats, char **directories);
 
 char **remove_duplicate_directories(char **directories, int count, int *new_count);
+
+void free_multiple_arrays(char ***first_directory, ...);
 
 #endif // L_FILES_H

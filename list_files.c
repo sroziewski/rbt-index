@@ -41,19 +41,21 @@ int main(const int argc, char *argv[]) {
     // Array for storing directory paths
     char **directories = NULL;
     char **tmpFileNames = NULL;
+    char **mergeFileNames = NULL;
     int directoryCount = 0;
 
     if (process_arguments(argc, argv, &skipDirs, &sizeThreshold, &outputFileName, &outputTmpFileName, &tmpFileNames,
-                          &directories, &directoryCount, &addFileName) != EXIT_SUCCESS) {
+                          &directories, &mergeFileNames, &directoryCount, &addFileName) != EXIT_SUCCESS) {
         printf("Error processing arguments\n");
-        free_directories(&directories);
-        free_directories(&tmpFileNames);
+        free_multiple_arrays(&directories, &tmpFileNames, &mergeFileNames, NULL);
         return EXIT_FAILURE;
     }
     const int numCores = omp_get_max_threads();
     omp_set_num_threads(numCores);
     fprintf(stdout, "Using %d cores.\n", numCores);
-    fprintf(stdout, "\n* The result will be merged with existing output file: %s\n", addFileName);
+    if (addFileName) {
+        fprintf(stdout, "\n* The result will be merged with existing output file: %s\n", addFileName);
+    }
     int totalCount = 0;
     for (int i = 0; directories[i] != NULL && i < argc - 2; i++) {
         fprintf(stdout, "\nProcessing directory: %s\n", directories[i]);
@@ -113,8 +115,7 @@ int main(const int argc, char *argv[]) {
     // printToStdOut(entries, totalOutputCount);
     // printFileStatistics(fileStats);
 
-    free_directories(&directories);
-    free_directories(&tmpFileNames);
+    free_multiple_arrays(&directories, &tmpFileNames, &mergeFileNames, NULL);
     release_temporary_resources(&outputTmpFileName, NULL);
 
     return EXIT_SUCCESS;
