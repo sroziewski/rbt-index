@@ -15,7 +15,7 @@
 
 #include "../shared/lconsts.h"
 
-const char* FILE_TYPES[] = {
+const char *FILE_TYPES[] = {
     "T_DIR", "T_TEXT", "T_BINARY", "T_JSON", "T_AUDIO", "T_FILM", "T_IMAGE",
     "T_COMPRESSED", "T_YAML", "T_EXE", "T_C", "T_PYTHON",
     "T_JAVA", "T_LOG", "T_PACKAGE", "T_CLASS", "T_TEMPLATE",
@@ -898,7 +898,8 @@ void printToStdOut(FileEntry *entries, const int count) {
  */
 void deleteFile(const char *filename) {
     // Check if the file exists
-    if (access(filename, F_OK) == 0) {  // F_OK tests for existence
+    if (access(filename, F_OK) == 0) {
+        // F_OK tests for existence
         const int result = remove(filename);
         if (result != 0) {
             perror("Failed to delete the file");
@@ -1352,7 +1353,15 @@ int process_arguments(const int argc, char **argv, int *skipDirs, long long *siz
             }
         }
     }
-    *mergeFileCount = mergeFileCountTmp;
+    if (mergeFileNames != NULL) {
+        if (mergeFileCountTmp < 2) {
+            fprintf(stderr, "Error: -m option requires at least two file names.\n");
+            free_multiple_arrays(directories, tmpFileNames, mergeFileNames, NULL);
+            release_temporary_resources(outputTmpFileName, NULL);
+            exit(EXIT_FAILURE);
+        }
+        *mergeFileCount = mergeFileCountTmp;
+    }
 
     return EXIT_SUCCESS;
 }
@@ -2026,20 +2035,89 @@ int process_file(const char *filename) {
     return EXIT_SUCCESS;
 }
 
+void get_dir_root(const char *fileName, char *root) {
+    FILE *file = fopen(fileName, "r");
+    if (file == NULL) {
+        perror("Error opening file");
+        exit(EXIT_FAILURE);
+    }
+
+    char buffer[MAX_LINE_LENGTH];
+
+    // Read the first line
+    if (fgets(buffer, sizeof(buffer), file) != NULL) {
+        // Split the line using "|" as the separator
+        char *token = strtok(buffer, "|");
+        if (token != NULL) {
+            // Allocate and copy the token dynamically
+            snprintf(root, strlen(token) + 1, "%s", token);
+            root = strdup(token);
+            if (root == NULL) {
+                perror("Error duplicating token");
+                fclose(file);
+                exit(EXIT_FAILURE);
+            }
+        } else {
+            fprintf(stderr, "Failed to parse the first column %s.\n", fileName);
+            fclose(file);
+            exit(EXIT_FAILURE);
+        }
+    } else {
+        fprintf(stderr, "Error reading the first line of file: %s.\n", fileName);
+        fclose(file);
+        exit(EXIT_FAILURE);
+    }
+
+    fclose(file);
+}
+
 /**
- * Iterate through the mergeFileNames array and check each file using process_file.
- * @param mergeFileNames: Array of file paths to process (must be NULL-terminated).
+ * Validates and processes a list of merge file paths and checks their compatibility for merging.
+ *
+ * This function performs various file integrity checks and processing steps for an array of merge
+ * file paths. It ensures that each file is a valid regular file, processes it using the
+ * `process_file` function, and prepares temporary file names for further operations
+ * with the help of `get_dir_root`. If any errors are encountered during file validation,
+ * appropriate error messages are logged, and the operation for that file is skipped.
+ *
+ * The function dynamically allocates memory for the temporary file name array, the size of which
+ * is determined by the number of merge files provided. If memory allocation fails or if critical
+ * issues are encountered (e.g., attempting to process a non-regular file), the function aborts
+ * execution and exits with a non-zero status.
+ *
+ * @param mergeFileNames  A pointer to an array of strings representing the paths of the merge
+ *                        files to be checked and processed. Each element corresponds to a file path.
+ *                        The array must be null-terminated.
+ * @param tmpFileNames    A pointer to a pointer that will hold dynamically allocated memory for an
+ *                        array of strings representing temporary file paths generated during the
+ *                        processing of the merge files.
+ * @param mergeFileCount  The number of merge files to process. This is used to allocate memory for
+ *                        the temporary file name array.
  */
-void check_merge_files(char **mergeFileNames) {
+void check_merge_files(char **mergeFileNames, char ***tmpFileNames, const int mergeFileCount) {
     if (mergeFileNames == NULL) {
         fprintf(stderr, "Error: mergeFileNames is NULL.\n");
         return;
     }
+    if (*tmpFileNames == NULL) {
+        *tmpFileNames = malloc(sizeof(char *) * (mergeFileCount + 2)); // Initial allocation
+        if (*tmpFileNames == NULL) {
+            perror("Error allocating memory for tmpFileNames");
+            exit(EXIT_FAILURE);
+        }
+    } else {
+        *tmpFileNames = realloc(*tmpFileNames, sizeof(char *) * (mergeFileCount + 2)); // Reallocate memory
+        if (*tmpFileNames == NULL) {
+            perror("Error reallocating memory for tmpFileNames");
+            exit(EXIT_FAILURE);
+        }
+    }
 
     for (int i = 0; mergeFileNames[i] != NULL; i++) {
+        (*tmpFileNames)[i] = malloc(MAX_LINE_LENGTH * sizeof(char));
+        get_dir_root(mergeFileNames[i], (*tmpFileNames)[i]);
         const char *fileName = mergeFileNames[i];
         fprintf(stdout, "Checking merge file format: %s\n", fileName);
-
         // Check if the file is a regular file
         struct stat fileStat;
         if (stat(fileName, &fileStat) != 0) {
@@ -2047,12 +2125,10 @@ void check_merge_files(char **mergeFileNames) {
             fprintf(stderr, "Error: Cannot access file '%s'.\n", fileName);
             continue;
         }
-
         if (!S_ISREG(fileStat.st_mode)) {
             fprintf(stderr, "Error: Merge file '%s' is not a regular file.\n", fileName);
             exit(EXIT_FAILURE);
         }
-
         // Check and process the file using process_file
         if (process_file(fileName) != EXIT_SUCCESS) {
             fprintf(stderr, "Error: Failed to process file '%s'.\n", fileName);

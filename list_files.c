@@ -50,7 +50,8 @@ int main(const int argc, char *argv[]) {
     FileStatistics fileStats;
 
     if (process_arguments(argc, argv, &skipDirs, &sizeThreshold, &outputFileName, &outputTmpFileName, &tmpFileNames,
-                          &directories, &mergeFileNames, &directoryCount, &addFileName, &mergeFileCount) != EXIT_SUCCESS) {
+                          &directories, &mergeFileNames, &directoryCount, &addFileName,
+                          &mergeFileCount) != EXIT_SUCCESS) {
         printf("Error processing arguments\n");
         free_multiple_arrays(&directories, &tmpFileNames, &mergeFileNames, NULL);
         return EXIT_FAILURE;
@@ -59,7 +60,7 @@ int main(const int argc, char *argv[]) {
         struct timeval start, end;
         gettimeofday(&start, NULL);
 
-        check_merge_files(mergeFileNames);
+        check_merge_files(mergeFileNames, &directories, mergeFileCount);
         deleteFile(outputFileName);
         deleteFile(outputTmpFileName);
         process_merge_files(mergeFileNames, mergeFileCount, outputTmpFileName, &totalCount);
@@ -77,13 +78,14 @@ int main(const int argc, char *argv[]) {
         double elapsed = get_time_difference(start, end);
         fprintf(stdout, "Time taken to process merge files: %.1f seconds\n", elapsed);
     }
-    const int numCores = omp_get_max_threads();
-    omp_set_num_threads(numCores);
-    fprintf(stdout, "Using %d cores.\n", numCores);
     if (addFileName) {
         fprintf(stdout, "\n* The result will be merged with existing output file: %s\n", addFileName);
     }
-    if (directories != NULL && directories[0] != NULL) {
+    if (mergeFileNames == NULL && directories != NULL && directories[0] != NULL) {
+        const int numCores = omp_get_max_threads();
+        omp_set_num_threads(numCores);
+        fprintf(stdout, "Using %d cores.\n", numCores);
+
         for (int i = 0; directories[i] != NULL && i < argc - 2; i++) {
             fprintf(stdout, "\nProcessing directory: %s\n", directories[i]);
             // Start Timer
@@ -94,7 +96,7 @@ int main(const int argc, char *argv[]) {
             if (processDirectoryTask(directories[i], outputFileName, tmpFileNames[i], sizeThreshold,
                                      skipDirs, &currentCount) != EXIT_SUCCESS) {
                 fprintf(stderr, "An error occurred while processing directory: %s\n", directories[i]);
-                                     }
+            }
             totalCount += currentCount;
             // End Timer
             gettimeofday(&end, NULL);
@@ -113,7 +115,8 @@ int main(const int argc, char *argv[]) {
             entries = malloc(totalCount * sizeof(FileEntry));
             int totalOutputCount = 0;
             read_entries(outputFileName, &entries, totalCount, &totalOutputCount);
-            sort_and_write_results_to_file(outputTmpFileName, outputFileName, &totalOutputCount, totalOutputCount, entries,
+            sort_and_write_results_to_file(outputTmpFileName, outputFileName, &totalOutputCount, totalOutputCount,
+                                           entries,
                                            false);
             copy_file(outputFileName, outputTmpFileName);
             remove_duplicates(outputTmpFileName, outputFileName);
