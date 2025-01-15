@@ -1107,7 +1107,7 @@ int process_arguments(const int argc, char **argv, int *skipDirs, long long *siz
 
     // Ensure that `-o` (output file name) is provided before proceeding
     if (*outputFileName == NULL && *addFileName == NULL) {
-        fprintf(stderr, "Error: The -o <outputfile> option is required otherwise use --merge <filename> or -m <filename(s)>.\n");
+        fprintf(stderr, "Error: The -o <outputfile> option is required otherwise use --merge <filename>.\n");
         fprintf(stderr, "Usage: %s [1. 4. <directory_path(s)>] [2. -m <filename(s)>] [-M maxSizeInMB] [--skip-dirs] [1. 2. -o <outputfile>] [4. --merge <filename>]\n", argv[0]);
         if (argc == 1) {
             exit(EXIT_FAILURE);
