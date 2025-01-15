@@ -1517,6 +1517,7 @@ char **remove_duplicate_directories(char **directories, const int count, int *ne
         free_array(&unique_directories);
         exit(EXIT_FAILURE);
     }
+    unique_directories[unique_index] = NULL; // Ensure NULL-termination
     return unique_directories;
 }
 
