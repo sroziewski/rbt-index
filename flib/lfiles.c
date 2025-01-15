@@ -1070,7 +1070,7 @@ void free_multiple_arrays(char ***first_directory, ...) {
     va_end(args); // Clean up the argument list
 }
 
-int belongs_to_mergeFileNames(const char *arg, const char *mergeFileNames[], const int size) {
+int belongs_to_mergeFileNames(const char *arg, char **mergeFileNames, const int size) {
     for (int i = 0; i < size; ++i) {
         if (strcmp(arg, mergeFileNames[i]) == 0) {
             return 1; // Found
@@ -2060,10 +2060,12 @@ void check_merge_files(char **mergeFileNames) {
     }
 }
 
-void process_merge_files(const char *mergeFileNames[], const int mergeFileCount, const char *outputFileName) {
-    int totalCount = 0;
+void process_merge_files(char **mergeFileNames, const int mergeFileCount, const char *outputFileName, int *totalCount) {
+    int totalCountTmp = 0;
     for (int i = 0; i < mergeFileCount; ++i) {
         const char *tmpFileName = mergeFileNames[i];
-        append_file(tmpFileName, outputFileName, &totalCount);
+        append_file(tmpFileName, outputFileName, &totalCountTmp);
+        *totalCount += totalCountTmp;
+        totalCountTmp = 0;
     }
 }

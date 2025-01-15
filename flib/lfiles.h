@@ -149,6 +149,6 @@ int is_size_t(const char *str);
 
 void check_merge_files(char **mergeFileNames);
 
-void process_merge_files(const char *mergeFileNames[], int mergeFileCount, const char *outputFileName);
+void process_merge_files(char **mergeFileNames, int mergeFileCount, const char *outputFileName, int *totalCount);
 
 #endif // L_FILES_H

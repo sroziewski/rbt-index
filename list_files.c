@@ -44,8 +44,10 @@ int main(const int argc, char *argv[]) {
     char **mergeFileNames = NULL;
     int directoryCount = 0;
     int mergeFileCount = 0;
+    int totalCount = 0;
 
     FileEntry *entries;
+    FileStatistics fileStats;
 
     if (process_arguments(argc, argv, &skipDirs, &sizeThreshold, &outputFileName, &outputTmpFileName, &tmpFileNames,
                           &directories, &mergeFileNames, &directoryCount, &addFileName, &mergeFileCount) != EXIT_SUCCESS) {
@@ -54,9 +56,26 @@ int main(const int argc, char *argv[]) {
         return EXIT_FAILURE;
     }
     if (mergeFileNames != NULL) {
+        struct timeval start, end;
+        gettimeofday(&start, NULL);
+
         check_merge_files(mergeFileNames);
         deleteFile(outputFileName);
-        process_merge_files(mergeFileNames, mergeFileCount, outputFileName);
+        deleteFile(outputTmpFileName);
+        process_merge_files(mergeFileNames, mergeFileCount, outputTmpFileName, &totalCount);
+
+        entries = malloc(totalCount * sizeof(FileEntry));
+        int totalOutputCount = 0;
+        read_entries(outputTmpFileName, &entries, totalCount, &totalOutputCount);
+        sort_and_write_results_to_file(outputTmpFileName, outputFileName, &totalOutputCount, totalOutputCount, entries,
+                                       false);
+        copy_file(outputFileName, outputTmpFileName);
+        remove_duplicates(outputTmpFileName, outputFileName);
+
+        gettimeofday(&end, NULL);
+        // Calculate and display elapsed time
+        double elapsed = get_time_difference(start, end);
+        fprintf(stdout, "Time taken to process merge files: %.1f seconds\n", elapsed);
     }
     const int numCores = omp_get_max_threads();
     omp_set_num_threads(numCores);
@@ -64,8 +83,6 @@ int main(const int argc, char *argv[]) {
     if (addFileName) {
         fprintf(stdout, "\n* The result will be merged with existing output file: %s\n", addFileName);
     }
-    int totalCount = 0;
-
     if (directories != NULL && directories[0] != NULL) {
         for (int i = 0; directories[i] != NULL && i < argc - 2; i++) {
             fprintf(stdout, "\nProcessing directory: %s\n", directories[i]);
@@ -116,8 +133,9 @@ int main(const int argc, char *argv[]) {
         copy_file(outputFileName, outputTmpFileName);
         remove_duplicates(outputTmpFileName, addFileName);
     }
-    read_entries(outputFileName, &entries, totalCount, &totalCount);
-    FileStatistics fileStats;
+    if (mergeFileNames != NULL) {
+        read_entries(outputFileName, &entries, totalCount, &totalCount);
+    }
     compute_file_statistics(entries, totalCount, &fileStats, directories);
 
     printFileStatistics(fileStats);
