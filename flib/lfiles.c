@@ -1085,11 +1085,11 @@ int process_arguments(const int argc, char **argv, int *skipDirs, long long *siz
                 free_directories(tmpFileNames);
                 return EXIT_FAILURE;
             }
-        } else if (strcmp(argv[i], "--add") == 0) {
+        } else if (strcmp(argv[i], "--merge") == 0) {
             if (i + 1 < argc) {
                 *addFileName = argv[++i];
             } else {
-                fprintf(stderr, "File name for --add is missing\n");
+                fprintf(stderr, "File name for --merge is missing\n");
                 free_directories(directories);
                 free_directories(tmpFileNames);
                 return EXIT_FAILURE;
@@ -1099,7 +1099,7 @@ int process_arguments(const int argc, char **argv, int *skipDirs, long long *siz
 
     // Ensure --add and -o are not used simultaneously
     if (*outputFileName != NULL && *addFileName != NULL) {
-        fprintf(stderr, "Error: --add and -o cannot be used together.\n");
+        fprintf(stderr, "Error: --merge and -o cannot be used together.\n");
         free_directories(directories);
         free_directories(tmpFileNames);
         return EXIT_FAILURE;
@@ -1107,8 +1107,8 @@ int process_arguments(const int argc, char **argv, int *skipDirs, long long *siz
 
     // Ensure that `-o` (output file name) is provided before proceeding
     if (*outputFileName == NULL && *addFileName == NULL) {
-        fprintf(stderr, "Error: The -o <outputfile> option is required.\n");
-        fprintf(stderr, "Usage: %s <directory_path(s)> [-M maxSizeInMB] [--skip-dirs] -o <outputfile>\n", argv[0]);
+        fprintf(stderr, "Error: The -o <outputfile> option is required otherwise use --merge <filename> or -m <filename(s)>.\n");
+        fprintf(stderr, "Usage: %s [1. 4. <directory_path(s)>] [2. -m <filename(s)>] [-M maxSizeInMB] [--skip-dirs] [1. 2. -o <outputfile>] [4. --merge <filename>]\n", argv[0]);
         if (argc == 1) {
             exit(EXIT_FAILURE);
         }
