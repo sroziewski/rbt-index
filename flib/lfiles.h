@@ -115,7 +115,7 @@ void resizeEntries(FileEntry **entries, int *count);
 
 void accumulateChildrenAndSize(FileEntry *entries, size_t count);
 
-int process_arguments(int argc, char **argv, int *skipDirs, long long *sizeThreshold, char **outputFileName, char **outputTmpFileName, char ***tmpFileNames, char ***directories, char ***mergeFileNames, int *directoryCount, char **addFileName);
+int process_arguments(int argc, char **argv, int *skipDirs, long long *sizeThreshold, char **outputFileName, char **outputTmpFileName, char ***tmpFileNames, char ***directories, char ***mergeFileNames, int *directoryCount, char **addFileName, int *mergeFileCount2);
 
 void initializeFileStatistics(FileStatistics *fileStats);
 
@@ -148,5 +148,7 @@ int process_file(const char *filename);
 int is_size_t(const char *str);
 
 void check_merge_files(char **mergeFileNames);
+
+void process_merge_files(const char *mergeFileNames[], int mergeFileCount, const char *outputFileName);
 
 #endif // L_FILES_H

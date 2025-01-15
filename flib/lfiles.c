@@ -886,19 +886,23 @@ void printToStdOut(FileEntry *entries, const int count) {
 }
 
 /**
- * Deletes the specified file from the file system.
+ * Deletes a specified file from the file system.
  *
- * This function attempts to remove a file identified by its file path. If the operation fails,
- * an error message is printed to the standard error stream using perror.
+ * This function deletes a file with the provided filename if it exists. It first checks for the
+ * existence of the file using the `access` function with the `F_OK` flag, which tests for the
+ * file's presence. If the file exists, the `remove` function is called to delete it. Any
+ * failure during the deletion process results in an error message being displayed using `perror`.
  *
- * @param filename  A pointer to a null-terminated string containing the path of the file to be deleted.
- *                  The path must be accessible and the calling program must have the necessary permissions
- *                  to delete the file.
+ * @param filename  A pointer to a null-terminated string specifying the path to the file
+ *                  that is to be deleted.
  */
 void deleteFile(const char *filename) {
-    const int result = remove(filename);
-    if (result != 0) {
-        perror("Failed to delete the file");
+    // Check if the file exists
+    if (access(filename, F_OK) == 0) {  // F_OK tests for existence
+        const int result = remove(filename);
+        if (result != 0) {
+            perror("Failed to delete the file");
+        }
     }
 }
 
@@ -1076,47 +1080,43 @@ int belongs_to_mergeFileNames(const char *arg, const char *mergeFileNames[], con
 }
 
 /**
- * Processes command-line arguments to initialize configuration options for file and directory processing.
+ * Processes and validates command-line arguments, configuring various options for directory
+ * processing, file merging, and output file generation.
  *
- * This function parses and validates the provided arguments, storing configuration data for output files,
- * directories, merge files, size thresholds, and operational flags. It enforces mutually exclusive options,
- * validates file existence, and handles memory allocation for dynamically updated arrays as needed.
- * Errors encountered in arguments or memory allocation are reported, and processing halts with an appropriate
- * exit code.
+ * This function parses the input arguments to set up skip directory behavior, size thresholds,
+ * output file names, temporary files, directories to process, merge file lists, and additional
+ * settings required for program execution. It validates argument combinations, handles memory
+ * allocation, ensures compatibility between options, and performs necessary checks to ensure
+ * files exist and appropriate usage constraints are followed.
  *
- * Supported command-line options include:
- * - `-o`: Specifies the output file name.
- * - `--merge`: Processes a single file name for merging.
- * - `-m`: Specifies multiple merge file names.
- * - `-M`: Sets a size threshold in MB.
- * - `--skip-dirs`: Excludes directories from processing.
+ * The function stops execution and returns an error if argument validation fails or if memory allocation
+ * issues occur. It also takes care to clean up allocated resources in error conditions.
  *
- * Errors are raised for invalid combinations of flags, missing arguments for required options, or if file operations
- * (e.g., memory allocation or access checks) fail.
+ * Key functionalities include:
+ * - Parsing and validating `-o`, `--merge`, `-m`, `--skip-dirs`, and `-M` command-line options.
+ * - Setting the output file name and creating temporary filenames for intermediate processing.
+ * - Handling merge file lists while ensuring mutual exclusivity with other flags.
+ * - Verifying file existence for merge files and resolving conflicts with the output file name.
  *
- * @param argc              The number of command-line arguments passed.
- * @param argv              An array of strings representing the command-line arguments.
- * @param skipDirs          A pointer to an integer flag (0 or 1) indicating whether directories should be skipped.
- * @param sizeThreshold     A pointer to a long long representing the size threshold in bytes for file selection.
- * @param outputFileName    A pointer to a string storing the output file name (if specified).
- * @param outputTmpFileName A pointer to a string storing the name of the temporary output file (if applicable).
- * @param tmpFileNames      A pointer to an array of strings for storing temporary file names (dynamically allocated).
- * @param directories       A pointer to an array of strings for directory paths passed as input arguments.
- * @param mergeFileNames    A pointer to an array of strings for file names used in merging operations.
- * @param directoryCount    A pointer to an integer that tracks the number of directories processed.
- * @param addFileName       A pointer to a string storing the file name for the `--merge` parameter.
+ * @param argc             The count of command-line arguments passed by the user.
+ * @param argv             An array of C strings representing the command-line arguments.
+ * @param skipDirs         A pointer to an integer flag (0 or 1) that indicates whether directories should be skipped.
+ * @param sizeThreshold    A pointer to a long long integer to store the size threshold for file processing, in bytes.
+ * @param outputFileName   A double pointer to a string that will store the name of the output file.
+ * @param outputTmpFileName A double pointer to a string that will store the name of the intermediate temporary file.
+ * @param tmpFileNames     A triple pointer to dynamically allocated strings storing names of temporary files.
+ * @param directories      A triple pointer to dynamically allocated strings storing names of directory paths to process.
+ * @param mergeFileNames   A triple pointer to dynamically allocated strings storing names of files to merge.
+ * @param directoryCount   A pointer to an integer that tracks the count of directories processed.
+ * @param addFileName      A double pointer to a string storing the filename from the `--merge` argument.
+ * @param mergeFileCount   A pointer to an integer that tracks the count of files in the merge file list.
  *
- * @return An integer status code indicating success (`EXIT_SUCCESS`) or failure (`EXIT_FAILURE`). Reasons for
- *         failure include:
- *         - Missing or invalid arguments.
- *         - Memory allocation errors.
- *         - Invalid combinations of mutually exclusive options.
- *         - Nonexistent file paths in the merge file arguments.
+ * @return EXIT_SUCCESS on successful processing of arguments, or EXIT_FAILURE if validation or processing fails.
  */
 int process_arguments(const int argc, char **argv, int *skipDirs, long long *sizeThreshold, char **outputFileName,
                       char **outputTmpFileName,
                       char ***tmpFileNames, char ***directories, char ***mergeFileNames, int *directoryCount,
-                      char **addFileName) {
+                      char **addFileName, int *mergeFileCount) {
     *skipDirs = 0; // Default: don't skip directories
     *sizeThreshold = 0; // Default: no size threshold
     *outputFileName = NULL;
@@ -1127,7 +1127,7 @@ int process_arguments(const int argc, char **argv, int *skipDirs, long long *siz
     *directoryCount = 0;
     *addFileName = NULL; // For the --add parameter
 
-    int mergeFileCount = 0;
+    int mergeFileCountTmp = 0;
 
     // First pass: process output-related options and other mutual exclusions
     for (int i = 1; i < argc; i++) {
@@ -1163,7 +1163,7 @@ int process_arguments(const int argc, char **argv, int *skipDirs, long long *siz
                 }
 
                 // Allocate and store merge file names
-                *mergeFileNames = realloc(*mergeFileNames, sizeof(char *) * (mergeFileCount + 2));
+                *mergeFileNames = realloc(*mergeFileNames, sizeof(char *) * (mergeFileCountTmp + 2));
                 if (*mergeFileNames == NULL) {
                     perror("Memory allocation failed for mergeFileNames");
                     free_multiple_arrays(directories, tmpFileNames, mergeFileNames, NULL);
@@ -1171,21 +1171,21 @@ int process_arguments(const int argc, char **argv, int *skipDirs, long long *siz
                 }
 
                 // Store the file name
-                (*mergeFileNames)[mergeFileCount] = strdup(argv[j]);
-                if ((*mergeFileNames)[mergeFileCount] == NULL) {
+                (*mergeFileNames)[mergeFileCountTmp] = strdup(argv[j]);
+                if ((*mergeFileNames)[mergeFileCountTmp] == NULL) {
                     perror("Memory allocation failed for mergeFileNames entry");
                     free_multiple_arrays(directories, tmpFileNames, mergeFileNames, NULL);
                     return EXIT_FAILURE;
                 }
 
-                mergeFileCount++;
+                mergeFileCountTmp++;
                 // Ensure NULL-termination
-                (*mergeFileNames)[mergeFileCount] = NULL;
+                (*mergeFileNames)[mergeFileCountTmp] = NULL;
                 i = j; // Move index to the last processed argument
             }
 
             // Ensure at least one file was provided after -m
-            if (mergeFileCount == 0) {
+            if (mergeFileCountTmp == 0) {
                 fprintf(stderr, "Error: -m requires at least one file name.\n");
                 free_multiple_arrays(directories, tmpFileNames, mergeFileNames, NULL);
                 return EXIT_FAILURE;
@@ -1344,7 +1344,7 @@ int process_arguments(const int argc, char **argv, int *skipDirs, long long *siz
         } else if (strcmp(argv[i], "-m") == 0) {
             // do nothing here
         } else {
-            if (!belongs_to_mergeFileNames(argv[i], *mergeFileNames, mergeFileCount)) {
+            if (!belongs_to_mergeFileNames(argv[i], *mergeFileNames, mergeFileCountTmp)) {
                 fprintf(stderr, "Unknown option: %s\n", argv[i]);
                 free_multiple_arrays(directories, tmpFileNames, mergeFileNames, NULL);
                 release_temporary_resources(outputTmpFileName, NULL);
@@ -1352,6 +1352,7 @@ int process_arguments(const int argc, char **argv, int *skipDirs, long long *siz
             }
         }
     }
+    *mergeFileCount = mergeFileCountTmp;
 
     return EXIT_SUCCESS;
 }
@@ -2056,5 +2057,13 @@ void check_merge_files(char **mergeFileNames) {
         if (process_file(fileName) != EXIT_SUCCESS) {
             fprintf(stderr, "Error: Failed to process file '%s'.\n", fileName);
         }
+    }
+}
+
+void process_merge_files(const char *mergeFileNames[], const int mergeFileCount, const char *outputFileName) {
+    int totalCount = 0;
+    for (int i = 0; i < mergeFileCount; ++i) {
+        const char *tmpFileName = mergeFileNames[i];
+        append_file(tmpFileName, outputFileName, &totalCount);
     }
 }

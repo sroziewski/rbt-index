@@ -43,15 +43,20 @@ int main(const int argc, char *argv[]) {
     char **tmpFileNames = NULL;
     char **mergeFileNames = NULL;
     int directoryCount = 0;
+    int mergeFileCount = 0;
+
+    FileEntry *entries;
 
     if (process_arguments(argc, argv, &skipDirs, &sizeThreshold, &outputFileName, &outputTmpFileName, &tmpFileNames,
-                          &directories, &mergeFileNames, &directoryCount, &addFileName) != EXIT_SUCCESS) {
+                          &directories, &mergeFileNames, &directoryCount, &addFileName, &mergeFileCount) != EXIT_SUCCESS) {
         printf("Error processing arguments\n");
         free_multiple_arrays(&directories, &tmpFileNames, &mergeFileNames, NULL);
         return EXIT_FAILURE;
     }
     if (mergeFileNames != NULL) {
         check_merge_files(mergeFileNames);
+        deleteFile(outputFileName);
+        process_merge_files(mergeFileNames, mergeFileCount, outputFileName);
     }
     const int numCores = omp_get_max_threads();
     omp_set_num_threads(numCores);
@@ -60,40 +65,42 @@ int main(const int argc, char *argv[]) {
         fprintf(stdout, "\n* The result will be merged with existing output file: %s\n", addFileName);
     }
     int totalCount = 0;
-    for (int i = 0; directories[i] != NULL && i < argc - 2; i++) {
-        fprintf(stdout, "\nProcessing directory: %s\n", directories[i]);
-        // Start Timer
-        struct timeval start, end;
-        gettimeofday(&start, NULL);
 
-        int currentCount = 0;
-        if (processDirectoryTask(directories[i], outputFileName, tmpFileNames[i], sizeThreshold,
-                                 skipDirs, &currentCount) != EXIT_SUCCESS) {
-            fprintf(stderr, "An error occurred while processing directory: %s\n", directories[i]);
+    if (directories != NULL && directories[0] != NULL) {
+        for (int i = 0; directories[i] != NULL && i < argc - 2; i++) {
+            fprintf(stdout, "\nProcessing directory: %s\n", directories[i]);
+            // Start Timer
+            struct timeval start, end;
+            gettimeofday(&start, NULL);
+
+            int currentCount = 0;
+            if (processDirectoryTask(directories[i], outputFileName, tmpFileNames[i], sizeThreshold,
+                                     skipDirs, &currentCount) != EXIT_SUCCESS) {
+                fprintf(stderr, "An error occurred while processing directory: %s\n", directories[i]);
+                                     }
+            totalCount += currentCount;
+            // End Timer
+            gettimeofday(&end, NULL);
+            // Calculate and display elapsed time
+            double elapsed = get_time_difference(start, end);
+            fprintf(stdout, "Time taken to process directory '%s': %.1f seconds\n", directories[i], elapsed);
         }
-        totalCount += currentCount;
-        // End Timer
-        gettimeofday(&end, NULL);
-        // Calculate and display elapsed time
-        double elapsed = get_time_difference(start, end);
-        fprintf(stdout, "Time taken to process directory '%s': %.1f seconds\n", directories[i], elapsed);
-    }
-    deleteFile(outputFileName);
-    for (int i = 0; directories[i] != NULL && i < argc - 2; i++) {
-        int cnt = 0;
-        if (append_file(tmpFileNames[i], outputFileName, &cnt) != EXIT_SUCCESS) {
-            fprintf(stderr, "Failed to append file %s to %s\n", tmpFileNames[i], outputFileName);
+        deleteFile(outputFileName);
+        for (int i = 0; directories[i] != NULL && i < argc - 2; i++) {
+            int cnt = 0;
+            if (append_file(tmpFileNames[i], outputFileName, &cnt) != EXIT_SUCCESS) {
+                fprintf(stderr, "Failed to append file %s to %s\n", tmpFileNames[i], outputFileName);
+            }
         }
-    }
-    FileEntry *entries;
-    if (directoryCount > 1) {
-        entries = malloc(totalCount * sizeof(FileEntry));
-        int totalOutputCount = 0;
-        read_entries(outputFileName, &entries, totalCount, &totalOutputCount);
-        sort_and_write_results_to_file(outputTmpFileName, outputFileName, &totalOutputCount, totalOutputCount, entries,
-                                       false);
-        copy_file(outputFileName, outputTmpFileName);
-        remove_duplicates(outputTmpFileName, outputFileName);
+        if (directoryCount > 1) {
+            entries = malloc(totalCount * sizeof(FileEntry));
+            int totalOutputCount = 0;
+            read_entries(outputFileName, &entries, totalCount, &totalOutputCount);
+            sort_and_write_results_to_file(outputTmpFileName, outputFileName, &totalOutputCount, totalOutputCount, entries,
+                                           false);
+            copy_file(outputFileName, outputTmpFileName);
+            remove_duplicates(outputTmpFileName, outputFileName);
+        }
     }
 
     if (addFileName != NULL) {
