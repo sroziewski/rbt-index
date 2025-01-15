@@ -56,4 +56,15 @@ typedef struct FileStatistics {
 
 } FileStatistics;
 
+
 #endif // LCONSTS_H
+
+#ifndef FILE_TYPES_H
+#define FILE_TYPES_H
+
+// Declare the constant array as extern
+extern const char* FILE_TYPES[];
+// Define its size as a macro for array iteration
+#define FILE_TYPES_COUNT 28
+
+#endif // FILE_TYPES_H

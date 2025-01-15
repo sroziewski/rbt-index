@@ -50,6 +50,9 @@ int main(const int argc, char *argv[]) {
         free_multiple_arrays(&directories, &tmpFileNames, &mergeFileNames, NULL);
         return EXIT_FAILURE;
     }
+    if (mergeFileNames != NULL) {
+        check_merge_files(mergeFileNames);
+    }
     const int numCores = omp_get_max_threads();
     omp_set_num_threads(numCores);
     fprintf(stdout, "Using %d cores.\n", numCores);

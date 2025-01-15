@@ -15,6 +15,15 @@
 
 #include "../shared/lconsts.h"
 
+const char* FILE_TYPES[] = {
+    "T_DIR", "T_TEXT", "T_BINARY", "T_JSON", "T_AUDIO", "T_FILM", "T_IMAGE",
+    "T_COMPRESSED", "T_YAML", "T_EXE", "T_C", "T_PYTHON",
+    "T_JAVA", "T_LOG", "T_PACKAGE", "T_CLASS", "T_TEMPLATE",
+    "T_PDF", "T_JAR", "T_HTML", "T_XML", "T_XHTML",
+    "T_TS", "T_DOC", "T_CALC", "T_LATEX", "T_SQL",
+    "T_CSV", "T_CSS"
+};
+
 // Check if the file has the .json extension (case insensitive)
 int isJsonFile(const char *filePath) {
     const char *dot = strrchr(filePath, '.');
@@ -987,21 +996,21 @@ void accumulateChildrenAndSize(FileEntry *entries, const size_t count) {
                     // Current directory is a parent of entries[j]
                     entries[i].childrenCount++;
                     entries[i].size += entries[j].size;
-                    } else if (j + 1 < count) {
-                        bool stop = true;
-                        for (int k = 0; k < 3 && j + k < count; k++) {
-                            const char *res = strstr(entries[j + k].path, entries[i].path);
-                            if (res && strcmp(res, entries[j + k].path) == 0) {
-                                // At least one path matches within the next 10 entries
-                                stop = false;
-                                break;
-                            }
-                        }
-                        if (stop) {
-                            // Break out of the outer loop
+                } else if (j + 1 < count) {
+                    bool stop = true;
+                    for (int k = 0; k < 3 && j + k < count; k++) {
+                        const char *res = strstr(entries[j + k].path, entries[i].path);
+                        if (res && strcmp(res, entries[j + k].path) == 0) {
+                            // At least one path matches within the next 10 entries
+                            stop = false;
                             break;
                         }
                     }
+                    if (stop) {
+                        // Break out of the outer loop
+                        break;
+                    }
+                }
             }
         }
     }
@@ -1089,7 +1098,8 @@ void free_multiple_arrays(char ***first_directory, ...) {
  */
 int process_arguments(const int argc, char **argv, int *skipDirs, long long *sizeThreshold, char **outputFileName,
                       char **outputTmpFileName,
-                      char ***tmpFileNames, char ***directories, char ***mergeFileNames, int *directoryCount, char **addFileName) {
+                      char ***tmpFileNames, char ***directories, char ***mergeFileNames, int *directoryCount,
+                      char **addFileName) {
     *skipDirs = 0; // Default: don't skip directories
     *sizeThreshold = 0; // Default: no size threshold
     *outputFileName = NULL;
@@ -1182,7 +1192,10 @@ int process_arguments(const int argc, char **argv, int *skipDirs, long long *siz
     // Ensure that `-o` (output file name) is provided before proceeding
     if (*outputFileName == NULL && *addFileName == NULL) {
         fprintf(stderr, "Error: The -o <outputfile> option is required otherwise use --merge <filename>.\n");
-        fprintf(stderr, "Usage: %s [1. 4. <directory_path(s)>] [2. -m <filename(s)>] [-M maxSizeInMB] [--skip-dirs] [1. 2. -o <outputfile>] [4. --merge <filename>]\n", argv[0]);
+        fprintf(
+            stderr,
+            "Usage: %s [1. 4. <directory_path(s)>] [2. -m <filename(s)>] [-M maxSizeInMB] [--skip-dirs] [1. 2. -o <outputfile>] [4. --merge <filename>]\n",
+            argv[0]);
         if (argc == 1) {
             exit(EXIT_FAILURE);
         }
@@ -1194,7 +1207,8 @@ int process_arguments(const int argc, char **argv, int *skipDirs, long long *siz
     if (*outputFileName != NULL && *mergeFileNames != NULL) {
         for (int i = 0; (*mergeFileNames)[i] != NULL; i++) {
             if (strcmp(*outputFileName, (*mergeFileNames)[i]) == 0) {
-                fprintf(stderr, "Error: outputFileName '%s' cannot be the same as a merge file '%s'\n", *outputFileName, (*mergeFileNames)[i]);
+                fprintf(stderr, "Error: outputFileName '%s' cannot be the same as a merge file '%s'\n", *outputFileName,
+                        (*mergeFileNames)[i]);
                 free_multiple_arrays(directories, tmpFileNames, mergeFileNames, NULL);
                 return EXIT_FAILURE;
             }
@@ -1310,11 +1324,9 @@ int process_arguments(const int argc, char **argv, int *skipDirs, long long *siz
             (*tmpFileNames)[*directoryCount] = NULL;
         } else if (strcmp(argv[i - 1], "--add") == 0 || strcmp(argv[i], "--add") == 0) {
             // do nothing here
-        }
-        else if (strcmp(argv[i], "-m") == 0) {
+        } else if (strcmp(argv[i], "-m") == 0) {
             // do nothing here
-        }
-        else {
+        } else {
             // Unknown option
             fprintf(stderr, "Unknown option: %s\n", argv[i]);
             free_multiple_arrays(directories, tmpFileNames, mergeFileNames, NULL);
@@ -1481,7 +1493,6 @@ char **remove_duplicate_directories(char **directories, const int count, int *ne
 }
 
 void compute_file_statistics(const FileEntry *entries, const int count, FileStatistics *stats, char **directories) {
-
     int dirCount = 0;
     for (size_t j = 0; directories[j] != NULL; j++) {
         dirCount++;
@@ -1563,9 +1574,6 @@ void compute_file_statistics(const FileEntry *entries, const int count, FileStat
         } else if (strcmp(entry->type, "T_PDF") == 0) {
             stats->pdfFiles++;
             stats->pdfSize += entry->size;
-        } else if (strcmp(entry->type, "T_JAR") == 0) {
-            stats->jarFiles++;
-            stats->jarSize += entry->size;
         } else if (strcmp(entry->type, "T_HTML") == 0) {
             stats->htmlFiles++;
             stats->htmlSize += entry->size;
@@ -1905,4 +1913,130 @@ int copy_file(const char *inputFileName, const char *outputFileName) {
 
 double get_time_difference(const struct timeval start, const struct timeval end) {
     return (end.tv_sec - start.tv_sec) + (end.tv_usec - start.tv_usec) / 1000000.0;
+}
+
+/**
+ * Helper function to check if a string is a valid size_t (non-negative integer).
+ * @param str: A string to check.
+ * @return 1 if valid, 0 otherwise.
+ */
+int is_size_t(const char *str) {
+    if (str == NULL || *str == '\0') {
+        return 0;
+    }
+    while (*str) {
+        if (!isdigit((unsigned char)*str)) {
+            return 0; // Non-digit character found
+        }
+        str++;
+    }
+    return 1; // Entire string is numeric
+}
+
+// Function to check if a value belongs to FILE_TYPES
+bool is_valid_file_type(const char *type) {
+    for (int i = 0; i < FILE_TYPES_COUNT; i++) {
+        if (strcmp(FILE_TYPES[i], type) == 0) {
+            return true;
+        }
+    }
+    return false;
+}
+
+/**
+ * Process a file line by line, ensuring each row contains between 3 and 6 columns
+ * and that the second column is of type size_t.
+ * @param filename: The path to the input file.
+ * @return 0 on success, non-zero on error.
+ */
+int process_file(const char *filename) {
+    FILE *file = fopen(filename, "r");
+    if (file == NULL) {
+        perror("Error opening file");
+        return EXIT_FAILURE;
+    }
+
+    char line[MAX_LINE_LENGTH];
+    int lineNumber = 0;
+
+    // Process each line of the file
+    while (fgets(line, sizeof(line), file) != NULL) {
+        lineNumber++;
+
+        // Remove trailing newline character, if present
+        line[strcspn(line, "\n")] = '\0';
+
+        // Make a copy of the line since `strtok` modifies the input
+        char lineCopy[MAX_LINE_LENGTH];
+        strncpy(lineCopy, line, sizeof(lineCopy));
+        lineCopy[sizeof(lineCopy) - 1] = '\0';
+
+        // Split the line into columns using '|'
+        int columnCount = 0;
+        char *columns[7] = {NULL}; // To store up to 6 columns
+        char *token = strtok(line, "|");
+
+        while (token != NULL && columnCount < 7) {
+            columns[columnCount++] = token;
+            token = strtok(NULL, "|");
+        }
+
+        // Check the number of columns (between 3 and 6)
+        if (columnCount < 3 || columnCount > 6) {
+            fprintf(stderr, "Error: Invalid row at line %d. Expected 3-6 columns, got %d. Row content: \"%s\"\n",
+                    lineNumber, columnCount, lineCopy);
+            exit(EXIT_FAILURE);
+        }
+
+        // Validate the second column as size_t
+        if (!is_size_t(columns[1])) {
+            fprintf(stderr, "Error: Invalid size_t value in the second column at line %d. Row content: \"%s\"\n",
+                    lineNumber, lineCopy);
+            continue; // Go to the next line
+        }
+
+        // Validate the 3rd column against FILE_TYPES
+        if (!is_valid_file_type(columns[2])) {
+            fprintf(stderr, "Error: Invalid file type in the third column at line %d. Row content: \"%s\"\n",
+                    lineNumber, lineCopy);
+            exit(EXIT_FAILURE);
+        }
+    }
+
+    fclose(file);
+    return EXIT_SUCCESS;
+}
+
+/**
+ * Iterate through the mergeFileNames array and check each file using process_file.
+ * @param mergeFileNames: Array of file paths to process (must be NULL-terminated).
+ */
+void check_merge_files(char **mergeFileNames) {
+    if (mergeFileNames == NULL) {
+        fprintf(stderr, "Error: mergeFileNames is NULL.\n");
+        return;
+    }
+
+    for (int i = 0; mergeFileNames[i] != NULL; i++) {
+        const char *fileName = mergeFileNames[i];
+        fprintf(stdout, "Checking merge file format: %s\n", fileName);
+
+        // Check if the file is a regular file
+        struct stat fileStat;
+        if (stat(fileName, &fileStat) != 0) {
+            perror("Error accessing file");
+            fprintf(stderr, "Error: Cannot access file '%s'.\n", fileName);
+            continue;
+        }
+
+        if (!S_ISREG(fileStat.st_mode)) {
+            fprintf(stderr, "Error: Merge file '%s' is not a regular file.\n", fileName);
+            exit(EXIT_FAILURE);
+        }
+
+        // Check and process the file using process_file
+        if (process_file(fileName) != EXIT_SUCCESS) {
+            fprintf(stderr, "Error: Failed to process file '%s'.\n", fileName);
+        }
+    }
 }

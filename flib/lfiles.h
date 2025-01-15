@@ -143,4 +143,10 @@ char **remove_duplicate_directories(char **directories, int count, int *new_coun
 
 void free_multiple_arrays(char ***first_directory, ...);
 
+int process_file(const char *filename);
+
+int is_size_t(const char *str);
+
+void check_merge_files(char **mergeFileNames);
+
 #endif // L_FILES_H
