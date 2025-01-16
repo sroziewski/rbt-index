@@ -1081,7 +1081,7 @@ void free_multiple_arrays(char ***first_directory, ...) {
     va_end(args); // Clean up the argument list
 }
 
-int belongs_to_mergeFileNames(const char *arg, char **mergeFileNames, const int size) {
+int belongs_to_array(const char *arg, char **mergeFileNames, const int size) {
     for (int i = 0; i < size; ++i) {
         if (strcmp(arg, mergeFileNames[i]) == 0) {
             return 1; // Found
@@ -1126,8 +1126,9 @@ int belongs_to_mergeFileNames(const char *arg, char **mergeFileNames, const int 
  */
 int process_arguments(const int argc, char **argv, int *skipDirs, long long *sizeThreshold, char **outputFileName,
                       char **outputTmpFileName,
-                      char ***tmpFileNames, char ***directories, char ***mergeFileNames, char ***printFileNames, int *directoryCount,
-                      char **addFileName, int *mergeFileCount, int *printFileCount) {
+                      char ***tmpFileNames, char ***directories, char ***mergeFileNames, char ***statFileNames,
+                      int *directoryCount,
+                      char **addFileName, int *mergeFileCount, int *statFileCount) {
     *skipDirs = 0; // Default: don't skip directories
     *sizeThreshold = 0; // Default: no size threshold
     *outputFileName = NULL;
@@ -1135,11 +1136,12 @@ int process_arguments(const int argc, char **argv, int *skipDirs, long long *siz
     *directories = NULL;
     *tmpFileNames = NULL;
     *mergeFileNames = NULL;
-    *printFileNames = NULL;
+    *statFileNames = NULL;
     *directoryCount = 0;
     *addFileName = NULL;
 
     int mergeFileCountTmp = 0;
+    int statFileCountTmp = 0;
 
     // First pass: process output-related options and other mutual exclusions
     for (int i = 1; i < argc; i++) {
@@ -1148,22 +1150,34 @@ int process_arguments(const int argc, char **argv, int *skipDirs, long long *siz
                 *outputFileName = argv[++i];
             } else {
                 fprintf(stderr, "Output file name expected after -o\n");
-                free_multiple_arrays(directories, tmpFileNames, mergeFileNames, NULL);
+                free_multiple_arrays(directories, tmpFileNames, mergeFileNames, statFileNames, NULL);
                 return EXIT_FAILURE;
             }
         } else if (strcmp(argv[i], "--merge") == 0) {
+            if (*statFileNames != NULL) {
+                fprintf(stderr, "Error: --stats cannot be used with --merge.\n");
+                free_multiple_arrays(directories, tmpFileNames, mergeFileNames, statFileNames, NULL);
+                return EXIT_FAILURE;
+            }
+
             if (i + 1 < argc) {
                 *addFileName = argv[++i];
             } else {
                 fprintf(stderr, "File name for --merge is missing\n");
-                free_multiple_arrays(directories, tmpFileNames, mergeFileNames, NULL);
+                free_multiple_arrays(directories, tmpFileNames, mergeFileNames, statFileNames, NULL);
                 return EXIT_FAILURE;
             }
         } else if (strcmp(argv[i], "-m") == 0) {
+            if (*statFileNames != NULL) {
+                fprintf(stderr, "Error: --stats cannot be used with -m.\n");
+                free_multiple_arrays(directories, tmpFileNames, mergeFileNames, statFileNames, NULL);
+                return EXIT_FAILURE;
+            }
+
             // Signal the use of the -m flag
             if (*outputFileName != NULL || *addFileName != NULL) {
                 fprintf(stderr, "Error: -m cannot be used with --merge.\n");
-                free_multiple_arrays(directories, tmpFileNames, mergeFileNames, NULL);
+                free_multiple_arrays(directories, tmpFileNames, mergeFileNames, statFileNames, NULL);
                 return EXIT_FAILURE;
             }
 
@@ -1178,7 +1192,7 @@ int process_arguments(const int argc, char **argv, int *skipDirs, long long *siz
                 *mergeFileNames = realloc(*mergeFileNames, sizeof(char *) * (mergeFileCountTmp + 2));
                 if (*mergeFileNames == NULL) {
                     perror("Memory allocation failed for mergeFileNames");
-                    free_multiple_arrays(directories, tmpFileNames, mergeFileNames, NULL);
+                    free_multiple_arrays(directories, tmpFileNames, mergeFileNames, statFileNames, NULL);
                     return EXIT_FAILURE;
                 }
 
@@ -1186,7 +1200,7 @@ int process_arguments(const int argc, char **argv, int *skipDirs, long long *siz
                 (*mergeFileNames)[mergeFileCountTmp] = strdup(argv[j]);
                 if ((*mergeFileNames)[mergeFileCountTmp] == NULL) {
                     perror("Memory allocation failed for mergeFileNames entry");
-                    free_multiple_arrays(directories, tmpFileNames, mergeFileNames, NULL);
+                    free_multiple_arrays(directories, tmpFileNames, mergeFileNames, statFileNames, NULL);
                     return EXIT_FAILURE;
                 }
 
@@ -1199,7 +1213,49 @@ int process_arguments(const int argc, char **argv, int *skipDirs, long long *siz
             // Ensure at least one file was provided after -m
             if (mergeFileCountTmp == 0) {
                 fprintf(stderr, "Error: -m requires at least one file name.\n");
-                free_multiple_arrays(directories, tmpFileNames, mergeFileNames, NULL);
+                free_multiple_arrays(directories, tmpFileNames, mergeFileNames, statFileNames, NULL);
+                return EXIT_FAILURE;
+            }
+        } else if (strcmp(argv[i], "--stats") == 0) {
+            if (*addFileName != NULL || *mergeFileNames != NULL) {
+                fprintf(stderr, "Error: --stats cannot be used with --merge or -m.\n");
+                free_multiple_arrays(directories, tmpFileNames, mergeFileNames, statFileNames, NULL);
+                return EXIT_FAILURE;
+            }
+
+            // Parse file names that follow --stats
+            for (int j = i + 1; j < argc; j++) {
+                if (argv[j][0] == '-') {
+                    // Stop processing on the next flag
+                    break;
+                }
+
+                // Allocate and store stat file names
+                *statFileNames = realloc(*statFileNames, sizeof(char *) * (statFileCountTmp + 2));
+                if (*statFileNames == NULL) {
+                    perror("Memory allocation failed for statFileNames");
+                    free_multiple_arrays(directories, tmpFileNames, mergeFileNames, statFileNames, NULL);
+                    return EXIT_FAILURE;
+                }
+
+                // Store the file name
+                (*statFileNames)[statFileCountTmp] = strdup(argv[j]);
+                if ((*statFileNames)[statFileCountTmp] == NULL) {
+                    perror("Memory allocation failed for statFileNames entry");
+                    free_multiple_arrays(directories, tmpFileNames, mergeFileNames, statFileNames, NULL);
+                    return EXIT_FAILURE;
+                }
+
+                statFileCountTmp++;
+                // Ensure NULL-termination
+                (*statFileNames)[statFileCountTmp] = NULL;
+                i = j; // Move index to the last processed argument
+            }
+
+            // Ensure at least one file was provided after --stats
+            if (statFileCountTmp == 0) {
+                fprintf(stderr, "Error: --stats requires at least one file name.\n");
+                free_multiple_arrays(directories, tmpFileNames, mergeFileNames, statFileNames, NULL);
                 return EXIT_FAILURE;
             }
         }
@@ -1219,11 +1275,11 @@ int process_arguments(const int argc, char **argv, int *skipDirs, long long *siz
     }
 
     // Ensure that `-o` (output file name) is provided before proceeding
-    if (*outputFileName == NULL && *addFileName == NULL) {
-        fprintf(stderr, "Error: The -o <outputfile> option is required otherwise use --merge <filename>.\n");
+    if (*outputFileName == NULL && *addFileName == NULL && *statFileNames == NULL) {
+        fprintf(stderr, "Error: The -o <outputfile> option is required otherwise use --merge <filename> or --stats <filename(s)>.\n");
         fprintf(
             stderr,
-            "Usage: %s [1. 4. <directory_path(s)>] [2. -m <filename(s)>] [-M maxSizeInMB] [--skip-dirs] [1. 2. -o <outputfile>] [4. --merge <filename>]\n",
+            "Usage: %s [1. 4. <directory_path(s)>] [2. -m <filename(s)>] [-M maxSizeInMB] [--skip-dirs] [1. 2. -o <outputfile>] [4. --merge <filename>] [5. --stats <filename(s)>]\n",
             argv[0]);
         if (argc == 1) {
             exit(EXIT_FAILURE);
@@ -1355,8 +1411,12 @@ int process_arguments(const int argc, char **argv, int *skipDirs, long long *siz
             // do nothing here
         } else if (strcmp(argv[i], "-m") == 0) {
             // do nothing here
-        } else {
-            if (!belongs_to_mergeFileNames(argv[i], *mergeFileNames, mergeFileCountTmp)) {
+        }
+        else if (strcmp(argv[i], "--stats") == 0) {
+            // do nothing here
+        }
+        else {
+            if (!belongs_to_array(argv[i], *mergeFileNames, mergeFileCountTmp) && !belongs_to_array(argv[i], *statFileNames, statFileCountTmp)) {
                 fprintf(stderr, "Unknown option: %s\n", argv[i]);
                 free_multiple_arrays(directories, tmpFileNames, mergeFileNames, NULL);
                 release_temporary_resources(outputTmpFileName, NULL);
@@ -1364,7 +1424,7 @@ int process_arguments(const int argc, char **argv, int *skipDirs, long long *siz
             }
         }
     }
-    if (mergeFileNames != NULL) {
+    if (mergeFileNames != NULL && *mergeFileNames != NULL) {
         if (mergeFileCountTmp < 2) {
             fprintf(stderr, "Error: -m option requires at least two file names.\n");
             free_multiple_arrays(directories, tmpFileNames, mergeFileNames, NULL);
@@ -1372,6 +1432,9 @@ int process_arguments(const int argc, char **argv, int *skipDirs, long long *siz
             exit(EXIT_FAILURE);
         }
         *mergeFileCount = mergeFileCountTmp;
+    }
+    if (statFileNames != NULL) {
+        *statFileCount = statFileCountTmp;
     }
 
     return EXIT_SUCCESS;
@@ -2070,7 +2133,7 @@ void get_dir_root(const char *fileName, char ***root, int *count) {
         exit(EXIT_FAILURE);
     }
 
-    char buffer[MAX_LINE_LENGTH];  // Buffer to hold a line from the file
+    char buffer[MAX_LINE_LENGTH]; // Buffer to hold a line from the file
     int capacity = MAX_LINE_LENGTH; // Initial size for the root array
     char *previousToken = NULL; // To keep track of the previous token
 
