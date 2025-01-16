@@ -1126,8 +1126,8 @@ int belongs_to_mergeFileNames(const char *arg, char **mergeFileNames, const int 
  */
 int process_arguments(const int argc, char **argv, int *skipDirs, long long *sizeThreshold, char **outputFileName,
                       char **outputTmpFileName,
-                      char ***tmpFileNames, char ***directories, char ***mergeFileNames, int *directoryCount,
-                      char **addFileName, int *mergeFileCount) {
+                      char ***tmpFileNames, char ***directories, char ***mergeFileNames, char ***printFileNames, int *directoryCount,
+                      char **addFileName, int *mergeFileCount, int *printFileCount) {
     *skipDirs = 0; // Default: don't skip directories
     *sizeThreshold = 0; // Default: no size threshold
     *outputFileName = NULL;
@@ -1135,6 +1135,7 @@ int process_arguments(const int argc, char **argv, int *skipDirs, long long *siz
     *directories = NULL;
     *tmpFileNames = NULL;
     *mergeFileNames = NULL;
+    *printFileNames = NULL;
     *directoryCount = 0;
     *addFileName = NULL;
 
@@ -1161,7 +1162,7 @@ int process_arguments(const int argc, char **argv, int *skipDirs, long long *siz
         } else if (strcmp(argv[i], "-m") == 0) {
             // Signal the use of the -m flag
             if (*outputFileName != NULL || *addFileName != NULL) {
-                fprintf(stderr, "Error: -m cannot be used with -o or --merge.\n");
+                fprintf(stderr, "Error: -m cannot be used with --merge.\n");
                 free_multiple_arrays(directories, tmpFileNames, mergeFileNames, NULL);
                 return EXIT_FAILURE;
             }
