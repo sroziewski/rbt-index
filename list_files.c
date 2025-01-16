@@ -84,7 +84,7 @@ int main(const int argc, char *argv[]) {
     if (addFileName) {
         fprintf(stdout, "\n* The result will be merged with existing output file: %s\n", addFileName);
     }
-    if (mergeFileNames == NULL && directories != NULL && directories[0] != NULL) {
+    if (statFileNames == NULL && mergeFileNames == NULL && directories != NULL && directories[0] != NULL) {
         const int numCores = omp_get_max_threads();
         omp_set_num_threads(numCores);
         fprintf(stdout, "Using %d cores.\n", numCores);
