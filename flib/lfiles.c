@@ -1126,7 +1126,7 @@ int process_arguments(const int argc, char **argv, int *skipDirs, long long *siz
     *tmpFileNames = NULL;
     *mergeFileNames = NULL;
     *directoryCount = 0;
-    *addFileName = NULL; // For the --add parameter
+    *addFileName = NULL;
 
     int mergeFileCountTmp = 0;
 
@@ -2036,37 +2036,78 @@ int process_file(const char *filename) {
     return EXIT_SUCCESS;
 }
 
-void get_dir_root(const char *fileName, char *root) {
+void get_dir_root(const char *fileName, char ***root, int *count) {
     FILE *file = fopen(fileName, "r");
     if (file == NULL) {
         perror("Error opening file");
         exit(EXIT_FAILURE);
     }
 
-    char buffer[MAX_LINE_LENGTH];
+    char buffer[MAX_LINE_LENGTH];  // Buffer to hold a line from the file
+    int capacity = MAX_LINE_LENGTH; // Initial size for the root array
+    char *previousToken = NULL; // To keep track of the previous token
 
     // Read the first line
     if (fgets(buffer, sizeof(buffer), file) != NULL) {
-        // Split the line using "|" as the separator
-        char *token = strtok(buffer, "|");
-        if (token != NULL) {
-            // Allocate and copy the token dynamically
-            snprintf(root, strlen(token) + 1, "%s", token);
-            root = strdup(token);
-            if (root == NULL) {
-                perror("Error duplicating token");
-                fclose(file);
-                exit(EXIT_FAILURE);
-            }
-        } else {
-            fprintf(stderr, "Failed to parse the first column %s.\n", fileName);
+        // Extract the first token from the first line
+        const char *firstToken = strtok(buffer, "|");
+        if (firstToken == NULL) {
+            fprintf(stderr, "Invalid file format: no valid token in the first line.\n");
             fclose(file);
             exit(EXIT_FAILURE);
         }
-    } else {
-        fprintf(stderr, "Error reading the first line of file: %s.\n", fileName);
-        fclose(file);
-        exit(EXIT_FAILURE);
+
+        // Store the first token into the root array
+        previousToken = strdup(firstToken);
+        if (previousToken == NULL) {
+            perror("Error duplicating token");
+            fclose(file);
+            exit(EXIT_FAILURE);
+        }
+
+        (*root)[*count] = previousToken;
+        (*count)++;
+    }
+
+    // Process the rest of the lines
+    while (fgets(buffer, sizeof(buffer), file) != NULL) {
+        // Extract the first token from the current line
+        const char *lineToken = strtok(buffer, "|");
+        if (lineToken == NULL) {
+            continue; // Skip lines that do not contain a valid token
+        }
+
+        // If the current line starts with the previous token, skip it
+        if (strstr(lineToken, previousToken) != NULL) {
+            continue;
+        }
+
+        // Add the token to the root array
+        char *newToken = strdup(lineToken);
+        if (newToken == NULL) {
+            perror("Error duplicating token");
+            fclose(file);
+            exit(EXIT_FAILURE);
+        }
+
+        // Expand the root array if necessary
+        if (*count >= capacity) {
+            capacity *= 2;
+            char **newRoot = realloc(*root, capacity * sizeof(char *));
+            if (newRoot == NULL) {
+                perror("Error reallocating memory for root array");
+                fclose(file);
+                exit(EXIT_FAILURE);
+            }
+            *root = newRoot;
+        }
+
+        (*root)[*count] = newToken;
+        (*count)++;
+
+        // Update the `previousToken`
+        free(previousToken);
+        previousToken = newToken;
     }
 
     fclose(file);
@@ -2101,22 +2142,28 @@ void check_merge_files(char **mergeFileNames, char ***tmpFileNames, const int me
         return;
     }
     if (*tmpFileNames == NULL) {
-        *tmpFileNames = malloc(sizeof(char *) * (mergeFileCount + 2)); // Initial allocation
+        *tmpFileNames = malloc(sizeof(char *) * (MAX_LINE_LENGTH + 2)); // Initial allocation
         if (*tmpFileNames == NULL) {
             perror("Error allocating memory for tmpFileNames");
             exit(EXIT_FAILURE);
         }
     } else {
-        *tmpFileNames = realloc(*tmpFileNames, sizeof(char *) * (mergeFileCount + 2)); // Reallocate memory
+        *tmpFileNames = realloc(*tmpFileNames, sizeof(char *) * (MAX_LINE_LENGTH + 2)); // Reallocate memory
         if (*tmpFileNames == NULL) {
             perror("Error reallocating memory for tmpFileNames");
             exit(EXIT_FAILURE);
         }
     }
+    int tmp = 0;
+
+    *tmpFileNames = malloc(MAX_LINE_LENGTH * sizeof(char *));
+    if (*tmpFileNames == NULL) {
+        perror("Error allocating memory for tmpFileNames in check_merge_files");
+        exit(EXIT_FAILURE);
+    }
 
     for (int i = 0; mergeFileNames[i] != NULL; i++) {
-        (*tmpFileNames)[i] = malloc(MAX_LINE_LENGTH * sizeof(char));
-        get_dir_root(mergeFileNames[i], (*tmpFileNames)[i]);
+        get_dir_root(mergeFileNames[i], tmpFileNames, &tmp);
         const char *fileName = mergeFileNames[i];
         fprintf(stdout, "Checking merge file format: %s\n", fileName);
         // Check if the file is a regular file
