@@ -155,4 +155,8 @@ void deleteFiles(char **tmpFileNames);
 
 void print_elapsed_time(const char *directory, double elapsed, FILE *output, const char *message);
 
+char **concatenate_string_arrays(char **array1, char **array2);
+
+int array_size(char **array);
+
 #endif // L_FILES_H

@@ -82,9 +82,6 @@ int main(const int argc, char *argv[]) {
         print_elapsed_time(NULL, elapsed, stdout, "merge files");
         fprintf(stdout, "Time taken to process merge files: %.1f seconds\n", elapsed);
     }
-    if (mergeFileName) {
-        fprintf(stdout, "\n* The result will be merged with existing output file: %s\n", mergeFileName);
-    }
     if (statFileNames == NULL && mergeFileNames == NULL && directories != NULL && directories[0] != NULL) {
         const int numCores = omp_get_max_threads();
         omp_set_num_threads(numCores);
@@ -129,6 +126,12 @@ int main(const int argc, char *argv[]) {
     }
 
     if (mergeFileName != NULL) {
+        fprintf(stdout, "\n* The result will be merged with existing output file: %s\n", mergeFileName);
+        int rootCount = -1;
+        check_merge_files(&mergeFileName, &mergeFileNames, &rootCount);
+        directories = concatenate_string_arrays(directories, mergeFileNames);
+        rootCount = array_size(directories);
+        directories = remove_duplicate_directories(directories, rootCount, &rootCount);
         int appendedCount = 0;
         if (append_file(outputFileName, mergeFileName, &appendedCount) != EXIT_SUCCESS) {
             fprintf(stderr, "Failed to append file %s to %s\n", outputFileName, outputTmpFileName);
@@ -140,9 +143,10 @@ int main(const int argc, char *argv[]) {
                                        false);
         copy_file(outputFileName, outputTmpFileName);
         remove_duplicates(outputTmpFileName, mergeFileName);
+        read_entries(mergeFileName, &entries, totalOutputCount, &totalCount);
         deleteFile(outputFileName);
     }
-    if (mergeFileNames != NULL) {
+    if (mergeFileName == NULL && mergeFileNames != NULL) {
         read_entries(outputFileName, &entries, totalCount, &totalCount);
     }
     compute_file_statistics(entries, totalCount, &fileStats, directories);

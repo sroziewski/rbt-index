@@ -1105,7 +1105,7 @@ char **remove_duplicate_directories(char **directories, const int count, int *ne
 
         // Check if the current directory is already in the unique array
         for (int j = 0; j < unique_index; j++) {
-            if (strcmp(directories[i], unique_directories[j]) == 0) {
+            if (strcmp(removeTrailingSlash(directories[i]), removeTrailingSlash(unique_directories[j])) == 0) {
                 is_duplicate = 1;
                 break;
             }
@@ -1119,7 +1119,7 @@ char **remove_duplicate_directories(char **directories, const int count, int *ne
                 free_array(&unique_directories);
                 exit(EXIT_FAILURE);
             }
-            strcpy(unique_directories[unique_index], directories[i]);
+            strcpy(unique_directories[unique_index], removeTrailingSlash(directories[i]));
             unique_index++;
         }
     }
@@ -1619,7 +1619,7 @@ void compute_file_statistics(const FileEntry *entries, const int count, FileStat
 
         // Update global statistics
         for (size_t j = 0; unique_directories[j] != NULL; j++) {
-            if (strcmp(entry->path, removeTrailingSlash(unique_directories[j])) == 0) {
+            if (strcmp(entry->path, unique_directories[j]) == 0) {
                 stats->totalSize += entry->size;
             }
         }
@@ -2163,7 +2163,10 @@ void get_dir_root(const char *fileName, char ***root, int *count) {
             exit(EXIT_FAILURE);
         }
 
-        (*root)[*count] = previousToken;
+        (*root)[*count] = malloc(sizeof(char) * strlen(previousToken) + 1); // Example: allocate memory for a string
+        snprintf((*root)[*count], strlen(previousToken) + 1, "%s", previousToken);
+
+        // (*root)[*count] = previousToken;
         (*count)++;
     }
 
@@ -2200,13 +2203,16 @@ void get_dir_root(const char *fileName, char ***root, int *count) {
             *root = newRoot;
         }
 
-        (*root)[*count] = newToken;
+        (*root)[*count] = malloc(sizeof(char) * strlen(newToken) + 1); // Example: allocate memory for a string
+        snprintf((*root)[*count], strlen(newToken) + 1, "%s", newToken);
+
+        // (*root)[*count] = newToken;
         (*count)++;
 
         // Update the `previousToken`
         previousToken = newToken;
     }
-
+    (*root)[*count] = NULL; // Mark the end of the array
     fclose(file);
 }
 
@@ -2237,7 +2243,7 @@ void check_merge_files(char **mergeFileNames, char ***tmpFileNames, int *rootCou
         return;
     }
     if (*tmpFileNames == NULL) {
-        *tmpFileNames = malloc(sizeof(char *) * (MAX_LINE_LENGTH + 2)); // Initial allocation
+        *tmpFileNames = realloc(*tmpFileNames, sizeof(char *) * (MAX_LINE_LENGTH + 2));
         if (*tmpFileNames == NULL) {
             perror("Error allocating memory for tmpFileNames");
             exit(EXIT_FAILURE);
@@ -2251,7 +2257,7 @@ void check_merge_files(char **mergeFileNames, char ***tmpFileNames, int *rootCou
     }
     int tmp = 0;
 
-    *tmpFileNames = malloc(MAX_LINE_LENGTH * sizeof(char *));
+    // *tmpFileNames = malloc(MAX_LINE_LENGTH * sizeof(char *));
     if (*tmpFileNames == NULL) {
         perror("Error allocating memory for tmpFileNames in check_merge_files");
         exit(EXIT_FAILURE);
@@ -2275,6 +2281,9 @@ void check_merge_files(char **mergeFileNames, char ***tmpFileNames, int *rootCou
         // Check and process the file using process_file
         if (process_file(fileName) != EXIT_SUCCESS) {
             fprintf(stderr, "Error: Failed to process file '%s'.\n", fileName);
+        }
+        if (*rootCount == -1) {
+            break;
         }
     }
     *rootCount = tmp;
@@ -2314,4 +2323,58 @@ void print_elapsed_time(const char *directory, const double elapsed, FILE *outpu
         fprintf(output, "Time taken to process %s: %.*f seconds\n",
                 message, (elapsed < 1) ? 2 : (elapsed < 10) ? 1 : 0, elapsed);
     }
+}
+
+int array_size(char **array) {
+    size_t count = 0;
+    while (array && array[count]) {
+        count++;
+    }
+    return count;
+}
+
+char **concatenate_string_arrays(char **array1, char **array2) {
+    // Step 1: Get the sizes of both input arrays
+    int size1 = array_size(array1); // Length of array1
+    int size2 = array_size(array2); // Length of array2
+
+    // Step 2: Allocate memory for the resulting array
+    char **result = malloc(sizeof(char *) * (size1 + size2 + 1));
+    if (result == NULL) {
+        fprintf(stderr, "Memory allocation for concatenated array failed.\n");
+        return NULL;
+    }
+
+    // Step 3: Copy strings from array1 to result
+    for (int i = 0; i < size1; i++) {
+        result[i] = strdup(array1[i]); // Duplicate strings to avoid memory conflicts
+        if (result[i] == NULL) {
+            fprintf(stderr, "Memory allocation failed while copying array1.\n");
+            // Free already allocated memory
+            for (int j = 0; j < i; j++) {
+                free(result[j]);
+            }
+            free(result);
+            return NULL;
+        }
+    }
+
+    // Step 4: Copy strings from array2 to result
+    for (int i = 0; i < size2; i++) {
+        result[size1 + i] = strdup(array2[i]); // Duplicate strings
+        if (result[size1 + i] == NULL) {
+            fprintf(stderr, "Memory allocation failed while copying array2.\n");
+            // Free already allocated memory
+            for (int j = 0; j < size1 + i; j++) {
+                free(result[j]);
+            }
+            free(result);
+            return NULL;
+        }
+    }
+
+    // Step 5: Null-terminate the resulting array
+    result[size1 + size2] = NULL;
+
+    return result;
 }
