@@ -12,6 +12,7 @@
 #define INITIAL_ENTRIES_CAPACITY 400000
 #define APPEND "a"
 #define NEW "w"
+#define SEP "|"
 
 // Structures
 typedef struct FileEntry {

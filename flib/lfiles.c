@@ -729,7 +729,7 @@ void read_entries(const char *filename, FileEntry **entries, const size_t fixed_
         if (strstr(buffer, "F_HIDDEN") != NULL) {
             entry.isHidden = true;
         }
-        char *token = strtok(buffer, "|");
+        char *token = strtok(buffer, SEP);
         if (!token) {
             fprintf(stderr, "Error parsing path in line: %s\n", buffer);
             continue;
@@ -737,7 +737,7 @@ void read_entries(const char *filename, FileEntry **entries, const size_t fixed_
         strncpy(entry.path, token, sizeof(entry.path) - 1);
         entry.path[sizeof(entry.path) - 1] = '\0';
 
-        token = strtok(NULL, "|");
+        token = strtok(NULL, SEP);
         if (!token) {
             fprintf(stderr, "Error parsing size in line: %s\n", buffer);
             continue;
@@ -749,7 +749,7 @@ void read_entries(const char *filename, FileEntry **entries, const size_t fixed_
             continue;
         }
 
-        token = strtok(NULL, "|");
+        token = strtok(NULL, SEP);
         if (!token) {
             fprintf(stderr, "Error parsing type in line: %s\n", buffer);
             continue;
@@ -761,10 +761,10 @@ void read_entries(const char *filename, FileEntry **entries, const size_t fixed_
             entry.isDir = true;
 
             // Look for additional flags (e.g., C_COUNT and F_HIDDEN)
-            token = strtok(NULL, "|");
+            token = strtok(NULL, SEP);
             while (token) {
                 if (strncmp(token, "C_COUNT", 8) == 0) {
-                    token = strtok(NULL, "|");
+                    token = strtok(NULL, SEP);
                     entry.childrenCount = strtol(token, &endptr, 10);
                     if (*endptr != '\0') {
                         fprintf(stderr, "Invalid numeric format in C_COUNT: %s\n", token);
@@ -778,7 +778,7 @@ void read_entries(const char *filename, FileEntry **entries, const size_t fixed_
                     //     fprintf(stderr, "Error: Not enough space to append to entry.type\n");
                     // }
                 }
-                token = strtok(NULL, "|");
+                token = strtok(NULL, SEP);
             }
             if (i >= 1 && strcmp((*entries)[i - 1].path, entry.path) == 0 && (*entries)[i - 1].isDir == 1) {
                 (*entries)[i - 1] = entry;
@@ -832,13 +832,13 @@ void printToFile(FileEntry *entries, const int count, const char *filename, cons
         char *fileName = getFileName(entries[i].path);
         const int isHidden = (fileName[0] == '.'); // Check if the file is hidden
         free(fileName);
-        fprintf(outputFile, "%s|%ld|%s", entries[i].path, entries[i].size, entries[i].type);
+        fprintf(outputFile, "%s%s%ld%s%s", entries[i].path, SEP, entries[i].size, SEP, entries[i].type);
         // If the entry is a directory, add the count of children
         if (entries[i].isDir) {
-            fprintf(outputFile, "|C_COUNT|%zu", entries[i].childrenCount);
+            fprintf(outputFile, "%sC_COUNT%s%zu", SEP, SEP, entries[i].childrenCount);
         }
         if (isHidden) {
-            fprintf(outputFile, "|F_HIDDEN");
+            fprintf(outputFile, "%sF_HIDDEN", SEP);
         }
         fprintf(outputFile, "\n"); // End the line
     }
@@ -1090,45 +1090,96 @@ int belongs_to_array(const char *arg, char **mergeFileNames, const int size) {
     return 0; // Not found
 }
 
+char **remove_duplicate_directories(char **directories, const int count, int *new_count) {
+    char **unique_directories = malloc(count * sizeof(char *)); // Allocate memory for new array
+    if (!unique_directories) {
+        perror("Failed to allocate memory");
+        free_array(&unique_directories);
+        exit(EXIT_FAILURE);
+    }
+
+    int unique_index = 0;
+
+    for (int i = 0; i < count; i++) {
+        int is_duplicate = 0;
+
+        // Check if the current directory is already in the unique array
+        for (int j = 0; j < unique_index; j++) {
+            if (strcmp(directories[i], unique_directories[j]) == 0) {
+                is_duplicate = 1;
+                break;
+            }
+        }
+
+        // If it's not a duplicate, add it to the unique array
+        if (!is_duplicate) {
+            unique_directories[unique_index] = malloc(strlen(directories[i]) + 1); // Allocate memory for the string
+            if (!unique_directories[unique_index]) {
+                perror("Failed to allocate memory for unique directory");
+                free_array(&unique_directories);
+                exit(EXIT_FAILURE);
+            }
+            strcpy(unique_directories[unique_index], directories[i]);
+            unique_index++;
+        }
+    }
+
+    *new_count = unique_index; // Set the new count of unique directories
+
+    // Reallocate memory to adjust to the actual size
+    unique_directories = realloc(unique_directories, unique_index * sizeof(char *));
+    if (!unique_directories) {
+        perror("Failed to reallocate memory");
+        free_array(&unique_directories);
+        exit(EXIT_FAILURE);
+    }
+    unique_directories[unique_index] = NULL; // Ensure NULL-termination
+    return unique_directories;
+}
+
 /**
- * Processes and validates command-line arguments, configuring various options for directory
- * processing, file merging, and output file generation.
+ * Parses and validates command-line arguments, initializing various file and directory
+ * settings based on the provided options.
  *
- * This function parses the input arguments to set up skip directory behavior, size thresholds,
- * output file names, temporary files, directories to process, merge file lists, and additional
- * settings required for program execution. It validates argument combinations, handles memory
- * allocation, ensures compatibility between options, and performs necessary checks to ensure
- * files exist and appropriate usage constraints are followed.
+ * This function processes command-line arguments to set up configurations for file merging,
+ * statistics collection, and output file generation. It handles mutual exclusions among
+ * various options, allocates memory for file and directory name arrays, and validates input
+ * to ensure that no conflicting or invalid options are used. The function also ensures
+ * required options, such as the output file or merge configurations, are properly provided
+ * before proceeding.
  *
- * The function stops execution and returns an error if argument validation fails or if memory allocation
- * issues occur. It also takes care to clean up allocated resources in error conditions.
- *
- * Key functionalities include:
- * - Parsing and validating `-o`, `--merge`, `-m`, `--skip-dirs`, and `-M` command-line options.
- * - Setting the output file name and creating temporary filenames for intermediate processing.
- * - Handling merge file lists while ensuring mutual exclusivity with other flags.
- * - Verifying file existence for merge files and resolving conflicts with the output file name.
- *
- * @param argc             The count of command-line arguments passed by the user.
- * @param argv             An array of C strings representing the command-line arguments.
- * @param skipDirs         A pointer to an integer flag (0 or 1) that indicates whether directories should be skipped.
- * @param sizeThreshold    A pointer to a long long integer to store the size threshold for file processing, in bytes.
- * @param outputFileName   A double pointer to a string that will store the name of the output file.
- * @param outputTmpFileName A double pointer to a string that will store the name of the intermediate temporary file.
- * @param tmpFileNames     A triple pointer to dynamically allocated strings storing names of temporary files.
- * @param directories      A triple pointer to dynamically allocated strings storing names of directory paths to process.
- * @param mergeFileNames   A triple pointer to dynamically allocated strings storing names of files to merge.
- * @param directoryCount   A pointer to an integer that tracks the count of directories processed.
- * @param addFileName      A double pointer to a string storing the filename from the `--merge` argument.
- * @param mergeFileCount   A pointer to an integer that tracks the count of files in the merge file list.
- *
- * @return EXIT_SUCCESS on successful processing of arguments, or EXIT_FAILURE if validation or processing fails.
+ * @param argc               The number of arguments passed to the application, including the
+ *                           application name.
+ * @param argv               The array of argument strings.
+ * @param skipDirs           A pointer to an integer flag (0 or 1) indicating whether directories
+ *                           should be skipped during processing.
+ * @param sizeThreshold      A pointer to a long long representing the minimum file size (in bytes)
+ *                           for inclusion during file processing.
+ * @param outputFileName     A pointer to a string where the name of the primary output file will be
+ *                           stored.
+ * @param outputTmpFileName  A pointer to a string where the name of a temporary output file will be
+ *                           stored.
+ * @param tmpFileNames       A pointer to an array of strings representing temporary file names.
+ * @param directories        A pointer to an array of strings representing directory paths to be
+ *                           processed.
+ * @param mergeFileNames     A pointer to an array of strings representing file names to be merged.
+ * @param statFileNames      A pointer to an array of strings representing file names for which
+ *                           statistics will be collected.
+ * @param directoryCount     A pointer to an integer representing the number of directories provided
+ *                           as arguments.
+ * @param mergeFileName        A pointer to a string representing a merge file name specified with the
+ *                           `--merge` option.
+ * @param mergeFileCount     A pointer to an integer tracking the number of merge files specified.
+ * @param statFileCount      A pointer to an integer tracking the number of statistics files
+ *                           specified.
+ * @return                   `EXIT_SUCCESS` (typically 0) if the arguments are parsed and validated
+ *                           successfully, or `EXIT_FAILURE` (typically 1) if an error occurs.
  */
 int process_arguments(const int argc, char **argv, int *skipDirs, long long *sizeThreshold, char **outputFileName,
                       char **outputTmpFileName,
                       char ***tmpFileNames, char ***directories, char ***mergeFileNames, char ***statFileNames,
                       int *directoryCount,
-                      char **addFileName, int *mergeFileCount, int *statFileCount) {
+                      char **mergeFileName, int *mergeFileCount, int *statFileCount) {
     *skipDirs = 0; // Default: don't skip directories
     *sizeThreshold = 0; // Default: no size threshold
     *outputFileName = NULL;
@@ -1138,7 +1189,7 @@ int process_arguments(const int argc, char **argv, int *skipDirs, long long *siz
     *mergeFileNames = NULL;
     *statFileNames = NULL;
     *directoryCount = 0;
-    *addFileName = NULL;
+    *mergeFileName = NULL;
 
     int mergeFileCountTmp = 0;
     int statFileCountTmp = 0;
@@ -1161,7 +1212,7 @@ int process_arguments(const int argc, char **argv, int *skipDirs, long long *siz
             }
 
             if (i + 1 < argc) {
-                *addFileName = argv[++i];
+                *mergeFileName = argv[++i];
             } else {
                 fprintf(stderr, "File name for --merge is missing\n");
                 free_multiple_arrays(directories, tmpFileNames, mergeFileNames, statFileNames, NULL);
@@ -1175,7 +1226,7 @@ int process_arguments(const int argc, char **argv, int *skipDirs, long long *siz
             }
 
             // Signal the use of the -m flag
-            if (*outputFileName != NULL || *addFileName != NULL) {
+            if (*outputFileName != NULL || *mergeFileName != NULL) {
                 fprintf(stderr, "Error: -m cannot be used with --merge.\n");
                 free_multiple_arrays(directories, tmpFileNames, mergeFileNames, statFileNames, NULL);
                 return EXIT_FAILURE;
@@ -1217,7 +1268,7 @@ int process_arguments(const int argc, char **argv, int *skipDirs, long long *siz
                 return EXIT_FAILURE;
             }
         } else if (strcmp(argv[i], "--stats") == 0) {
-            if (*addFileName != NULL || *mergeFileNames != NULL) {
+            if (*mergeFileName != NULL || *mergeFileNames != NULL) {
                 fprintf(stderr, "Error: --stats cannot be used with --merge or -m.\n");
                 free_multiple_arrays(directories, tmpFileNames, mergeFileNames, statFileNames, NULL);
                 return EXIT_FAILURE;
@@ -1262,21 +1313,23 @@ int process_arguments(const int argc, char **argv, int *skipDirs, long long *siz
     }
 
     // Ensure --add and -o are not used simultaneously
-    if (*outputFileName != NULL && *addFileName != NULL) {
+    if (*outputFileName != NULL && *mergeFileName != NULL) {
         fprintf(stderr, "Error: --merge and -o cannot be used together.\n");
         free_multiple_arrays(directories, tmpFileNames, mergeFileNames, NULL);
         return EXIT_FAILURE;
     }
 
-    if (*mergeFileNames != NULL && *addFileName != NULL) {
+    if (*mergeFileNames != NULL && *mergeFileName != NULL) {
         fprintf(stderr, "Error: -m cannot be used with --merge.\n");
         free_multiple_arrays(directories, tmpFileNames, mergeFileNames, NULL);
         return EXIT_FAILURE;
     }
 
     // Ensure that `-o` (output file name) is provided before proceeding
-    if (*outputFileName == NULL && *addFileName == NULL && *statFileNames == NULL) {
-        fprintf(stderr, "Error: The -o <outputfile> option is required otherwise use --merge <filename> or --stats <filename(s)>.\n");
+    if (*outputFileName == NULL && *mergeFileName == NULL && *statFileNames == NULL) {
+        fprintf(
+            stderr,
+            "Error: The -o <outputfile> option is required otherwise use --merge <filename> or --stats <filename(s)>.\n");
         fprintf(
             stderr,
             "Usage: %s [1. 4. <directory_path(s)>] [2. -m <filename(s)>] [-M maxSizeInMB] [--skip-dirs] [1. 2. -o <outputfile>] [4. --merge <filename>] [5. --stats <filename(s)>]\n",
@@ -1312,8 +1365,8 @@ int process_arguments(const int argc, char **argv, int *skipDirs, long long *siz
     }
 
     // Prepare a temporary output file name if -o is provided
-    if (*addFileName != NULL) {
-        const size_t outputFileNameLen = strlen(*addFileName); // Get the length of the original output file name
+    if (*mergeFileName != NULL) {
+        const size_t outputFileNameLen = strlen(*mergeFileName); // Get the length of the original output file name
         const size_t tmpSuffixLen = strlen(".tmp"); // Length of the ".tmp" suffix
 
         *outputTmpFileName = malloc(outputFileNameLen + tmpSuffixLen + 1); // +1 for the null terminator
@@ -1322,9 +1375,9 @@ int process_arguments(const int argc, char **argv, int *skipDirs, long long *siz
             free_multiple_arrays(directories, tmpFileNames, mergeFileNames, NULL);
             return EXIT_FAILURE; // Exit on memory allocation failure
         }
-        strcpy(*outputFileName, *addFileName);
+        strcpy(*outputFileName, *mergeFileName);
         strcat(*outputFileName, ".tmp");
-        strcpy(*outputTmpFileName, *addFileName);
+        strcpy(*outputTmpFileName, *mergeFileName);
         strcat(*outputTmpFileName, ".tmp.tmp");
     }
 
@@ -1372,7 +1425,7 @@ int process_arguments(const int argc, char **argv, int *skipDirs, long long *siz
                 release_temporary_resources(outputTmpFileName, NULL);
                 return EXIT_FAILURE;
             }
-        } else if (argv[i][0] != '-' && *mergeFileNames == NULL && strcmp(argv[i - 1], "--add") != 0) {
+        } else if (argv[i][0] != '-' && *mergeFileNames == NULL && strcmp(argv[i - 1], "--merge") != 0) {
             // Treat as a directory path (non-option argument)
             *directories = realloc(*directories, sizeof(char *) * (*directoryCount + 2));
             *tmpFileNames = realloc(*tmpFileNames, sizeof(char *) * (*directoryCount + 2));
@@ -1395,7 +1448,8 @@ int process_arguments(const int argc, char **argv, int *skipDirs, long long *siz
             // Generate a temporary file name
             char tmpFileNameBuffer[256]; // Assumes a max temporary filename size
             snprintf(tmpFileNameBuffer, sizeof(tmpFileNameBuffer), "%s_tmp%d",
-                     *addFileName ? *addFileName : (*outputFileName ? *outputFileName : "default"), *directoryCount);
+                     *mergeFileName ? *mergeFileName : (*outputFileName ? *outputFileName : "default"),
+                     *directoryCount);
             (*tmpFileNames)[*directoryCount] = strdup(tmpFileNameBuffer);
             if ((*tmpFileNames)[*directoryCount] == NULL) {
                 perror("Memory allocation failed (temporary file name)");
@@ -1407,16 +1461,15 @@ int process_arguments(const int argc, char **argv, int *skipDirs, long long *siz
             // Increment directory count and terminate both arrays
             (*directories)[++(*directoryCount)] = NULL;
             (*tmpFileNames)[*directoryCount] = NULL;
-        } else if (strcmp(argv[i - 1], "--add") == 0 || strcmp(argv[i], "--add") == 0) {
+        } else if (strcmp(argv[i], "--merge") == 0) {
             // do nothing here
         } else if (strcmp(argv[i], "-m") == 0) {
             // do nothing here
-        }
-        else if (strcmp(argv[i], "--stats") == 0) {
+        } else if (strcmp(argv[i], "--stats") == 0) {
             // do nothing here
-        }
-        else {
-            if (!belongs_to_array(argv[i], *mergeFileNames, mergeFileCountTmp) && !belongs_to_array(argv[i], *statFileNames, statFileCountTmp)) {
+        } else {
+            if (!belongs_to_array(argv[i], *mergeFileNames, mergeFileCountTmp) && !belongs_to_array(
+                    argv[i], *statFileNames, statFileCountTmp) && strcmp(*mergeFileName, argv[i]) != 0) {
                 fprintf(stderr, "Unknown option: %s\n", argv[i]);
                 free_multiple_arrays(directories, tmpFileNames, mergeFileNames, NULL);
                 release_temporary_resources(outputTmpFileName, NULL);
@@ -1436,7 +1489,9 @@ int process_arguments(const int argc, char **argv, int *skipDirs, long long *siz
     if (statFileNames != NULL) {
         *statFileCount = statFileCountTmp;
     }
-
+    if (directories != NULL && *directories != NULL) {
+        *directories = remove_duplicate_directories(*directories, *directoryCount, directoryCount);
+    }
     return EXIT_SUCCESS;
 }
 
@@ -1526,7 +1581,7 @@ int sort_and_write_results_to_file(char *tmpFileName, char *outputFileName, int 
     } else {
         char command[MAX_LINE_LENGTH];
         printToFile(entries, count, outputFileName, NEW);
-        snprintf(command, sizeof(command), "sort --parallel=12 -t \"|\" -k1,1 %s -o %s", outputFileName, tmpFileName);
+        snprintf(command, sizeof(command), "sort --parallel=12 -t %s -k1,1 %s -o %s", SEP, outputFileName, tmpFileName);
         // we treat outputFileName as temp for a while
         const int ret = system(command);
         if (ret == -1 || WEXITSTATUS(ret) != 0) {
@@ -1546,53 +1601,6 @@ int sort_and_write_results_to_file(char *tmpFileName, char *outputFileName, int 
     printToFile(entries, outputCount, outputFileName, NEW);
 
     return EXIT_SUCCESS;
-}
-
-char **remove_duplicate_directories(char **directories, const int count, int *new_count) {
-    char **unique_directories = malloc(count * sizeof(char *)); // Allocate memory for new array
-    if (!unique_directories) {
-        perror("Failed to allocate memory");
-        free_array(&unique_directories);
-        exit(EXIT_FAILURE);
-    }
-
-    int unique_index = 0;
-
-    for (int i = 0; i < count; i++) {
-        int is_duplicate = 0;
-
-        // Check if the current directory is already in the unique array
-        for (int j = 0; j < unique_index; j++) {
-            if (strcmp(directories[i], unique_directories[j]) == 0) {
-                is_duplicate = 1;
-                break;
-            }
-        }
-
-        // If it's not a duplicate, add it to the unique array
-        if (!is_duplicate) {
-            unique_directories[unique_index] = malloc(strlen(directories[i]) + 1); // Allocate memory for the string
-            if (!unique_directories[unique_index]) {
-                perror("Failed to allocate memory for unique directory");
-                free_array(&unique_directories);
-                exit(EXIT_FAILURE);
-            }
-            strcpy(unique_directories[unique_index], directories[i]);
-            unique_index++;
-        }
-    }
-
-    *new_count = unique_index; // Set the new count of unique directories
-
-    // Reallocate memory to adjust to the actual size
-    unique_directories = realloc(unique_directories, unique_index * sizeof(char *));
-    if (!unique_directories) {
-        perror("Failed to reallocate memory");
-        free_array(&unique_directories);
-        exit(EXIT_FAILURE);
-    }
-    unique_directories[unique_index] = NULL; // Ensure NULL-termination
-    return unique_directories;
 }
 
 void compute_file_statistics(const FileEntry *entries, const int count, FileStatistics *stats, char **directories) {
@@ -1710,7 +1718,7 @@ void compute_file_statistics(const FileEntry *entries, const int count, FileStat
         } else if (strcmp(entry->type, "T_CSS") == 0) {
             stats->cssFiles++;
             stats->cssSize += entry->size;
-        } else {
+        } else if (!entry->isDir) {
             stats->binaryFiles++;
             stats->binarySize += entry->size;
         }
@@ -2077,11 +2085,11 @@ int process_file(const char *filename) {
         // Split the line into columns using '|'
         int columnCount = 0;
         char *columns[7] = {NULL}; // To store up to 6 columns
-        char *token = strtok(line, "|");
+        char *token = strtok(line, SEP);
 
         while (token != NULL && columnCount < 7) {
             columns[columnCount++] = token;
-            token = strtok(NULL, "|");
+            token = strtok(NULL, SEP);
         }
 
         // Check the number of columns (between 3 and 6)
@@ -2140,7 +2148,7 @@ void get_dir_root(const char *fileName, char ***root, int *count) {
     // Read the first line
     if (fgets(buffer, sizeof(buffer), file) != NULL) {
         // Extract the first token from the first line
-        const char *firstToken = strtok(buffer, "|");
+        const char *firstToken = strtok(buffer, SEP);
         if (firstToken == NULL) {
             fprintf(stderr, "Invalid file format: no valid token in the first line.\n");
             fclose(file);
@@ -2162,7 +2170,7 @@ void get_dir_root(const char *fileName, char ***root, int *count) {
     // Process the rest of the lines
     while (fgets(buffer, sizeof(buffer), file) != NULL) {
         // Extract the first token from the current line
-        const char *lineToken = strtok(buffer, "|");
+        const char *lineToken = strtok(buffer, SEP);
         if (lineToken == NULL) {
             continue; // Skip lines that do not contain a valid token
         }
@@ -2279,5 +2287,31 @@ void process_merge_files(char **mergeFileNames, const int mergeFileCount, const 
         append_file(tmpFileName, outputFileName, &totalCountTmp);
         *totalCount += totalCountTmp;
         totalCountTmp = 0;
+    }
+}
+
+/**
+ * Prints the elapsed time for processing a specific directory or task, formatted to an appropriate
+ * precision based on the duration.
+ *
+ * This function outputs a message indicating the time taken to process a given directory or task.
+ * The precision of the displayed time adjusts dynamically: 2 decimal places for times under 1 second,
+ * 1 decimal place for times between 1 and 10 seconds, and no decimal places for times of 10 seconds or more.
+ * The message is written to a specified file stream.
+ *
+ * @param directory  The name of the directory or description of the task being processed.
+ * @param elapsed    The time taken, in seconds, to process the directory or task.
+ * @param output     A pointer to the output file stream where the message will be printed.
+ * @param message    A descriptive message about the operation being timed, e.g., "directory".
+ */
+void print_elapsed_time(const char *directory, const double elapsed, FILE *output, const char *message) {
+    if (directory) {
+        // If directory is not NULL, include it in the output
+        fprintf(output, "Time taken to process %s '%s': %.*f seconds\n",
+                message, directory, (elapsed < 1) ? 2 : (elapsed < 10) ? 1 : 0, elapsed);
+    } else {
+        // If directory is NULL, omit the '%s'
+        fprintf(output, "Time taken to process %s: %.*f seconds\n",
+                message, (elapsed < 1) ? 2 : (elapsed < 10) ? 1 : 0, elapsed);
     }
 }
