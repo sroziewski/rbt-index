@@ -907,6 +907,16 @@ void deleteFile(const char *filename) {
     }
 }
 
+void deleteFiles(char **tmpFileNames) {
+    if (tmpFileNames == NULL) {
+        return; // Handle empty array case
+    }
+
+    for (int i = 0; tmpFileNames[i] != NULL; i++) {
+        deleteFile(tmpFileNames[i]); // Call deleteFile for each filename
+    }
+}
+
 /**
  * Removes the trailing slash from a given string, if present, and returns a new string.
  *

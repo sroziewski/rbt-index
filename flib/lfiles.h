@@ -151,4 +151,6 @@ void check_merge_files(char **mergeFileNames, char ***tmpFileNames, int *rootCou
 
 void process_merge_files(char **mergeFileNames, int mergeFileCount, const char *outputFileName, int *totalCount);
 
+void deleteFiles(char **tmpFileNames);
+
 #endif // L_FILES_H

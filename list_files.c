@@ -150,5 +150,8 @@ int main(const int argc, char *argv[]) {
     free_multiple_arrays(&directories, &tmpFileNames, &mergeFileNames, NULL);
     release_temporary_resources(&outputTmpFileName, NULL);
 
+    deleteFiles(tmpFileNames);
+    deleteFile(outputTmpFileName);
+
     return EXIT_SUCCESS;
 }
