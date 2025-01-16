@@ -2036,6 +2036,22 @@ int process_file(const char *filename) {
     return EXIT_SUCCESS;
 }
 
+/**
+ * Extracts unique root tokens from a delimiter-separated text file and stores them in a dynamically
+ * allocated array while updating the root count.
+ *
+ * This function reads a text file line by line, extracts the first token from each line using the
+ * '|' delimiter, and adds unique tokens to the provided root array. It skips consecutive lines
+ * starting with the same token and resizes the root array as needed to accommodate more tokens.
+ * Memory for added tokens is dynamically allocated, and the caller is responsible for freeing it.
+ *
+ * @param fileName  The name of the input file to process. Each line of the file should conform to
+ *                  the expected format with tokens separated by '|'.
+ * @param root      A double pointer to an array of strings where the unique root tokens will be
+ *                  stored. This array will be dynamically resized during execution.
+ * @param count     A pointer to an integer representing the number of elements currently in the
+ *                  root array. It will be updated as new tokens are added.
+ */
 void get_dir_root(const char *fileName, char ***root, int *count) {
     FILE *file = fopen(fileName, "r");
     if (file == NULL) {
