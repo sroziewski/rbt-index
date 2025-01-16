@@ -59,8 +59,9 @@ int main(const int argc, char *argv[]) {
     if (mergeFileNames != NULL) {
         struct timeval start, end;
         gettimeofday(&start, NULL);
-
-        check_merge_files(mergeFileNames, &directories, mergeFileCount);
+        int rootCount = 0;
+        check_merge_files(mergeFileNames, &directories, &rootCount);
+        directories = remove_duplicate_directories(directories, rootCount, &rootCount);
         deleteFile(outputFileName);
         deleteFile(outputTmpFileName);
         process_merge_files(mergeFileNames, mergeFileCount, outputTmpFileName, &totalCount);

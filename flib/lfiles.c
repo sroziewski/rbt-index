@@ -2122,7 +2122,6 @@ void get_dir_root(const char *fileName, char ***root, int *count) {
         (*count)++;
 
         // Update the `previousToken`
-        free(previousToken);
         previousToken = newToken;
     }
 
@@ -2130,29 +2129,27 @@ void get_dir_root(const char *fileName, char ***root, int *count) {
 }
 
 /**
- * Validates and processes a list of merge file paths and checks their compatibility for merging.
+ * Verifies, processes, and validates a set of merge files while managing a temporary filename list and root count.
  *
- * This function performs various file integrity checks and processing steps for an array of merge
- * file paths. It ensures that each file is a valid regular file, processes it using the
- * `process_file` function, and prepares temporary file names for further operations
- * with the help of `get_dir_root`. If any errors are encountered during file validation,
- * appropriate error messages are logged, and the operation for that file is skipped.
+ * This function iterates through an array of provided merge file names, validates their existence and format,
+ * and processes their contents to extract directory roots. It ensures that `tmpFileNames` is dynamically allocated
+ * or resized as necessary and tracks the number of root elements identified. Each merge file is checked to confirm
+ * it is a regular file before processing. Errors during memory allocation, file access, or invalid merge file formats
+ * result in error messages being displayed and appropriate action taken (e.g., program termination).
  *
- * The function dynamically allocates memory for the temporary file name array, the size of which
- * is determined by the number of merge files provided. If memory allocation fails or if critical
- * issues are encountered (e.g., attempting to process a non-regular file), the function aborts
- * execution and exits with a non-zero status.
+ * - Dynamically manages memory for the `tmpFileNames` array to store extracted roots.
+ * - For each file, calls `get_dir_root` to extract and update directory roots.
+ * - Ensures each file in `mergeFileNames` exists and is a regular file.
+ * - Uses `process_file` to handle file-specific processing for valid files.
  *
- * @param mergeFileNames  A pointer to an array of strings representing the paths of the merge
- *                        files to be checked and processed. Each element corresponds to a file path.
- *                        The array must be null-terminated.
- * @param tmpFileNames    A pointer to a pointer that will hold dynamically allocated memory for an
- *                        array of strings representing temporary file paths generated during the
- *                        processing of the merge files.
- * @param mergeFileCount  The number of merge files to process. This is used to allocate memory for
- *                        the temporary file name array.
+ * @param mergeFileNames An array of strings representing paths to merge files to be processed.
+ *                       The array must be terminated with a NULL pointer.
+ * @param tmpFileNames   A pointer to a dynamic array of strings that will store temporary filenames used during processing.
+ *                       If `*tmpFileNames` is NULL, the function allocates memory for the array.
+ * @param rootCount      A pointer to an integer used to count the number of root directory entries extracted
+ *                       from the processed merge files.
  */
-void check_merge_files(char **mergeFileNames, char ***tmpFileNames, const int mergeFileCount) {
+void check_merge_files(char **mergeFileNames, char ***tmpFileNames, int *rootCount) {
     if (mergeFileNames == NULL) {
         fprintf(stderr, "Error: mergeFileNames is NULL.\n");
         return;
@@ -2198,6 +2195,7 @@ void check_merge_files(char **mergeFileNames, char ***tmpFileNames, const int me
             fprintf(stderr, "Error: Failed to process file '%s'.\n", fileName);
         }
     }
+    *rootCount = tmp;
 }
 
 void process_merge_files(char **mergeFileNames, const int mergeFileCount, const char *outputFileName, int *totalCount) {
