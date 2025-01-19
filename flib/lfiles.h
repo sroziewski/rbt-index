@@ -159,4 +159,6 @@ char **concatenate_string_arrays(char **array1, char **array2);
 
 int array_size(char **array);
 
+void display_directories_merging(char *mergeFileName, char **directories);
+
 #endif // L_FILES_H

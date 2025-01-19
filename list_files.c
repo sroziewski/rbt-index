@@ -1,4 +1,5 @@
 #include "flib/lfiles.h"
+
 /**
  * @brief Entry point of the program. Processes directories and files based on given arguments.
  *
@@ -82,6 +83,9 @@ int main(const int argc, char *argv[]) {
         print_elapsed_time(NULL, elapsed, stdout, "merge files");
         fprintf(stdout, "Time taken to process merge files: %.1f seconds\n", elapsed);
     }
+    if (mergeFileName != NULL) {
+        display_directories_merging(mergeFileName, directories);
+    }
     if (statFileNames == NULL && mergeFileNames == NULL && directories != NULL && directories[0] != NULL) {
         const int numCores = omp_get_max_threads();
         omp_set_num_threads(numCores);
@@ -158,8 +162,11 @@ int main(const int argc, char *argv[]) {
 
     deleteFiles(tmpFileNames);
     deleteFile(outputTmpFileName);
-
-    free_multiple_arrays(&directories, &tmpFileNames, &mergeFileNames, NULL);
+    if (mergeFileName != NULL) {
+        free_multiple_arrays(&tmpFileNames, &mergeFileNames, NULL);
+    } else {
+        free_multiple_arrays(&directories, &tmpFileNames, &mergeFileNames, NULL);
+    }
     release_temporary_resources(&outputTmpFileName, NULL);
 
     return EXIT_SUCCESS;

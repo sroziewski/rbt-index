@@ -16,8 +16,8 @@
 #include "../shared/lconsts.h"
 
 const char *FILE_TYPES[] = {
-    "T_DIR", "T_TEXT", "T_BINARY", "T_JSON", "T_AUDIO", "T_FILM", "T_IMAGE",
-    "T_COMPRESSED", "T_YAML", "T_EXE", "T_C", "T_PYTHON",
+    "T_DIR", "T_TEXT", "T_BINARY", "T_IMAGE", "T_JSON", "T_AUDIO", "T_FILM",
+    "T_COMPRESSED", "T_YAML", "T_EXE", "T_C", "T_PYTHON", "T_JS",
     "T_JAVA", "T_LOG", "T_PACKAGE", "T_CLASS", "T_TEMPLATE",
     "T_PDF", "T_JAR", "T_HTML", "T_XML", "T_XHTML",
     "T_TS", "T_DOC", "T_CALC", "T_LATEX", "T_SQL",
@@ -1064,7 +1064,7 @@ void free_multiple_arrays(char ***first_directory, ...) {
     char ***current_directory = first_directory;
 
     while (current_directory != NULL) {
-        if (*current_directory) {
+        if (*current_directory && *current_directory != NULL) {
             // Free each string in the array
             for (int i = 0; (*current_directory)[i] != NULL; i++) {
                 free((*current_directory)[i]); // Free each string
@@ -2377,4 +2377,12 @@ char **concatenate_string_arrays(char **array1, char **array2) {
     result[size1 + size2] = NULL;
 
     return result;
+}
+
+void display_directories_merging(char *mergeFileName, char **directories) {
+    fprintf(stdout, "Directories:\n");
+    for (int i = 0; directories[i] != NULL; i++) {
+        fprintf(stdout, "%d. %s\n", i + 1, directories[i]);
+    }
+    fprintf(stdout, "will be merged with file %s.\n\n", mergeFileName);
 }
