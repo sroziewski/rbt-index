@@ -70,6 +70,11 @@ int main(const int argc, char *argv[]) {
         if (is_file(outputFileName)) {
             check_input_files(&outputFileName, &rootDirectories, &rootCount);
         }
+        else {
+            rootDirectories = malloc(sizeof(char *));
+            rootDirectories[0] = NULL;
+            rootCount = 1;
+        }
 
         read_directories(parentDirectory, &directories, rootDirectories, stepCount);
         int h= 1;
