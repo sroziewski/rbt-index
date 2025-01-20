@@ -1179,7 +1179,7 @@ int process_arguments(const int argc, char **argv, int *skipDirs, long long *siz
                       char **outputTmpFileName,
                       char ***tmpFileNames, char ***directories, char ***mergeFileNames, char ***statFileNames,
                       int *directoryCount,
-                      char **mergeFileName, int *mergeFileCount, int *statFileCount) {
+                      char **mergeFileName, int *mergeFileCount, int *statFileCount, bool *printStd) {
     *skipDirs = 0; // Default: don't skip directories
     *sizeThreshold = 0; // Default: no size threshold
     *outputFileName = NULL;
@@ -1310,6 +1310,10 @@ int process_arguments(const int argc, char **argv, int *skipDirs, long long *siz
                 return EXIT_FAILURE;
             }
         }
+        else if (strcmp(argv[i], "--print") == 0) {
+            *printStd = true;
+        }
+
     }
 
     // Ensure --add and -o are not used simultaneously
@@ -1467,7 +1471,11 @@ int process_arguments(const int argc, char **argv, int *skipDirs, long long *siz
             // do nothing here
         } else if (strcmp(argv[i], "--stats") == 0) {
             // do nothing here
-        } else {
+        }
+        else if (strcmp(argv[i], "--print") == 0) {
+            // do nothing here
+        }
+        else {
             if (!belongs_to_array(argv[i], *mergeFileNames, mergeFileCountTmp) && !belongs_to_array(
                     argv[i], *statFileNames, statFileCountTmp) && strcmp(*mergeFileName, argv[i]) != 0) {
                 fprintf(stderr, "Unknown option: %s\n", argv[i]);

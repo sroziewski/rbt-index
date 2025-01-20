@@ -48,13 +48,14 @@ int main(const int argc, char *argv[]) {
     int mergeFileCount = 0;
     int statFileCount = 0;
     int totalCount = 0;
+    bool printStd = false;
 
     FileEntry *entries;
     FileStatistics fileStats;
 
     if (process_arguments(argc, argv, &skipDirs, &sizeThreshold, &outputFileName, &outputTmpFileName, &tmpFileNames,
                           &directories, &mergeFileNames, &statFileNames, &directoryCount, &mergeFileName,
-                          &mergeFileCount, &statFileCount) != EXIT_SUCCESS) {
+                          &mergeFileCount, &statFileCount, &printStd) != EXIT_SUCCESS) {
         printf("Error processing arguments\n");
         free_multiple_arrays(&directories, &tmpFileNames, &mergeFileNames, NULL);
         return EXIT_FAILURE;
@@ -154,11 +155,10 @@ int main(const int argc, char *argv[]) {
         read_entries(outputFileName, &entries, totalCount, &totalCount);
     }
     compute_file_statistics(entries, totalCount, &fileStats, directories);
-
+    if (printStd) {
+        printToStdOut(entries, totalCount);
+    }
     printFileStatistics(fileStats);
-
-    printToStdOut(entries, totalCount);
-    // printFileStatistics(fileStats);
 
     deleteFiles(tmpFileNames);
     deleteFile(outputTmpFileName);
