@@ -894,6 +894,152 @@ void printToFile(FileEntry *entries, const int count, const char *filename, cons
     fclose(outputFile);
 }
 
+int read_directories(const char *parentDir, char ***directories, const int step) {
+    DIR *dir;
+    struct dirent *entry;
+    struct stat entryStat;
+    int count = 0;  // Number of directories stored
+
+    // Open the parent directory
+    dir = opendir(parentDir);
+    if (dir == NULL) {
+        perror("Failed to open directory");
+        return EXIT_FAILURE;
+    }
+
+    // Initialize directories array
+    *directories = malloc(sizeof(char *) * (step + 1)); // +1 for NULL termination
+    if (*directories == NULL) {
+        perror("Memory allocation failed for directories");
+        closedir(dir);
+        return EXIT_FAILURE;
+    }
+
+    // Read entries in the directory
+    while ((entry = readdir(dir)) != NULL) {
+        char fullPath[PATH_MAX]; // Combine parentDir and entry name
+        if (snprintf(fullPath, PATH_MAX, "%s/%s", parentDir, entry->d_name) >= PATH_MAX) {
+            fprintf(stderr, "Full path exceeds the maximum allowable length\n");
+            continue; // Skip this entry
+        }
+
+        // Get statistics for the entry
+        if (stat(fullPath, &entryStat) == -1) {
+            perror("Failed to stat directory entry");
+            continue; // Skip this entry
+        }
+
+        // Check if the entry is a directory (and not "." or "..")
+        if (S_ISDIR(entryStat.st_mode) &&
+            strcmp(entry->d_name, ".") != 0 &&
+            strcmp(entry->d_name, "..") != 0) {
+
+            // Allocate memory and store the full path
+            (*directories)[count] = strdup(fullPath);
+            if ((*directories)[count] == NULL) {
+                perror("Memory allocation failed for directory path");
+                // Free allocated memory and close directory
+                for (int j = 0; j < count; j++) free((*directories)[j]);
+                free(*directories);
+                closedir(dir);
+                return EXIT_FAILURE;
+            }
+
+            count++;
+            // Stop if we've stored `step` directories
+            if (count == step) {
+                break;
+            }
+        }
+    }
+
+    closedir(dir);
+
+    // NULL-terminate the list of directory paths
+    (*directories)[count] = NULL;
+
+    // Check if we found fewer directories than expected
+    if (count < step) {
+        fprintf(stderr, "Warning: Found only %d directories, expected %d.\n", count, step);
+    }
+
+    return EXIT_SUCCESS;
+}
+
+/**
+ * Parses command-line arguments to process the "--step" option, ensuring valid step values,
+ * a corresponding directory, and an optional output file specification.
+ *
+ * This function parses command-line arguments to extract the value for the "--step" option,
+ * validates its range (2 to 10000), verifies the existence of a directory provided afterward,
+ * and retrieves the name of an output file if the "-o" option is specified.
+ * It performs error checking for argument validity, memory allocation, and input format,
+ * exiting with an error message in case of invalid input.
+ *
+ * @param argc            The number of command-line arguments.
+ * @param argv            An array of strings representing the command-line arguments.
+ * @param stepValue       A pointer to an integer where the parsed step value will be stored.
+ * @param parentDirectory A pointer to a string where the directory path will be stored
+ *                        if valid. Memory for the string is allocated dynamically.
+ * @param outputFileName  A pointer to a string where the output file name will be stored
+ *                        if the "-o" option is provided. Memory for the string is dynamically allocated.
+ * @return                Returns 0 on successful parsing and validation of the arguments.
+ *                        Exits the program with an error message if any issue is encountered.
+ */
+int handle_step_option(const int argc, char *argv[], int *stepValue, char **parentDirectory, char **outputFileName) {
+    char *endPtr; // Used to check for strtol errors
+    for (int i = 1; i < argc; i++) {
+        // Check for the "--step" option
+        if (strcmp(argv[i], "--step") == 0) {
+            // Retrieve the number after "--step"
+            if (i + 1 < argc) {
+                errno = 0; // Reset errno before strtol
+                const long value = strtol(argv[i + 1], &endPtr, 10);
+                // Validate that the value is numeric and within 2-10000
+                if (*endPtr != '\0' || errno != 0 || value < 2 || value > 10000) {
+                    fprintf(stderr, "Error: '%s' is not a valid step value (must be an integer between 2 and 10000)\n", argv[i + 1]);
+                    exit(EXIT_FAILURE);
+                }
+                *stepValue = (int)value; // Store the step value
+                // Retrieve the directory argument
+                if (i + 2 < argc) {
+                    struct stat statBuffer;
+                    if (stat(argv[i + 2], &statBuffer) == 0 && S_ISDIR(statBuffer.st_mode)) {
+                        *parentDirectory = strdup(argv[i + 2]); // Store the directory path
+                        if (*parentDirectory == NULL) {
+                            perror("Failed to allocate memory for directory path");
+                            exit(EXIT_FAILURE);
+                        }
+                        // Retrieve the output file name after "-o"
+                        if (i + 3 < argc && strcmp(argv[i + 3], "-o") == 0) {
+                            if (i + 4 < argc) {
+                                *outputFileName = strdup(argv[i + 4]); // Store the file name
+                                if (*outputFileName == NULL) {
+                                    perror("Failed to allocate memory for output file name");
+                                    exit(EXIT_FAILURE);
+                                }
+                                return 0; // Success
+                            }
+                            fprintf(stderr, "Error: Missing output file name after '-o'\n");
+                            exit(EXIT_FAILURE);
+                        }
+                        fprintf(stderr, "Error: '-o' option not found\n");
+                        exit(EXIT_FAILURE);
+                    }
+                    fprintf(stderr, "Error: '%s' is not a valid directory\n", argv[i + 2]);
+                    exit(EXIT_FAILURE);
+                }
+                fprintf(stderr, "Error: Missing directory argument after '--step <number>'\n");
+                exit(EXIT_FAILURE);
+            }
+            fprintf(stderr, "Error: Missing number after '--step'\n");
+            exit(EXIT_FAILURE);
+        }
+    }
+    fprintf(stderr, "Error: '--step' option not provided\n");
+    exit(EXIT_FAILURE);
+}
+
 /**
  * Prints detailed information about a collection of file entries to the standard output.
  *
@@ -1239,7 +1385,7 @@ int process_arguments(const int argc, char **argv, int *skipDirs, long long *siz
                       char **outputTmpFileName,
                       char ***tmpFileNames, char ***directories, char ***mergeFileNames, char ***statFileNames,
                       int *directoryCount,
-                      char **mergeFileName, int *mergeFileCount, int *statFileCount, bool *printStd) {
+                      char **mergeFileName, int *mergeFileCount, int *statFileCount, bool *printStd, char **parentDirectory) {
     *skipDirs = 0; // Default: don't skip directories
     *sizeThreshold = 0; // Default: no size threshold
     *outputFileName = NULL;
@@ -1253,8 +1399,6 @@ int process_arguments(const int argc, char **argv, int *skipDirs, long long *siz
 
     int mergeFileCountTmp = 0;
     int statFileCountTmp = 0;
-
-    int step = 0;
 
     // First pass: process output-related options and other mutual exclusions
     for (int i = 1; i < argc; i++) {
@@ -1358,13 +1502,11 @@ int process_arguments(const int argc, char **argv, int *skipDirs, long long *siz
                     free_multiple_arrays(directories, tmpFileNames, mergeFileNames, statFileNames, NULL);
                     return EXIT_FAILURE;
                 }
-
                 statFileCountTmp++;
                 // Ensure NULL-termination
                 (*statFileNames)[statFileCountTmp] = NULL;
                 i = j; // Move index to the last processed argument
             }
-
             // Ensure at least one file was provided after --stats
             if (statFileCountTmp == 0) {
                 fprintf(stderr, "Error: --stats requires at least one file name.\n");
@@ -1374,25 +1516,10 @@ int process_arguments(const int argc, char **argv, int *skipDirs, long long *siz
         } else if (strcmp(argv[i], "--print") == 0) {
             *printStd = true;
         }
-        else if (strcmp(argv[i], "--step") == 0) {
-            // Parse the step value
-            if (i + 1 < argc) {
-                char *endPtr = NULL;
-                step = (int) strtol(argv[++i], &endPtr, 10);
-
-                // Validate step value
-                if (*endPtr != '\0' || step <= 0) {
-                    fprintf(stderr, "Error: --step requires a positive integer.\n");
-                    free_multiple_arrays(directories, tmpFileNames, mergeFileNames, statFileNames, NULL);
-                    return EXIT_FAILURE;
-                }
-            } else {
-                fprintf(stderr, "Error: A number must follow --step.\n");
-                free_multiple_arrays(directories, tmpFileNames, mergeFileNames, statFileNames, NULL);
-                return EXIT_FAILURE;
-            }
-        }
-
+    }
+    int step_count = 0;
+    if (handle_step_option(argc, argv, &step_count, parentDirectory, outputFileName) == 0) {
+        int a = 1;
     }
 
     // Ensure --add and -o are not used simultaneously
@@ -1553,7 +1680,11 @@ int process_arguments(const int argc, char **argv, int *skipDirs, long long *siz
             // do nothing here
         } else if (strcmp(argv[i], "--print") == 0) {
             // do nothing here
-        } else {
+        }
+        else if (strcmp(argv[i], "--step") == 0) {
+            // do nothing here
+        }
+        else {
             if (!belongs_to_array(argv[i], *mergeFileNames, mergeFileCountTmp) && !belongs_to_array(
                     argv[i], *statFileNames,
                     statFileCountTmp) && (*mergeFileName == NULL || *mergeFileName != NULL && strcmp(
@@ -2514,3 +2645,6 @@ void processStatistics(char **stat_file_names, const int stat_file_count, int pr
         printFileStatistics(fileStats);
     }
 }
+
+
+

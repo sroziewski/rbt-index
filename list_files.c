@@ -38,6 +38,7 @@ int main(const int argc, char *argv[]) {
     char *outputFileName = NULL;
     char *outputTmpFileName = NULL;
     char *mergeFileName = NULL;
+    char *parentDirectory = NULL;
     // TODO replace | with - in a filename when scanning
     // Array for storing directory paths
     char **directories = NULL;
@@ -55,7 +56,7 @@ int main(const int argc, char *argv[]) {
 
     if (process_arguments(argc, argv, &skipDirs, &sizeThreshold, &outputFileName, &outputTmpFileName, &tmpFileNames,
                           &directories, &mergeFileNames, &statFileNames, &directoryCount, &mergeFileName,
-                          &mergeFileCount, &statFileCount, &printStd) != EXIT_SUCCESS) {
+                          &mergeFileCount, &statFileCount, &printStd, &parentDirectory) != EXIT_SUCCESS) {
         printf("Error processing arguments\n");
         free_multiple_arrays(&directories, &tmpFileNames, &mergeFileNames, NULL);
         return EXIT_FAILURE;
