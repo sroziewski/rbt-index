@@ -67,7 +67,10 @@ int main(const int argc, char *argv[]) {
         fprintf(stdout, "Parent directory: %s\n", parentDirectory);
         fprintf(stdout, "Step count: %d\n", stepCount);
         int rootCount = 0;
-        check_input_files(&outputFileName, &rootDirectories, &rootCount);
+        if (is_file(outputFileName)) {
+            check_input_files(&outputFileName, &rootDirectories, &rootCount);
+        }
+
         read_directories(parentDirectory, &directories, rootDirectories, stepCount);
         int h= 1;
     }

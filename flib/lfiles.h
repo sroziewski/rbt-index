@@ -169,4 +169,6 @@ int countRowsInFile(const char *filename);
 
 int read_directories(const char *parentDir, char ***directories, char **rootDirectories, int step);
 
+int is_file(const char *path);
+
 #endif // L_FILES_H

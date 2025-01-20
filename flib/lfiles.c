@@ -600,7 +600,7 @@ int process_file(const char *filename) {
 void check_input_files(char **mergeFileNames, char ***tmpFileNames, int *rootCount) {
     if (mergeFileNames == NULL) {
         fprintf(stderr, "Error: mergeFileNames is NULL.\n");
-        return;
+        exit(EXIT_FAILURE);
     }
     if (*tmpFileNames == NULL) {
         *tmpFileNames = realloc(*tmpFileNames, sizeof(char *) * (MAX_LINE_LENGTH + 2));
@@ -1630,6 +1630,14 @@ int is_directory(const char *path) {
     struct stat path_stat;
     if (stat(path, &path_stat) == 0) {
         return S_ISDIR(path_stat.st_mode);
+    }
+    return 0;
+}
+
+int is_file(const char *path) {
+    struct stat path_stat;
+    if (stat(path, &path_stat) == 0) {
+        return S_ISREG(path_stat.st_mode);
     }
     return 0;
 }
