@@ -473,12 +473,11 @@ void processDirectory(TaskQueue *taskQueue, FileEntry **entries, int *count, int
             if (stat(fullPath, &fileStat) == 0) {
                 if (S_ISREG(fileStat.st_mode)) {
 
-                    if (strstr(fullPath, "Masters of Hardcore")!=NULL) {
+                    if (strstr(fullPath, "|")!=NULL) {
                         char fullPathCopy[sizeof(fullPath)];
                         strcpy(fullPathCopy, fullPath);
                         replaceChar(fullPath, '|', '-');
                         moveFile(fullPathCopy, fullPath);
-                        int h = 1;
                     }
 
                     magic_t magic = magic_open(MAGIC_MIME_TYPE);
