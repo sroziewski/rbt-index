@@ -156,7 +156,7 @@ int main(const int argc, char *argv[]) {
     }
     compute_file_statistics(entries, totalCount, &fileStats, directories);
     if (printStd) {
-        printToStdOut(entries, totalCount);
+        // printToStdOut(entries, totalCount);
     }
     printFileStatistics(fileStats);
 

@@ -342,6 +342,22 @@ int findEntryIndexAdded(const FileEntry *entries, const int count, const char *p
     return 0; // Not added yet
 }
 
+void replaceChar(char *str, const char oldChar, const char newChar) {
+    for (int i = 0; str[i] != '\0'; i++) {
+        if (str[i] == oldChar) {
+            str[i] = newChar;  // Replace oldChar with newChar
+        }
+    }
+}
+
+int moveFile(const char *fullPath, const char *newFullPath) {
+    if (rename(fullPath, newFullPath) == 0) {
+        return 0; // Success
+    }
+    perror("Error moving file");
+    return -1; // Failure
+}
+
 /**
  * Processes directories and their contents, updating file statistics and managing a dynamic,
  * thread-safe queue of tasks.
@@ -456,6 +472,15 @@ void processDirectory(TaskQueue *taskQueue, FileEntry **entries, int *count, int
 
             if (stat(fullPath, &fileStat) == 0) {
                 if (S_ISREG(fileStat.st_mode)) {
+
+                    if (strstr(fullPath, "Masters of Hardcore")!=NULL) {
+                        char fullPathCopy[sizeof(fullPath)];
+                        strcpy(fullPathCopy, fullPath);
+                        replaceChar(fullPath, '|', '-');
+                        moveFile(fullPathCopy, fullPath);
+                        int h = 1;
+                    }
+
                     magic_t magic = magic_open(MAGIC_MIME_TYPE);
                     if (magic != NULL && magic_load(magic, NULL) == 0) {
                         const char *mimeType = magic_file(magic, fullPath);

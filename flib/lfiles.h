@@ -161,4 +161,6 @@ int array_size(char **array);
 
 void display_directories_merging(char *mergeFileName, char **directories);
 
+void replaceChar(char *str, char oldChar, char newChar);
+
 #endif // L_FILES_H
