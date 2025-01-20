@@ -1254,6 +1254,8 @@ int process_arguments(const int argc, char **argv, int *skipDirs, long long *siz
     int mergeFileCountTmp = 0;
     int statFileCountTmp = 0;
 
+    int step = 0;
+
     // First pass: process output-related options and other mutual exclusions
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "-o") == 0) {
@@ -1372,6 +1374,25 @@ int process_arguments(const int argc, char **argv, int *skipDirs, long long *siz
         } else if (strcmp(argv[i], "--print") == 0) {
             *printStd = true;
         }
+        else if (strcmp(argv[i], "--step") == 0) {
+            // Parse the step value
+            if (i + 1 < argc) {
+                char *endPtr = NULL;
+                step = (int) strtol(argv[++i], &endPtr, 10);
+
+                // Validate step value
+                if (*endPtr != '\0' || step <= 0) {
+                    fprintf(stderr, "Error: --step requires a positive integer.\n");
+                    free_multiple_arrays(directories, tmpFileNames, mergeFileNames, statFileNames, NULL);
+                    return EXIT_FAILURE;
+                }
+            } else {
+                fprintf(stderr, "Error: A number must follow --step.\n");
+                free_multiple_arrays(directories, tmpFileNames, mergeFileNames, statFileNames, NULL);
+                return EXIT_FAILURE;
+            }
+        }
+
     }
 
     // Ensure --add and -o are not used simultaneously
@@ -1509,7 +1530,7 @@ int process_arguments(const int argc, char **argv, int *skipDirs, long long *siz
             }
 
             // Generate a temporary file name
-            char tmpFileNameBuffer[256]; // Assumes a max temporary filename size
+            char tmpFileNameBuffer[MAX_LINE_LENGTH]; // Assumes a max temporary filename size
             snprintf(tmpFileNameBuffer, sizeof(tmpFileNameBuffer), "%s_tmp%d",
                      *mergeFileName ? *mergeFileName : (*outputFileName ? *outputFileName : "default"),
                      *directoryCount);
