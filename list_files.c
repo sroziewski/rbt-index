@@ -49,6 +49,7 @@ int main(const int argc, char *argv[]) {
     int mergeFileCount = 0;
     int statFileCount = 0;
     int totalCount = 0;
+    int stepCount = 0;
     bool printStd = false;
 
     FileEntry *entries;
@@ -56,7 +57,7 @@ int main(const int argc, char *argv[]) {
 
     if (process_arguments(argc, argv, &skipDirs, &sizeThreshold, &outputFileName, &outputTmpFileName, &tmpFileNames,
                           &directories, &mergeFileNames, &statFileNames, &directoryCount, &mergeFileName,
-                          &mergeFileCount, &statFileCount, &printStd, &parentDirectory) != EXIT_SUCCESS) {
+                          &mergeFileCount, &statFileCount, &printStd, &parentDirectory, &stepCount) != EXIT_SUCCESS) {
         printf("Error processing arguments\n");
         free_multiple_arrays(&directories, &tmpFileNames, &mergeFileNames, NULL);
         return EXIT_FAILURE;
