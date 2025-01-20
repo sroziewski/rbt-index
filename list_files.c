@@ -151,6 +151,9 @@ int main(const int argc, char *argv[]) {
         read_entries(mergeFileName, &entries, totalOutputCount, &totalCount);
         deleteFile(outputFileName);
     }
+    if (mergeFileName == NULL && mergeFileNames == NULL && directories == NULL && statFileNames != NULL) {
+        read_entries(outputFileName, &entries, totalCount, &totalCount);
+    }
     if (mergeFileName == NULL && mergeFileNames != NULL) {
         read_entries(outputFileName, &entries, totalCount, &totalCount);
     }

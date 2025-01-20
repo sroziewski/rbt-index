@@ -1182,6 +1182,15 @@ char **remove_duplicate_directories(char **directories, const int count, int *ne
     return unique_directories;
 }
 
+int is_directory(const char *path) {
+    struct stat path_stat;
+    if (stat(path, &path_stat) == 0) {
+        return S_ISDIR(path_stat.st_mode);
+    }
+    return 0;
+}
+
+
 /**
  * Parses and validates command-line arguments, initializing various file and directory
  * settings based on the provided options.
@@ -1474,7 +1483,7 @@ int process_arguments(const int argc, char **argv, int *skipDirs, long long *siz
                 release_temporary_resources(outputTmpFileName, NULL);
                 return EXIT_FAILURE;
             }
-        } else if (argv[i][0] != '-' && *mergeFileNames == NULL && strcmp(argv[i - 1], "--merge") != 0) {
+        } else if (argv[i][0] != '-' && *mergeFileNames == NULL && strcmp(argv[i - 1], "--merge") != 0 && is_directory(argv[i])) {
             // Treat as a directory path (non-option argument)
             *directories = realloc(*directories, sizeof(char *) * (*directoryCount + 2));
             *tmpFileNames = realloc(*tmpFileNames, sizeof(char *) * (*directoryCount + 2));
