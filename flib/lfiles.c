@@ -41,6 +41,27 @@ int isExeFile(const char *filePath) {
     return dot && strcasecmp(dot, ".exe") == 0;
 }
 
+int isAudioFile(const char *filePath) {
+    const char *dot = strrchr(filePath, '.');
+    return dot && strcasecmp(dot, ".mp3") == 0 || dot && strcasecmp(dot, ".wav") == 0 || dot && strcasecmp(dot, ".ogg")
+           == 0;
+}
+
+int isImageFile(const char *filePath) {
+    const char *dot = strrchr(filePath, '.');
+    return dot && strcasecmp(dot, ".png") == 0 || dot && strcasecmp(dot, ".jpg") == 0 || dot && strcasecmp(dot, ".gif")
+           == 0 || dot && strcasecmp(dot, ".jpeg") == 0 || dot && strcasecmp(dot, ".bmp") == 0 || dot && strcasecmp(dot, ".tiff") == 0 || dot && strcasecmp(dot, ".webp") == 0
+    || dot && strcasecmp(dot, ".svg") == 0 || dot && strcasecmp(dot, ".raw") == 0 || dot && strcasecmp(dot, ".psd") == 0 || dot && strcasecmp(dot, ".eps") == 0 || dot && strcasecmp(dot, ".ico") == 0;
+}
+
+int isFilmFile(const char *filePath) {
+    const char *dot = strrchr(filePath, '.');
+    return dot && strcasecmp(dot, ".mp4") == 0 || dot && strcasecmp(dot, ".avi") == 0 || dot && strcasecmp(dot, ".mkv")
+           == 0 || dot && strcasecmp(dot, ".mov") == 0 || dot && strcasecmp(dot, ".wmv") == 0 || dot && strcasecmp(dot, ".flv") == 0 || dot && strcasecmp(dot, ".mpg") == 0
+    || dot && strcasecmp(dot, ".mpeg") == 0 || dot && strcasecmp(dot, ".3gp") == 0 || dot && strcasecmp(dot, ".webm") == 0 || dot && strcasecmp(dot, ".vob") == 0 || dot && strcasecmp(dot, ".mov") == 0
+    || dot && strcasecmp(dot, ".mxf") == 0 || dot && strcasecmp(dot, ".divx") == 0 || dot && strcasecmp(dot, ".asf") == 0;
+}
+
 // Check if the file has a .c extension (case insensitive)
 int isCFile(const char *filePath) {
     const char *dot = strrchr(filePath, '.');
@@ -216,13 +237,13 @@ const char *getFileTypeCategory(const char *mimeType, const char *filePath) {
         }
         return "T_TEXT";
     }
-    if (strstr(mimeType, "image/") == mimeType) {
+    if (strstr(mimeType, "image/") == mimeType || isImageFile(filePath)) {
         return "T_IMAGE";
     }
-    if (strstr(mimeType, "video/") == mimeType) {
+    if (strstr(mimeType, "video/") == mimeType || isFilmFile(filePath)) {
         return "T_FILM";
     }
-    if (strstr(mimeType, "audio/") == mimeType) {
+    if (strstr(mimeType, "audio/") == mimeType || isAudioFile(filePath)) {
         return "T_AUDIO";
     }
     if (strstr(mimeType, "application/zip") == mimeType ||
