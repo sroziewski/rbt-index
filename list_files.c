@@ -77,7 +77,6 @@ int main(const int argc, char *argv[]) {
         }
         read_directories(parentDirectory, &directories, rootDirectories, stepCount);
         generate_tmp_file_names(directories, outputFileName, &tmpFileNames, &outputTmpFileName);
-        int h= 1;
     }
     if (mergeFileNames != NULL) {
         struct timeval start, end;
