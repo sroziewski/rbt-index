@@ -1183,7 +1183,7 @@ static int is_in_root_directories(char **rootDirectories, const char *dirPath) {
  * @param step Maximum number of directories to retrieve.
  * @return EXIT_SUCCESS on success, EXIT_FAILURE on failure.
  */
-int read_directories(const char *parentDir, char ***directories, char **rootDirectories, const int step) {
+int read_directories(const char *parentDir, char ***directories, char **rootDirectories, const int step, int *directoryCount) {
     DIR *dir;
     struct dirent *entry;
     struct stat entryStat;
@@ -1227,6 +1227,7 @@ int read_directories(const char *parentDir, char ***directories, char **rootDire
             if (!is_in_root_directories(rootDirectories, fullPath)) {
                 // Allocate memory and store the full path
                 (*directories)[count] = strdup(fullPath);
+                (*directoryCount)++;
                 if ((*directories)[count] == NULL) {
                     perror("Memory allocation failed for directory path");
                     // Free allocated memory and close directory

@@ -75,7 +75,7 @@ int main(const int argc, char *argv[]) {
             rootDirectories[0] = NULL;
             rootCount = 1;
         }
-        read_directories(parentDirectory, &directories, rootDirectories, stepCount);
+        read_directories(parentDirectory, &directories, rootDirectories, stepCount, &directoryCount);
         generate_tmp_file_names(directories, outputFileName, &tmpFileNames, &outputTmpFileName);
     }
     if (mergeFileNames != NULL) {
@@ -109,8 +109,8 @@ int main(const int argc, char *argv[]) {
         const int numCores = omp_get_max_threads();
         omp_set_num_threads(numCores);
         fprintf(stdout, "Using %d cores.\n", numCores);
-
-        for (int i = 0; directories[i] != NULL && i < argc - 2; i++) {
+        int const numIters = parentDirectory == NULL ? argc - 2 : directoryCount;
+        for (int i = 0; directories[i] != NULL && i < numIters; i++) {
             fprintf(stdout, "\nProcessing directory: %s\n", directories[i]);
             // Start Timer
             struct timeval start, end;
