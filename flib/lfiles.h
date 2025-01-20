@@ -163,4 +163,8 @@ void display_directories_merging(char *mergeFileName, char **directories);
 
 void replaceChar(char *str, char oldChar, char newChar);
 
+void processStatistics(char **stat_file_names, int stat_file_count);
+
+int countRowsInFile(const char *filename);
+
 #endif // L_FILES_H

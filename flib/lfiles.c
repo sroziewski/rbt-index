@@ -2448,3 +2448,32 @@ void display_directories_merging(char *mergeFileName, char **directories) {
     }
     fprintf(stdout, "will be merged with file %s.\n\n", mergeFileName);
 }
+
+int countRowsInFile(const char *filename) {
+    FILE *file = fopen(filename, "r");
+    if (file == NULL) {
+        perror("Error opening file");
+        return -1;
+    }
+
+    int rows = 0;
+    char ch;
+
+    while ((ch = fgetc(file)) != EOF) {
+        if (ch == '\n') {
+            rows++;
+        }
+    }
+
+    fclose(file);
+    return rows;
+}
+
+void processStatistics(char **stat_file_names, const int stat_file_count) {
+    FileEntry *entries;
+    for (int i = 0; i < stat_file_count; i++) {
+        int totalCount = countRowsInFile(stat_file_names[i]);
+
+        read_entries(stat_file_names[i], &entries, totalCount, &totalCount);
+    }
+}

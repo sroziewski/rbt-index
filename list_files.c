@@ -152,6 +152,7 @@ int main(const int argc, char *argv[]) {
         deleteFile(outputFileName);
     }
     if (mergeFileName == NULL && mergeFileNames == NULL && directories == NULL && statFileNames != NULL) {
+        processStatistics(statFileNames, statFileCount);
         read_entries(outputFileName, &entries, totalCount, &totalCount);
     }
     if (mergeFileName == NULL && mergeFileNames != NULL) {
