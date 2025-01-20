@@ -147,7 +147,7 @@ int process_file(const char *filename);
 
 int is_size_t(const char *str);
 
-void check_merge_files(char **mergeFileNames, char ***tmpFileNames, int *rootCount);
+void check_input_files(char **mergeFileNames, char ***tmpFileNames, int *rootCount);
 
 void process_merge_files(char **mergeFileNames, int mergeFileCount, const char *outputFileName, int *totalCount);
 
@@ -163,7 +163,7 @@ void display_directories_merging(char *mergeFileName, char **directories);
 
 void replaceChar(char *str, char oldChar, char newChar);
 
-void processStatistics(char **stat_file_names, int stat_file_count);
+void processStatistics(char **stat_file_names, int stat_file_count, int printStd);
 
 int countRowsInFile(const char *filename);
 

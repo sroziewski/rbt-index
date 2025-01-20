@@ -2299,7 +2299,7 @@ void get_dir_root(const char *fileName, char ***root, int *count) {
  * @param rootCount      A pointer to an integer used to count the number of root directory entries extracted
  *                       from the processed merge files.
  */
-void check_merge_files(char **mergeFileNames, char ***tmpFileNames, int *rootCount) {
+void check_input_files(char **mergeFileNames, char ***tmpFileNames, int *rootCount) {
     if (mergeFileNames == NULL) {
         fprintf(stderr, "Error: mergeFileNames is NULL.\n");
         return;
@@ -2328,7 +2328,7 @@ void check_merge_files(char **mergeFileNames, char ***tmpFileNames, int *rootCou
     for (int i = 0; mergeFileNames[i] != NULL; i++) {
         get_dir_root(mergeFileNames[i], tmpFileNames, &tmp);
         const char *fileName = mergeFileNames[i];
-        fprintf(stdout, "Checking merge file format: %s\n", fileName);
+        fprintf(stdout, "Checking input file format: %s\n", fileName);
         // Check if the file is a regular file
         struct stat fileStat;
         if (stat(fileName, &fileStat) != 0) {
@@ -2469,11 +2469,22 @@ int countRowsInFile(const char *filename) {
     return rows;
 }
 
-void processStatistics(char **stat_file_names, const int stat_file_count) {
+void processStatistics(char **stat_file_names, const int stat_file_count, int printStd) {
     FileEntry *entries;
+    FileStatistics fileStats;
+    char **directories = NULL;
+    int rootCount = 0;
+
+    check_input_files(stat_file_names, &directories, &rootCount);
     for (int i = 0; i < stat_file_count; i++) {
         int totalCount = countRowsInFile(stat_file_names[i]);
-
+        entries = malloc(totalCount * sizeof(FileEntry));
         read_entries(stat_file_names[i], &entries, totalCount, &totalCount);
+        printf("\nStatistics for file %s: \n", stat_file_names[i]);
+        if (printStd) {
+            printToStdOut(entries, totalCount);
+        }
+        compute_file_statistics(entries, totalCount, &fileStats, directories);
+        printFileStatistics(fileStats);
     }
 }

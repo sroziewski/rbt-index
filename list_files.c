@@ -64,7 +64,7 @@ int main(const int argc, char *argv[]) {
         struct timeval start, end;
         gettimeofday(&start, NULL);
         int rootCount = 0;
-        check_merge_files(mergeFileNames, &directories, &rootCount);
+        check_input_files(mergeFileNames, &directories, &rootCount);
         directories = remove_duplicate_directories(directories, rootCount, &rootCount);
         deleteFile(outputFileName);
         deleteFile(outputTmpFileName);
@@ -133,7 +133,7 @@ int main(const int argc, char *argv[]) {
     if (mergeFileName != NULL) {
         fprintf(stdout, "\n* The result will be merged with existing output file: %s\n", mergeFileName);
         int rootCount = -1;
-        check_merge_files(&mergeFileName, &mergeFileNames, &rootCount);
+        check_input_files(&mergeFileName, &mergeFileNames, &rootCount);
         directories = concatenate_string_arrays(directories, mergeFileNames);
         rootCount = array_size(directories);
         directories = remove_duplicate_directories(directories, rootCount, &rootCount);
@@ -152,18 +152,18 @@ int main(const int argc, char *argv[]) {
         deleteFile(outputFileName);
     }
     if (mergeFileName == NULL && mergeFileNames == NULL && directories == NULL && statFileNames != NULL) {
-        processStatistics(statFileNames, statFileCount);
-        read_entries(outputFileName, &entries, totalCount, &totalCount);
+        processStatistics(statFileNames, statFileCount, printStd);
     }
     if (mergeFileName == NULL && mergeFileNames != NULL) {
         read_entries(outputFileName, &entries, totalCount, &totalCount);
     }
-    compute_file_statistics(entries, totalCount, &fileStats, directories);
-    if (printStd) {
-        printToStdOut(entries, totalCount);
+    if (statFileNames == NULL) {
+        compute_file_statistics(entries, totalCount, &fileStats, directories);
+        if (printStd) {
+            printToStdOut(entries, totalCount);
+        }
+        printFileStatistics(fileStats);
     }
-    printFileStatistics(fileStats);
-
     deleteFiles(tmpFileNames);
     deleteFile(outputTmpFileName);
     free_multiple_arrays(&tmpFileNames, &mergeFileNames, NULL);
