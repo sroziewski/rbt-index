@@ -171,4 +171,6 @@ int read_directories(const char *parentDir, char ***directories, char **rootDire
 
 int is_file(const char *path);
 
+void generate_tmp_file_names(char **directories, const char *outputFileName, char ***tmpFileNames, char **outputTmpFileName);
+
 #endif // L_FILES_H

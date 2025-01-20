@@ -75,8 +75,8 @@ int main(const int argc, char *argv[]) {
             rootDirectories[0] = NULL;
             rootCount = 1;
         }
-
         read_directories(parentDirectory, &directories, rootDirectories, stepCount);
+        generate_tmp_file_names(directories, outputFileName, &tmpFileNames, &outputTmpFileName);
         int h= 1;
     }
     if (mergeFileNames != NULL) {

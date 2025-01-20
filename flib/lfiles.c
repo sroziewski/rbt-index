@@ -2693,5 +2693,49 @@ void processStatistics(char **stat_file_names, const int stat_file_count, int pr
     }
 }
 
+void generate_tmp_file_names(char **directories, const char *outputFileName, char ***tmpFileNames, char **outputTmpFileName) {
+    int count = 0;
 
+    // Count the number of directories
+    while (directories[count] != NULL) {
+        count++;
+    }
+
+    // Allocate memory for tmpFileNames array
+    *tmpFileNames = malloc(sizeof(char *) * (count + 1)); // +1 for NULL-termination
+    if (*tmpFileNames == NULL) {
+        perror("Error allocating memory for tmpFileNames");
+        exit(EXIT_FAILURE);
+    }
+
+    // Generate outputTmpFileName
+    const size_t nameLength = strlen(outputFileName) + 5; // "_tmp" + null terminator
+    *outputTmpFileName = malloc(nameLength);
+    if (*outputTmpFileName == NULL) {
+        perror("Error allocating memory for outputTmpFileName");
+        free(*tmpFileNames);
+        exit(EXIT_FAILURE);
+    }
+    snprintf(*outputTmpFileName, nameLength, "%s_tmp", outputFileName);
+
+    // Populate tmpFileNames array
+    for (int i = 0; i < count; i++) {
+        const size_t tmpLength = strlen(outputFileName) + 10; // "_tmp_" + max digits for 'i' + null terminator
+        (*tmpFileNames)[i] = malloc(tmpLength);
+        if ((*tmpFileNames)[i] == NULL) {
+            perror("Error allocating memory for tmpFileNames element");
+            // Free already allocated memory before exiting
+            for (int j = 0; j < i; j++) {
+                free((*tmpFileNames)[j]);
+            }
+            free(*tmpFileNames);
+            free(*outputTmpFileName);
+            exit(EXIT_FAILURE);
+        }
+        snprintf((*tmpFileNames)[i], tmpLength, "%s_tmp_%d", outputFileName, i);
+    }
+
+    // NULL-terminate the tmpFileNames array
+    (*tmpFileNames)[count] = NULL;
+}
 
