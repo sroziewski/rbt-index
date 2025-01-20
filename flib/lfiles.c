@@ -50,16 +50,21 @@ int isAudioFile(const char *filePath) {
 int isImageFile(const char *filePath) {
     const char *dot = strrchr(filePath, '.');
     return dot && strcasecmp(dot, ".png") == 0 || dot && strcasecmp(dot, ".jpg") == 0 || dot && strcasecmp(dot, ".gif")
-           == 0 || dot && strcasecmp(dot, ".jpeg") == 0 || dot && strcasecmp(dot, ".bmp") == 0 || dot && strcasecmp(dot, ".tiff") == 0 || dot && strcasecmp(dot, ".webp") == 0
-    || dot && strcasecmp(dot, ".svg") == 0 || dot && strcasecmp(dot, ".raw") == 0 || dot && strcasecmp(dot, ".psd") == 0 || dot && strcasecmp(dot, ".eps") == 0 || dot && strcasecmp(dot, ".ico") == 0;
+           == 0 || dot && strcasecmp(dot, ".jpeg") == 0 || dot && strcasecmp(dot, ".bmp") == 0 || dot &&
+           strcasecmp(dot, ".tiff") == 0 || dot && strcasecmp(dot, ".webp") == 0
+           || dot && strcasecmp(dot, ".svg") == 0 || dot && strcasecmp(dot, ".raw") == 0 || dot &&
+           strcasecmp(dot, ".psd") == 0 || dot && strcasecmp(dot, ".eps") == 0 || dot && strcasecmp(dot, ".ico") == 0;
 }
 
 int isFilmFile(const char *filePath) {
     const char *dot = strrchr(filePath, '.');
     return dot && strcasecmp(dot, ".mp4") == 0 || dot && strcasecmp(dot, ".avi") == 0 || dot && strcasecmp(dot, ".mkv")
-           == 0 || dot && strcasecmp(dot, ".mov") == 0 || dot && strcasecmp(dot, ".wmv") == 0 || dot && strcasecmp(dot, ".flv") == 0 || dot && strcasecmp(dot, ".mpg") == 0
-    || dot && strcasecmp(dot, ".mpeg") == 0 || dot && strcasecmp(dot, ".3gp") == 0 || dot && strcasecmp(dot, ".webm") == 0 || dot && strcasecmp(dot, ".vob") == 0 || dot && strcasecmp(dot, ".mov") == 0
-    || dot && strcasecmp(dot, ".mxf") == 0 || dot && strcasecmp(dot, ".divx") == 0 || dot && strcasecmp(dot, ".asf") == 0;
+           == 0 || dot && strcasecmp(dot, ".mov") == 0 || dot && strcasecmp(dot, ".wmv") == 0 || dot &&
+           strcasecmp(dot, ".flv") == 0 || dot && strcasecmp(dot, ".mpg") == 0
+           || dot && strcasecmp(dot, ".mpeg") == 0 || dot && strcasecmp(dot, ".3gp") == 0 || dot &&
+           strcasecmp(dot, ".webm") == 0 || dot && strcasecmp(dot, ".vob") == 0 || dot && strcasecmp(dot, ".mov") == 0
+           || dot && strcasecmp(dot, ".mxf") == 0 || dot && strcasecmp(dot, ".divx") == 0 || dot &&
+           strcasecmp(dot, ".asf") == 0;
 }
 
 // Check if the file has a .c extension (case insensitive)
@@ -366,7 +371,7 @@ int findEntryIndexAdded(const FileEntry *entries, const int count, const char *p
 void replaceChar(char *str, const char oldChar, const char newChar) {
     for (int i = 0; str[i] != '\0'; i++) {
         if (str[i] == oldChar) {
-            str[i] = newChar;  // Replace oldChar with newChar
+            str[i] = newChar; // Replace oldChar with newChar
         }
     }
 }
@@ -493,8 +498,7 @@ void processDirectory(TaskQueue *taskQueue, FileEntry **entries, int *count, int
 
             if (stat(fullPath, &fileStat) == 0) {
                 if (S_ISREG(fileStat.st_mode)) {
-
-                    if (strstr(fullPath, "|")!=NULL) {
+                    if (strstr(fullPath, "|") != NULL) {
                         char fullPathCopy[sizeof(fullPath)];
                         strcpy(fullPathCopy, fullPath);
                         replaceChar(fullPath, '|', '-');
@@ -916,7 +920,8 @@ void printToStdOut(FileEntry *entries, const int count) {
         const char *fileName = getFileName(entries[i].path);
         const int isHidden = (fileName[0] == '.'); // Check if the file is hidden
         char *sizeStr = getFileSizeAsString(entries[i].size);
-        printf("File: %s, Size: %s (%ld bytes), Type: %s",
+        printf("%s %s, Size: %s (%ld bytes), Type: %s",
+               strcmp(entries[i].type, "T_DIR") == 0 ? "Dir: " : "File:",
                entries[i].path, sizeStr, entries[i].size, entries[i].type);
         // If the entry is a directory, add the count of children
         if (entries[i].isDir) {
@@ -1363,11 +1368,9 @@ int process_arguments(const int argc, char **argv, int *skipDirs, long long *siz
                 free_multiple_arrays(directories, tmpFileNames, mergeFileNames, statFileNames, NULL);
                 return EXIT_FAILURE;
             }
-        }
-        else if (strcmp(argv[i], "--print") == 0) {
+        } else if (strcmp(argv[i], "--print") == 0) {
             *printStd = true;
         }
-
     }
 
     // Ensure --add and -o are not used simultaneously
@@ -1483,7 +1486,8 @@ int process_arguments(const int argc, char **argv, int *skipDirs, long long *siz
                 release_temporary_resources(outputTmpFileName, NULL);
                 return EXIT_FAILURE;
             }
-        } else if (argv[i][0] != '-' && *mergeFileNames == NULL && strcmp(argv[i - 1], "--merge") != 0 && is_directory(argv[i])) {
+        } else if (argv[i][0] != '-' && *mergeFileNames == NULL && strcmp(argv[i - 1], "--merge") != 0 &&
+                   is_directory(argv[i])) {
             // Treat as a directory path (non-option argument)
             *directories = realloc(*directories, sizeof(char *) * (*directoryCount + 2));
             *tmpFileNames = realloc(*tmpFileNames, sizeof(char *) * (*directoryCount + 2));
@@ -1525,11 +1529,9 @@ int process_arguments(const int argc, char **argv, int *skipDirs, long long *siz
             // do nothing here
         } else if (strcmp(argv[i], "--stats") == 0) {
             // do nothing here
-        }
-        else if (strcmp(argv[i], "--print") == 0) {
+        } else if (strcmp(argv[i], "--print") == 0) {
             // do nothing here
-        }
-        else {
+        } else {
             if (!belongs_to_array(argv[i], *mergeFileNames, mergeFileCountTmp) && !belongs_to_array(
                     argv[i], *statFileNames, statFileCountTmp) && strcmp(*mergeFileName, argv[i]) != 0) {
                 fprintf(stderr, "Unknown option: %s\n", argv[i]);
