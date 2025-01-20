@@ -1,3 +1,5 @@
+#include "lfiles.h"
+
 #include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -1157,11 +1159,35 @@ void printToFile(FileEntry *entries, const int count, const char *filename, cons
     fclose(outputFile);
 }
 
-int read_directories(const char *parentDir, char ***directories, const int step) {
+/**
+ * Check if a directory path is already present in rootDirectories.
+ * @param rootDirectories Array of root directories.
+ * @param dirPath Directory path to check.
+ * @return 1 if the directory is present, 0 otherwise.
+ */
+static int is_in_root_directories(char **rootDirectories, const char *dirPath) {
+    for (int i = 0; rootDirectories[i] != NULL; i++) {
+        if (strcmp(rootDirectories[i], dirPath) == 0) {
+            return 1; // Found in rootDirectories
+        }
+    }
+    return 0; // Not found
+}
+
+/**
+ * Reads directories in a parentDir, adds them to directories array if not present in rootDirectories,
+ * and limits them to the step count.
+ * @param parentDir The parent directory to scan.
+ * @param directories Pointer to dynamic array of directories.
+ * @param rootDirectories Array of already included directories to skip duplicates.
+ * @param step Maximum number of directories to retrieve.
+ * @return EXIT_SUCCESS on success, EXIT_FAILURE on failure.
+ */
+int read_directories(const char *parentDir, char ***directories, char **rootDirectories, const int step) {
     DIR *dir;
     struct dirent *entry;
     struct stat entryStat;
-    int count = 0;  // Number of directories stored
+    int count = 0; // Number of directories stored
 
     // Open the parent directory
     dir = opendir(parentDir);
@@ -1171,7 +1197,7 @@ int read_directories(const char *parentDir, char ***directories, const int step)
     }
 
     // Initialize directories array
-    *directories = malloc(sizeof(char *) * (step + 1)); // +1 for NULL termination
+    *directories = malloc(sizeof(char *) * (PATH_MAX + 1)); // Allocate memory for directories
     if (*directories == NULL) {
         perror("Memory allocation failed for directories");
         closedir(dir);
@@ -1197,21 +1223,24 @@ int read_directories(const char *parentDir, char ***directories, const int step)
             strcmp(entry->d_name, ".") != 0 &&
             strcmp(entry->d_name, "..") != 0) {
 
-            // Allocate memory and store the full path
-            (*directories)[count] = strdup(fullPath);
-            if ((*directories)[count] == NULL) {
-                perror("Memory allocation failed for directory path");
-                // Free allocated memory and close directory
-                for (int j = 0; j < count; j++) free((*directories)[j]);
-                free(*directories);
-                closedir(dir);
-                return EXIT_FAILURE;
-            }
+            // Check if the directory is not already in rootDirectories
+            if (!is_in_root_directories(rootDirectories, fullPath)) {
+                // Allocate memory and store the full path
+                (*directories)[count] = strdup(fullPath);
+                if ((*directories)[count] == NULL) {
+                    perror("Memory allocation failed for directory path");
+                    // Free allocated memory and close directory
+                    for (int j = 0; j < count; j++) free((*directories)[j]);
+                    free(*directories);
+                    closedir(dir);
+                    return EXIT_FAILURE;
+                }
 
-            count++;
-            // Stop if we've stored `step` directories
-            if (count == step) {
-                break;
+                count++;
+                // Stop if we've stored `step` directories
+                if (count == step) {
+                    break;
+                }
             }
         }
     }
@@ -1228,6 +1257,7 @@ int read_directories(const char *parentDir, char ***directories, const int step)
 
     return EXIT_SUCCESS;
 }
+
 
 /**
  * Parses command-line arguments to process the "--step" option, ensuring valid step values,
@@ -1268,7 +1298,7 @@ int handle_step_option(const int argc, char *argv[], int *stepValue, char **pare
                 if (i + 2 < argc) {
                     struct stat statBuffer;
                     if (stat(argv[i + 2], &statBuffer) == 0 && S_ISDIR(statBuffer.st_mode)) {
-                        *parentDirectory = strdup(argv[i + 2]); // Store the directory path
+                        *parentDirectory = removeTrailingSlash(argv[i + 2]); // Store the directory path
                         if (*parentDirectory == NULL) {
                             perror("Failed to allocate memory for directory path");
                             exit(EXIT_FAILURE);
@@ -1355,7 +1385,7 @@ void printToStdOut(FileEntry *entries, const int count) {
  * @param filename  A pointer to a null-terminated string specifying the path to the file
  *                  that is to be deleted.
  */
-void deleteFile(const char *filename) {
+void deleteFile(char *filename) {
     // Check if the file exists
     if (access(filename, F_OK) == 0) {
         // F_OK tests for existence

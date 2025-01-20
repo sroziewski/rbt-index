@@ -167,6 +167,6 @@ void processStatistics(char **stat_file_names, int stat_file_count, int printStd
 
 int countRowsInFile(const char *filename);
 
-int read_directories(const char *parentDir, char ***directories, int step);
+int read_directories(const char *parentDir, char ***directories, char **rootDirectories, int step);
 
 #endif // L_FILES_H

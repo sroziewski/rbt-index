@@ -45,6 +45,7 @@ int main(const int argc, char *argv[]) {
     char **tmpFileNames = NULL;
     char **mergeFileNames = NULL;
     char **statFileNames = NULL;
+    char **rootDirectories = NULL;
     int directoryCount = 0;
     int mergeFileCount = 0;
     int statFileCount = 0;
@@ -61,6 +62,14 @@ int main(const int argc, char *argv[]) {
         printf("Error processing arguments\n");
         free_multiple_arrays(&directories, &tmpFileNames, &mergeFileNames, NULL);
         return EXIT_FAILURE;
+    }
+    if (parentDirectory != NULL) {
+        fprintf(stdout, "Parent directory: %s\n", parentDirectory);
+        fprintf(stdout, "Step count: %d\n", stepCount);
+        int rootCount = 0;
+        check_input_files(&outputFileName, &rootDirectories, &rootCount);
+        read_directories(parentDirectory, &directories, rootDirectories, stepCount);
+        int h= 1;
     }
     if (mergeFileNames != NULL) {
         struct timeval start, end;
