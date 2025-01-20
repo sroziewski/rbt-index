@@ -1533,11 +1533,13 @@ int process_arguments(const int argc, char **argv, int *skipDirs, long long *siz
             // do nothing here
         } else {
             if (!belongs_to_array(argv[i], *mergeFileNames, mergeFileCountTmp) && !belongs_to_array(
-                    argv[i], *statFileNames, statFileCountTmp) && strcmp(*mergeFileName, argv[i]) != 0) {
-                fprintf(stderr, "Unknown option: %s\n", argv[i]);
-                free_multiple_arrays(directories, tmpFileNames, mergeFileNames, NULL);
-                release_temporary_resources(outputTmpFileName, NULL);
-                return EXIT_FAILURE;
+                    argv[i], *statFileNames, statFileCountTmp)) {
+                if (*mergeFileName == NULL || *mergeFileName != NULL && strcmp(*mergeFileName, argv[i]) != 0) {
+                    fprintf(stderr, "Unknown option: %s\n", argv[i]);
+                    free_multiple_arrays(directories, tmpFileNames, mergeFileNames, NULL);
+                    release_temporary_resources(outputTmpFileName, NULL);
+                    return EXIT_FAILURE;
+                }
             }
         }
     }
