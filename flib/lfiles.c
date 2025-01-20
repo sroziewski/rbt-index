@@ -1644,43 +1644,52 @@ int is_file(const char *path) {
 
 
 /**
- * Processes and validates command-line arguments, configuring the application's parameters and
- * handling mutual exclusions between options.
+ * Processes command-line arguments for various output options, input directories, file thresholds,
+ * and flags, updating corresponding pointers and structures.
  *
- * This function analyzes the input arguments provided to the program, assigns values to various
- * configuration parameters, and checks for conflicts between supported options. It dynamically
- * allocates memory for arrays to store file names and directory paths as needed. Validation checks
- * ensure proper usage, including detecting mutually exclusive options and required flags. Errors
- * and invalid configurations are reported, with allocated resources freed before returning an
- * error code.
+ * This function parses a variety of input options, including output file locations, merge files,
+ * statistics file inputs, and other command-line arguments. It validates the usage of exclusive
+ * flags, allocates memory for dynamically stored file names, and ensures proper argument formats
+ * are respected. If invalid or conflicting arguments are provided, the function cleans up allocated
+ * resources and returns an error.
  *
- * The function supports options such as:
- * - Output file specification (-o).
- * - Merge mode (--merge and -m).
- * - Statistics mode (--stats).
- * - Flag for printing results to standard output (--print).
+ * The key functionalities include:
+ * - Handling `-o` for specifying output file name.
+ * - Processing `--merge` and `-m` options for handling merge file inputs.
+ * - Managing `--stats` to process statistics file names.
+ * - Supporting additional flags such as `--print` for standard output behavior.
+ * - Checking for mutual exclusions and ensuring proper usage of mandatory options.
  *
- * Dynamic memory allocation is utilized for managing lists of directories, merge files, and
- * statistics files. When errors are encountered, resources are properly deallocated to prevent
- * memory leaks.
+ * Memory allocated dynamically within the function needs to be freed by the caller using the
+ * appropriate cleanup function (e.g., `free_multiple_arrays`). The provided pointers are updated
+ * in-place, and their values vary based on the types of arguments provided.
  *
- * @param argc               The number of command-line arguments provided by the user.
- * @param argv               An array of command-line argument strings.
- * @param skipDirs           A pointer to an integer flag set to 1 to skip directories, or 0 not to skip.
- * @param sizeThreshold      A pointer to a long long indicating the size threshold for filtering files.
- * @param outputFileName     A pointer to a string storing the output file name, if specified by the user.
- * @param outputTmpFileName  A pointer to a string storing a temporary output file name (if applicable).
- * @param tmpFileNames       A pointer to an array of strings storing temporary filenames (allocated dynamically).
- * @param directories        A pointer to an array of strings storing directory paths (allocated dynamically).
- * @param mergeFileNames     A pointer to an array of strings storing merge filenames (allocated dynamically).
- * @param statFileNames      A pointer to an array of strings storing statistics filenames (allocated dynamically).
- * @param directoryCount     A pointer to an integer tracking the number of directory paths provided.
- * @param mergeFileName      A pointer to a string storing the single merge filename, if specified.
- * @param mergeFileCount     A pointer to an integer tracking the number of merge files (when using -m).
- * @param statFileCount      A pointer to an integer tracking the number of statistics files (when using --stats).
- * @param printStd           A pointer to a boolean indicating whether to print to standard output (true if --print is set).
+ * Errors and conditions leading to early termination include:
+ * - Invalid combinations of `-o`, `--merge`, `--stats`, and `-m` options.
+ * - Missing required file arguments for flags such as `-o`, `--merge`, or `--stats`.
+ * - Inappropriate use of exclusive options, e.g., `--stats` with `--merge`.
+ * - Memory allocation failures or malformed arguments.
  *
- * @return                   An integer status code: EXIT_SUCCESS (0) on success, EXIT_FAILURE (1) on errors.
+ * @param argc                The count of arguments provided to the program.
+ * @param argv                Array of argument strings passed from the command line.
+ * @param skipDirs            Pointer to an integer flag indicating whether directories should be skipped.
+ * @param sizeThreshold       Pointer to a long long variable for size threshold values.
+ * @param outputFileName      Pointer to a string for the output file name.
+ * @param outputTmpFileName   Pointer to a string for the temporary output file name.
+ * @param tmpFileNames        Pointer to a dynamically allocated array of temporary file names.
+ * @param directories         Pointer to a dynamically allocated array of directory names.
+ * @param mergeFileNames      Pointer to a dynamically allocated array of merge file names.
+ * @param statFileNames       Pointer to a dynamically allocated array of statistics file names.
+ * @param directoryCount      Pointer to an integer holding the number of input directories.
+ * @param mergeFileName       Pointer to a string for a single merge file name.
+ * @param mergeFileCount      Pointer to an integer count of merge files provided.
+ * @param statFileCount       Pointer to an integer count of statistics files provided.
+ * @param printStd            Pointer to a boolean flag for enabling or disabling standard output.
+ * @param parentDirectory     Pointer to a string holding the parent directory for processed steps.
+ * @param stepCount           Pointer to an integer for the number of steps.
+ *
+ * @return                    Returns `EXIT_SUCCESS` (0) on successful processing, or
+ *                            `EXIT_FAILURE` (1) if an error occurs (e.g., invalid arguments, allocation failure).
  */
 int process_arguments(const int argc, char **argv, int *skipDirs, long long *sizeThreshold, char **outputFileName,
                       char **outputTmpFileName,
