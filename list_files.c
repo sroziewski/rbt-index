@@ -157,16 +157,12 @@ int main(const int argc, char *argv[]) {
 
     printFileStatistics(fileStats);
 
-    // printToStdOut(entries, totalOutputCount);
+    printToStdOut(entries, totalCount);
     // printFileStatistics(fileStats);
 
     deleteFiles(tmpFileNames);
     deleteFile(outputTmpFileName);
-    if (mergeFileName != NULL) {
-        free_multiple_arrays(&tmpFileNames, &mergeFileNames, NULL);
-    } else {
-        free_multiple_arrays(&directories, &tmpFileNames, &mergeFileNames, NULL);
-    }
+    free_multiple_arrays(&tmpFileNames, &mergeFileNames, NULL);
     release_temporary_resources(&outputTmpFileName, NULL);
 
     return EXIT_SUCCESS;
