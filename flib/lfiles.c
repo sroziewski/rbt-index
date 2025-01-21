@@ -23,7 +23,7 @@ const char *FILE_TYPES[] = {
     "T_JAVA", "T_LOG", "T_PACKAGE", "T_CLASS", "T_TEMPLATE",
     "T_PDF", "T_JAR", "T_HTML", "T_XML", "T_XHTML",
     "T_TS", "T_DOC", "T_CALC", "T_LATEX", "T_SQL",
-    "T_CSV", "T_CSS"
+    "T_CSV", "T_CSS", "T_LINK_DIR", "T_LINK_FILE"
 };
 
 // Check if the file has the .json extension (case insensitive)
@@ -649,6 +649,25 @@ void check_input_files(char **mergeFileNames, char ***tmpFileNames, int *rootCou
     *rootCount = tmp;
 }
 
+void findParent(const char *path, char *parent) {
+    const char *last_slash = strrchr(path, '/'); // Locate the last "/" in the path
+    if (last_slash != NULL) {
+        // If "/" is found, calculate the length of the parent directory part
+        const size_t length = last_slash - path;
+        if (length == 0) {
+            // If the last slash is at the beginning, the parent is root "/"
+            strcpy(parent, "/");
+        } else {
+            // Copy the parent part of the path to the output and null-terminate it
+            strncpy(parent, path, length);
+            parent[length] = '\0'; // Null terminate
+        }
+    } else {
+        // If no slash is found, we're dealing with a filename in the current directory
+        strcpy(parent, ".");
+    }
+}
+
 /**
  * Processes directories and their contents, updating file statistics and managing a dynamic,
  * thread-safe queue of tasks.
@@ -693,9 +712,10 @@ void processDirectory(TaskQueue *taskQueue, FileEntry **entries, int *count, int
             currentPath = dequeue(taskQueue);
         }
         if (!currentPath) break;
-        if (strstr(currentPath, ".wine/dosdevices/z:/proc/") != NULL || strncmp(currentPath, "/proc", strlen("/proc")) == 0) {
-            continue;
-        }
+        // if (strstr(currentPath, ".wine/dosdevices/z:/proc/") != NULL || strncmp(currentPath, "/proc", strlen("/proc"))
+        //     == 0) {
+        //     continue;
+        // }
         struct dirent *entry;
         DIR *dp = opendir(currentPath);
         if (dp == NULL) {
@@ -725,9 +745,19 @@ void processDirectory(TaskQueue *taskQueue, FileEntry **entries, int *count, int
                 }
                 dirEntries = newDirEntries;
             }
-            if (strstr(currentPath, ".wine/dosdevices/z:") != NULL || strncmp(currentPath, "/proc", strlen("/proc")) == 0) {
-                continue;
-            }
+            // if (strstr(currentPath, ".wine/dosdevices/z:") != NULL || strncmp(currentPath, "/proc", strlen("/proc")) ==
+            //     0) {
+            //     continue;
+            // }
+            // char fullPathDirEntry[MAX_LINE_LENGTH];
+            // struct stat fileStatDirEntry;
+            // snprintf(fullPathDirEntry, sizeof(entry->d_name), "%s/%s", currentPath, strdup(entry->d_name));
+            // childrenCount++; // Increment children count
+            //
+            // if (lstat(fullPathDirEntry, &fileStatDirEntry) == 0 && S_ISLNK(fileStatDirEntry.st_mode)) {
+            //     continue;
+            // }
+
             dirEntries[numEntries] = strdup(entry->d_name);
             if (!dirEntries[numEntries]) {
                 perror("strdup");
@@ -752,12 +782,34 @@ void processDirectory(TaskQueue *taskQueue, FileEntry **entries, int *count, int
                 }
             }
             const int current = *count;
-            (*count)++;
-            snprintf((*entries)[current].path, sizeof((*entries)[current].path), "%s", currentPath);
-            (*entries)[current].size = 4096; // Size is 0 for directories
-            (*entries)[current].isDir = 1; // Mark as a directory
-            (*entries)[current].childrenCount = childrenCount; // Store the children count
-            snprintf((*entries)[current].type, sizeof((*entries)[current].type), "T_DIR");
+            struct stat fileStatCurrentPath;
+            // if (strcmp(currentPath, "/home/simon/.wine/drive_c/users/simon/Documents") == 0) {
+            //     int k = 1;
+            // }
+            if (lstat(currentPath, &fileStatCurrentPath) == 0 && S_ISLNK(fileStatCurrentPath.st_mode)) {
+                char target_path[MAX_LINE_LENGTH];
+                const ssize_t len = readlink(currentPath, target_path, sizeof(target_path) - 1);
+                if (len == -1) {
+                    perror("readlink");
+                }
+                target_path[len] = '\0';
+                (*count)++;
+                snprintf((*entries)[current].path, sizeof((*entries)[current].path), "%s", currentPath);
+                (*entries)[current].size = fileStatCurrentPath.st_size;
+                (*entries)[current].isDir = 0;
+                (*entries)[current].isLink = 1;
+                snprintf((*entries)[current].linkTarget, sizeof((*entries)[current].linkTarget), "%s", target_path);
+                (*entries)[current].childrenCount = childrenCount; // Store the children count
+                snprintf((*entries)[current].type, sizeof((*entries)[current].type), "T_LINK_DIR");
+            } else if (S_ISDIR(fileStatCurrentPath.st_mode)) {
+                (*count)++;
+                snprintf((*entries)[current].path, sizeof((*entries)[current].path), "%s", currentPath);
+                (*entries)[current].size = fileStatCurrentPath.st_size;
+                (*entries)[current].isDir = 1; // Mark as a directory
+                (*entries)[current].isLink = 0;
+                (*entries)[current].childrenCount = childrenCount; // Store the children count
+                snprintf((*entries)[current].type, sizeof((*entries)[current].type), "T_DIR");
+            }
         }
 
 #pragma omp parallel for schedule(dynamic)
@@ -766,9 +818,9 @@ void processDirectory(TaskQueue *taskQueue, FileEntry **entries, int *count, int
             struct stat fileStat;
             snprintf(fullPath, sizeof(fullPath), "%s/%s", currentPath, dirEntries[i]);
             // Skip processing if fullPath contains ".wine/dosdevices/z:/proc/" or starts with "/proc"
-            if (strstr(fullPath, ".wine/dosdevices/z:") != NULL || strncmp(fullPath, "/proc", strlen("/proc")) == 0) {
-                continue;
-            }
+            // if (strstr(fullPath, ".wine/dosdevices/z:") != NULL || strncmp(fullPath, "/proc", strlen("/proc")) == 0) {
+            //     continue;
+            // }
             if (stat(fullPath, &fileStat) == 0) {
                 if (S_ISREG(fileStat.st_mode)) {
                     if (strstr(fullPath, "|") != NULL) {
@@ -799,9 +851,15 @@ void processDirectory(TaskQueue *taskQueue, FileEntry **entries, int *count, int
                                              fullPath);
                                     (*entries)[current].size = fileStat.st_size;
                                     (*entries)[current].isDir = 0; // Mark as a file
+                                    (*entries)[current].isLink = 0;
                                     (*entries)[current].childrenCount = 0; // Files don't have children
                                     snprintf((*entries)[current].type, sizeof((*entries)[current].type), "%s",
                                              getFileTypeCategory(mimeType, fullPath));
+
+                                    struct stat fileStatForFile;
+                                    if (lstat(fullPath, &fileStatForFile) == 0 && S_ISLNK(fileStatForFile.st_mode)) {
+                                        snprintf((*entries)[current].type, sizeof((*entries)[current].type), "T_LINK_FILE");
+                                    }
                                 }
                             }
                         }
@@ -827,14 +885,24 @@ void processDirectory(TaskQueue *taskQueue, FileEntry **entries, int *count, int
                             const int current = *count;
                             (*count)++;
                             snprintf((*entries)[current].path, sizeof((*entries)[current].path), "%s", fullPath);
-                            (*entries)[current].size = 4096; // Size is 0 for directories
+                            (*entries)[current].size = fileStat.st_size;
                             (*entries)[current].isDir = 1; // Mark as a directory
+                            (*entries)[current].isLink = 0;
                             (*entries)[current].childrenCount = 0; // Initialize children count (updated when processed)
                             snprintf((*entries)[current].type, sizeof((*entries)[current].type), "T_DIR");
                         }
                         if (!skipDirs) {
                             // If directories need to be enqueued for further exploration
-                            enqueue(taskQueue, fullPath);
+                            struct stat fileStatForQueue;
+                            // if (strcmp(fullPath, "/home/simon/.wine/drive_c/users/simon/Documents") == 0) {
+                                // int i = 1;
+                            // }
+                            char parent[MAX_LINE_LENGTH];
+                            findParent(fullPath, parent);
+                            if (lstat(parent, &fileStatForQueue) == 0 && !S_ISLNK(fileStatForQueue.st_mode)) {
+                                enqueue(taskQueue, fullPath);
+                            }
+
                         }
                     }
                 }
@@ -878,7 +946,7 @@ char *getFileSizeAsString(const long long fileSizeBytesIn) {
     } else if (fileSizeBytes >= kB) {
         snprintf(result, 20, "%.2f kB", fileSizeBytes / kB);
     } else {
-        snprintf(result, 20, "%.2f bytes", fileSizeBytes);
+        snprintf(result, 20, "%.0f bytes", fileSizeBytes);
     }
 
     return result;
@@ -1078,10 +1146,17 @@ void read_entries(const char *filename, FileEntry **entries, const size_t fixed_
         }
         strncpy(entry.type, token, sizeof(entry.type) - 1);
         entry.type[sizeof(entry.type) - 1] = '\0';
+        if (strcmp(entry.type, "T_LINK_FILE") == 0) {
+            entry.isLink = true;
+        }
         // Check if the entry is a directory and process extra flags
-        if (strcmp(entry.type, "T_DIR") == 0) {
-            entry.isDir = true;
-
+        if (strcmp(entry.type, "T_DIR") == 0 || strcmp(entry.type, "T_LINK_DIR") == 0) {
+            if (strcmp(entry.type, "T_DIR") == 0) {
+                entry.isDir = true;
+            }
+            else if (strcmp(entry.type, "T_LINK_DIR") == 0) {
+                entry.isLink = true;
+            }
             // Look for additional flags (e.g., C_COUNT and F_HIDDEN)
             token = strtok(NULL, SEP);
             while (token) {
@@ -1156,7 +1231,7 @@ void printToFile(FileEntry *entries, const int count, const char *filename, cons
         free(fileName);
         fprintf(outputFile, "%s%s%ld%s%s", entries[i].path, SEP, entries[i].size, SEP, entries[i].type);
         // If the entry is a directory, add the count of children
-        if (entries[i].isDir) {
+        if (entries[i].isDir || strcmp(entries[i].type, "T_LINK_DIR") == 0) {
             fprintf(outputFile, "%sC_COUNT%s%zu", SEP, SEP, entries[i].childrenCount);
         }
         if (isHidden) {
@@ -1191,7 +1266,8 @@ static int is_in_root_directories(char **rootDirectories, const char *dirPath) {
  * @param step Maximum number of directories to retrieve.
  * @return EXIT_SUCCESS on success, EXIT_FAILURE on failure.
  */
-int read_directories(const char *parentDir, char ***directories, char **rootDirectories, const int step, int *directoryCount) {
+int read_directories(const char *parentDir, char ***directories, char **rootDirectories, const int step,
+                     int *directoryCount) {
     DIR *dir;
     struct dirent *entry;
     struct stat entryStat;
@@ -1230,7 +1306,6 @@ int read_directories(const char *parentDir, char ***directories, char **rootDire
         if (S_ISDIR(entryStat.st_mode) &&
             strcmp(entry->d_name, ".") != 0 &&
             strcmp(entry->d_name, "..") != 0) {
-
             // Check if the directory is not already in rootDirectories
             if (!is_in_root_directories(rootDirectories, fullPath)) {
                 // Allocate memory and store the full path
@@ -1299,10 +1374,11 @@ int handle_step_option(const int argc, char *argv[], int *stepValue, char **pare
                 const long value = strtol(argv[i + 1], &endPtr, 10);
                 // Validate that the value is numeric and within 2-10000
                 if (*endPtr != '\0' || errno != 0 || value < 2 || value > 10000) {
-                    fprintf(stderr, "Error: '%s' is not a valid step value (must be an integer between 2 and 10000)\n", argv[i + 1]);
+                    fprintf(stderr, "Error: '%s' is not a valid step value (must be an integer between 2 and 10000)\n",
+                            argv[i + 1]);
                     exit(EXIT_FAILURE);
                 }
-                *stepValue = (int)value; // Store the step value
+                *stepValue = (int) value; // Store the step value
                 // Retrieve the directory argument
                 if (i + 2 < argc) {
                     struct stat statBuffer;
@@ -1368,10 +1444,13 @@ void printToStdOut(FileEntry *entries, const int count) {
         const int isHidden = (fileName[0] == '.'); // Check if the file is hidden
         char *sizeStr = getFileSizeAsString(entries[i].size);
         printf("%s %s, Size: %s (%ld bytes), Type: %s",
-               strcmp(entries[i].type, "T_DIR") == 0 ? "Dir: " : "File:",
+               (strcmp(entries[i].type, "T_DIR") == 0) ? "Dir:" :
+               (strcmp(entries[i].type, "T_FILE") == 0) ? "File:" :
+               (strcmp(entries[i].type, "T_LINK_DIR") == 0 || strcmp(entries[i].type, "T_LINK_FILE") == 0) ? "Link:" : "Unknown:",
                entries[i].path, sizeStr, entries[i].size, entries[i].type);
+
         // If the entry is a directory, add the count of children
-        if (entries[i].isDir) {
+        if (entries[i].isDir || strcmp(entries[i].type, "T_LINK_DIR") == 0) {
             printf(", C_COUNT: %zu", entries[i].childrenCount);
         }
         if (isHidden) {
@@ -1703,7 +1782,8 @@ int process_arguments(const int argc, char **argv, int *skipDirs, long long *siz
                       char **outputTmpFileName,
                       char ***tmpFileNames, char ***directories, char ***mergeFileNames, char ***statFileNames,
                       int *directoryCount,
-                      char **mergeFileName, int *mergeFileCount, int *statFileCount, bool *printStd, char **parentDirectory,
+                      char **mergeFileName, int *mergeFileCount, int *statFileCount, bool *printStd,
+                      char **parentDirectory,
                       int *stepCount) {
     *skipDirs = 0; // Default: don't skip directories
     *sizeThreshold = 0; // Default: no size threshold
@@ -1998,11 +2078,9 @@ int process_arguments(const int argc, char **argv, int *skipDirs, long long *siz
             // do nothing here
         } else if (strcmp(argv[i], "--print") == 0) {
             // do nothing here
-        }
-        else if (strcmp(argv[i], "--step") == 0) {
+        } else if (strcmp(argv[i], "--step") == 0) {
             // do nothing here
-        }
-        else {
+        } else {
             if (!belongs_to_array(argv[i], *mergeFileNames, mergeFileCountTmp) && !belongs_to_array(
                     argv[i], *statFileNames,
                     statFileCountTmp) && (*mergeFileName == NULL || *mergeFileName != NULL && strcmp(
@@ -2088,6 +2166,14 @@ void printFileStatistics(const FileStatistics fileStats) {
     printSizeDetails("Jar", fileStats.jarFiles, fileStats.jarSize);
     printSizeDetails("C Source", fileStats.cFiles, fileStats.cSize);
     printSizeDetails("EXE", fileStats.exeFiles, fileStats.exeSize);
+
+    if (fileStats.links > 0) {
+        printf("------------------------------------\n");
+        printf("Total Number of Link Files and Directories: %d\n", fileStats.links);
+        printf("Total Size of Link Files and Directories: %s (%lld bytes) \n", getFileSizeAsString(fileStats.linksSize),
+               fileStats.linksSize);
+    }
+
     printf("------------------------------------\n");
     if (fileStats.hiddenFiles > 0) {
         printf("Total Number of Hidden Files: %d\n", fileStats.hiddenFiles);
@@ -2162,12 +2248,17 @@ void compute_file_statistics(const FileEntry *entries, const int count, FileStat
         }
         if (entry->isDir) {
             stats->totalDirs++;
-        } else {
+        }
+        else if (entry->isLink) {
+            stats->links++;
+            stats->linksSize += entry->size;
+        }
+        else {
             stats->totalFiles++;
         }
 
         // File type counters using string comparison
-        if (entry->isHidden && !entry->isDir) {
+        if (entry->isHidden && !entry->isDir && !entry->isLink) {
             stats->hiddenFiles++;
             stats->hiddenFilesSize += entry->size;
         } else if (entry->isHidden && entry->isDir) {
@@ -2255,7 +2346,7 @@ void compute_file_statistics(const FileEntry *entries, const int count, FileStat
         } else if (strcmp(entry->type, "T_CSS") == 0) {
             stats->cssFiles++;
             stats->cssSize += entry->size;
-        } else if (!entry->isDir) {
+        } else if (!entry->isDir && !entry->isLink) {
             stats->binaryFiles++;
             stats->binarySize += entry->size;
         }
@@ -2701,7 +2792,8 @@ void processStatistics(char **stat_file_names, const int stat_file_count, int pr
     }
 }
 
-void generate_tmp_file_names(char **directories, const char *outputFileName, char ***tmpFileNames, char **outputTmpFileName) {
+void generate_tmp_file_names(char **directories, const char *outputFileName, char ***tmpFileNames,
+                             char **outputTmpFileName) {
     int count = 0;
 
     // Count the number of directories
@@ -2746,4 +2838,3 @@ void generate_tmp_file_names(char **directories, const char *outputFileName, cha
     // NULL-terminate the tmpFileNames array
     (*tmpFileNames)[count] = NULL;
 }
-
