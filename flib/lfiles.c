@@ -712,10 +712,6 @@ void processDirectory(TaskQueue *taskQueue, FileEntry **entries, int *count, int
             currentPath = dequeue(taskQueue);
         }
         if (!currentPath) break;
-        // if (strstr(currentPath, ".wine/dosdevices/z:/proc/") != NULL || strncmp(currentPath, "/proc", strlen("/proc"))
-        //     == 0) {
-        //     continue;
-        // }
         struct dirent *entry;
         DIR *dp = opendir(currentPath);
         if (dp == NULL) {
@@ -733,7 +729,6 @@ void processDirectory(TaskQueue *taskQueue, FileEntry **entries, int *count, int
             if (!strcmp(entry->d_name, ".") || !strcmp(entry->d_name, "..")) {
                 continue;
             }
-
             if (numEntries >= entryCapacity) {
                 entryCapacity *= RESIZE_FACTOR;
                 char **newDirEntries = realloc(dirEntries, entryCapacity * sizeof(char *));
@@ -745,19 +740,6 @@ void processDirectory(TaskQueue *taskQueue, FileEntry **entries, int *count, int
                 }
                 dirEntries = newDirEntries;
             }
-            // if (strstr(currentPath, ".wine/dosdevices/z:") != NULL || strncmp(currentPath, "/proc", strlen("/proc")) ==
-            //     0) {
-            //     continue;
-            // }
-            // char fullPathDirEntry[MAX_LINE_LENGTH];
-            // struct stat fileStatDirEntry;
-            // snprintf(fullPathDirEntry, sizeof(entry->d_name), "%s/%s", currentPath, strdup(entry->d_name));
-            // childrenCount++; // Increment children count
-            //
-            // if (lstat(fullPathDirEntry, &fileStatDirEntry) == 0 && S_ISLNK(fileStatDirEntry.st_mode)) {
-            //     continue;
-            // }
-
             dirEntries[numEntries] = strdup(entry->d_name);
             if (!dirEntries[numEntries]) {
                 perror("strdup");
@@ -783,9 +765,6 @@ void processDirectory(TaskQueue *taskQueue, FileEntry **entries, int *count, int
             }
             const int current = *count;
             struct stat fileStatCurrentPath;
-            // if (strcmp(currentPath, "/home/simon/.wine/drive_c/users/simon/Documents") == 0) {
-            //     int k = 1;
-            // }
             if (lstat(currentPath, &fileStatCurrentPath) == 0 && S_ISLNK(fileStatCurrentPath.st_mode)) {
                 char target_path[MAX_LINE_LENGTH];
                 const ssize_t len = readlink(currentPath, target_path, sizeof(target_path) - 1);
@@ -817,10 +796,6 @@ void processDirectory(TaskQueue *taskQueue, FileEntry **entries, int *count, int
             char fullPath[MAX_LINE_LENGTH];
             struct stat fileStat;
             snprintf(fullPath, sizeof(fullPath), "%s/%s", currentPath, dirEntries[i]);
-            // Skip processing if fullPath contains ".wine/dosdevices/z:/proc/" or starts with "/proc"
-            // if (strstr(fullPath, ".wine/dosdevices/z:") != NULL || strncmp(fullPath, "/proc", strlen("/proc")) == 0) {
-            //     continue;
-            // }
             if (stat(fullPath, &fileStat) == 0) {
                 if (S_ISREG(fileStat.st_mode)) {
                     if (strstr(fullPath, "|") != NULL) {
@@ -894,12 +869,9 @@ void processDirectory(TaskQueue *taskQueue, FileEntry **entries, int *count, int
                         if (!skipDirs) {
                             // If directories need to be enqueued for further exploration
                             struct stat fileStatForQueue;
-                            // if (strcmp(fullPath, "/home/simon/.wine/drive_c/users/simon/Documents") == 0) {
-                                // int i = 1;
-                            // }
                             char parent[MAX_LINE_LENGTH];
                             findParent(fullPath, parent);
-                            if (lstat(parent, &fileStatForQueue) == 0 && !S_ISLNK(fileStatForQueue.st_mode)) {
+                            if (lstat(parent, &fileStatForQueue) == 0 && !S_ISLNK(fileStatForQueue.st_mode)) { //  we don't want to proceed when parent is a link
                                 enqueue(taskQueue, fullPath);
                             }
 
@@ -1148,6 +1120,16 @@ void read_entries(const char *filename, FileEntry **entries, const size_t fixed_
         entry.type[sizeof(entry.type) - 1] = '\0';
         if (strcmp(entry.type, "T_LINK_FILE") == 0) {
             entry.isLink = true;
+            token = strtok(NULL, SEP);
+            if (strncmp(token, "L_TARGET", 8) == 0) {
+                token = strtok(NULL, "");  // Get the rest of the string after "L_TARGET"
+                if (token != NULL) {
+                    strncpy(entry.linkTarget, token, sizeof(entry.linkTarget) - 1);
+                    entry.linkTarget[sizeof(entry.linkTarget) - 1] = '\0'; // Ensure null-termination
+                } else {
+                    fprintf(stderr, "Missing target path after L_TARGET: %s\n", entry.path);
+                }
+            }
         }
         // Check if the entry is a directory and process extra flags
         if (strcmp(entry.type, "T_DIR") == 0 || strcmp(entry.type, "T_LINK_DIR") == 0) {
@@ -1167,14 +1149,18 @@ void read_entries(const char *filename, FileEntry **entries, const size_t fixed_
                         fprintf(stderr, "Invalid numeric format in C_COUNT: %s\n", token);
                     }
                 } else if (strstr(token, "F_HIDDEN") != NULL) {
-                    // const char *hiddenFlag = ", F_HIDDEN";
                     entry.isHidden = true;
-                    // if (strlen(entry.type) + strlen(hiddenFlag) + 1 < MAX_TYPE_LENGTH) {
-                    //     strncat(entry.type, hiddenFlag, MAX_TYPE_LENGTH - strlen(entry.type) - 1);
-                    // } else {
-                    //     fprintf(stderr, "Error: Not enough space to append to entry.type\n");
-                    // }
                 }
+                else if (strncmp(token, "L_TARGET", 8) == 0) {
+                    token = strtok(NULL, "");  // Get the rest of the string after "L_TARGET"
+                    if (token != NULL) {
+                        strncpy(entry.linkTarget, token, sizeof(entry.linkTarget) - 1);
+                        entry.linkTarget[sizeof(entry.linkTarget) - 1] = '\0'; // Ensure null-termination
+                    } else {
+                        fprintf(stderr, "Missing target path after L_TARGET: %s\n", entry.path);
+                    }
+                }
+
                 token = strtok(NULL, SEP);
             }
             if (i >= 1 && strcmp((*entries)[i - 1].path, entry.path) == 0 && (*entries)[i - 1].isDir == 1) {
@@ -1233,6 +1219,9 @@ void printToFile(FileEntry *entries, const int count, const char *filename, cons
         // If the entry is a directory, add the count of children
         if (entries[i].isDir || strcmp(entries[i].type, "T_LINK_DIR") == 0) {
             fprintf(outputFile, "%sC_COUNT%s%zu", SEP, SEP, entries[i].childrenCount);
+        }
+        if (strcmp(entries[i].type, "T_LINK_DIR") == 0 || strcmp(entries[i].type, "T_LINK_FILE") == 0) {
+            fprintf(outputFile, "%sL_TARGET%s%s", SEP, SEP, entries[i].linkTarget);
         }
         if (isHidden) {
             fprintf(outputFile, "%sF_HIDDEN", SEP);
@@ -1452,6 +1441,9 @@ void printToStdOut(FileEntry *entries, const int count) {
         // If the entry is a directory, add the count of children
         if (entries[i].isDir || strcmp(entries[i].type, "T_LINK_DIR") == 0) {
             printf(", C_COUNT: %zu", entries[i].childrenCount);
+        }
+        if (strcmp(entries[i].type, "T_LINK_DIR") == 0 || strcmp(entries[i].type, "T_LINK_FILE") == 0) {
+            printf(", L_TARGET: %s", entries[i].linkTarget);
         }
         if (isHidden) {
             printf(", F_HIDDEN");
