@@ -693,7 +693,9 @@ void processDirectory(TaskQueue *taskQueue, FileEntry **entries, int *count, int
             currentPath = dequeue(taskQueue);
         }
         if (!currentPath) break;
-
+        if (strstr(currentPath, ".wine/dosdevices/z:/proc/") != NULL || strncmp(currentPath, "/proc", strlen("/proc")) == 0) {
+            continue;
+        }
         struct dirent *entry;
         DIR *dp = opendir(currentPath);
         if (dp == NULL) {
@@ -722,6 +724,9 @@ void processDirectory(TaskQueue *taskQueue, FileEntry **entries, int *count, int
                     exit(EXIT_FAILURE);
                 }
                 dirEntries = newDirEntries;
+            }
+            if (strstr(currentPath, ".wine/dosdevices/z:") != NULL || strncmp(currentPath, "/proc", strlen("/proc")) == 0) {
+                continue;
             }
             dirEntries[numEntries] = strdup(entry->d_name);
             if (!dirEntries[numEntries]) {
@@ -761,7 +766,7 @@ void processDirectory(TaskQueue *taskQueue, FileEntry **entries, int *count, int
             struct stat fileStat;
             snprintf(fullPath, sizeof(fullPath), "%s/%s", currentPath, dirEntries[i]);
             // Skip processing if fullPath contains ".wine/dosdevices/z:/proc/" or starts with "/proc"
-            if (strstr(fullPath, ".wine/dosdevices/z:/proc/") != NULL || strncmp(fullPath, "/proc", strlen("/proc")) == 0) {
+            if (strstr(fullPath, ".wine/dosdevices/z:") != NULL || strncmp(fullPath, "/proc", strlen("/proc")) == 0) {
                 continue;
             }
             if (stat(fullPath, &fileStat) == 0) {
