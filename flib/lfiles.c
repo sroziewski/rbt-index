@@ -760,7 +760,10 @@ void processDirectory(TaskQueue *taskQueue, FileEntry **entries, int *count, int
             char fullPath[MAX_LINE_LENGTH];
             struct stat fileStat;
             snprintf(fullPath, sizeof(fullPath), "%s/%s", currentPath, dirEntries[i]);
-
+            // Skip processing if fullPath contains ".wine/dosdevices/z:/proc/" or starts with "/proc"
+            if (strstr(fullPath, ".wine/dosdevices/z:/proc/") != NULL || strncmp(fullPath, "/proc", strlen("/proc")) == 0) {
+                continue;
+            }
             if (stat(fullPath, &fileStat) == 0) {
                 if (S_ISREG(fileStat.st_mode)) {
                     if (strstr(fullPath, "|") != NULL) {
@@ -1330,8 +1333,7 @@ int handle_step_option(const int argc, char *argv[], int *stepValue, char **pare
             exit(EXIT_FAILURE);
         }
     }
-    fprintf(stderr, "Error: '--step' option not provided\n");
-    exit(EXIT_FAILURE);
+    return -1; // "--step" option not provided, that's ok
 }
 
 /**
