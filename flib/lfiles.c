@@ -551,7 +551,7 @@ int process_file(const char *filename) {
         }
 
         // Check the number of columns (between 3 and 6)
-        if (columnCount < 3 || columnCount > 6) {
+        if (columnCount < 3 || columnCount > 7) {
             fprintf(stderr, "Error: Invalid row at line %d. Expected 3-6 columns, got %d. Row content: \"%s\"\n",
                     lineNumber, columnCount, lineCopy);
             exit(EXIT_FAILURE);
