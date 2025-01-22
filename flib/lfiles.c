@@ -832,6 +832,7 @@ void processDirectory(TaskQueue *taskQueue, FileEntry **entries, int *count, int
                                     (*count)++;
                                     snprintf((*entries)[current].path, sizeof((*entries)[current].path), "%s",
                                              fullPath);
+                                    lstat(fullPath, &fileStat);
                                     (*entries)[current].size = fileStat.st_size;
                                     (*entries)[current].isDir = 0; // Mark as a file
                                     (*entries)[current].isLink = 0;
@@ -839,8 +840,7 @@ void processDirectory(TaskQueue *taskQueue, FileEntry **entries, int *count, int
                                     snprintf((*entries)[current].type, sizeof((*entries)[current].type), "%s",
                                              getFileTypeCategory(mimeType, fullPath));
 
-                                    struct stat fileStatForFile;
-                                    if (lstat(fullPath, &fileStatForFile) == 0 && S_ISLNK(fileStatForFile.st_mode)) {
+                                    if (S_ISLNK(fileStat.st_mode)) {
                                         snprintf((*entries)[current].type, sizeof((*entries)[current].type), "T_LINK_FILE");
                                     }
                                 }
