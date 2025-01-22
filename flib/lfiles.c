@@ -796,6 +796,14 @@ void processDirectory(TaskQueue *taskQueue, FileEntry **entries, int *count, int
             char fullPath[MAX_LINE_LENGTH];
             struct stat fileStat;
             snprintf(fullPath, sizeof(fullPath), "%s/%s", currentPath, dirEntries[i]);
+
+            struct stat fileStatForParent;
+            char parentDir[MAX_LINE_LENGTH];
+            findParent(fullPath, parentDir);
+            if (lstat(parentDir, &fileStatForParent) == 0 && S_ISLNK(fileStatForParent.st_mode)) { //  we don't want to proceed when parent is a link
+                continue;
+            }
+
             if (stat(fullPath, &fileStat) == 0) {
                 if (S_ISREG(fileStat.st_mode)) {
                     if (strstr(fullPath, "|") != NULL) {
@@ -1121,10 +1129,10 @@ void read_entries(const char *filename, FileEntry **entries, const size_t fixed_
         if (strcmp(entry.type, "T_LINK_FILE") == 0) {
             entry.isLink = true;
             token = strtok(NULL, SEP);
-            if (strncmp(token, "L_TARGET", 8) == 0) {
-                token = strtok(NULL, "");  // Get the rest of the string after "L_TARGET"
-                if (token != NULL) {
-                    strncpy(entry.linkTarget, token, sizeof(entry.linkTarget) - 1);
+            if (strncmp(token, "L_TARGET", 9) == 0) {
+                // token = strtok(NULL, "");  // Get the rest of the string after "L_TARGET"
+                if (buffer != NULL) {
+                    strncpy(entry.linkTarget, buffer, sizeof(entry.linkTarget) - 1);
                     entry.linkTarget[sizeof(entry.linkTarget) - 1] = '\0'; // Ensure null-termination
                 } else {
                     fprintf(stderr, "Missing target path after L_TARGET: %s\n", entry.path);
@@ -1151,7 +1159,7 @@ void read_entries(const char *filename, FileEntry **entries, const size_t fixed_
                 } else if (strstr(token, "F_HIDDEN") != NULL) {
                     entry.isHidden = true;
                 }
-                else if (strncmp(token, "L_TARGET", 8) == 0) {
+                else if (strncmp(token, "L_TARGET", 9) == 0) {
                     token = strtok(NULL, "");  // Get the rest of the string after "L_TARGET"
                     if (token != NULL) {
                         strncpy(entry.linkTarget, token, sizeof(entry.linkTarget) - 1);
