@@ -1,4 +1,14 @@
 #include "shared.h"
+#include "lconsts.h"
+
+const char *_FILE_TYPES[] = {
+    "T_DIR", "T_TEXT", "T_BINARY", "T_IMAGE", "T_JSON", "T_AUDIO", "T_FILM",
+    "T_COMPRESSED", "T_YAML", "T_EXE", "T_C", "T_PYTHON", "T_JS",
+    "T_JAVA", "T_LOG", "T_PACKAGE", "T_CLASS", "T_TEMPLATE",
+    "T_PDF", "T_JAR", "T_HTML", "T_XML", "T_XHTML",
+    "T_TS", "T_DOC", "T_CALC", "T_LATEX", "T_SQL",
+    "T_CSV", "T_CSS", "T_LINK_DIR", "T_LINK_FILE"
+};
 
 /**
  * Helper function to check if a string is a valid size_t (non-negative integer).
@@ -18,10 +28,10 @@ int is_size_t(const char *str) {
     return 1; // Entire string is numeric
 }
 
-// Function to check if a value belongs to FILE_TYPES
+// Function to check if a value belongs to _FILE_TYPES
 bool is_valid_file_type(const char *type) {
     for (int i = 0; i < FILE_TYPES_COUNT; i++) {
-        if (strcmp(FILE_TYPES[i], type) == 0) {
+        if (strcmp(_FILE_TYPES[i], type) == 0) {
             return true;
         }
     }
@@ -80,7 +90,7 @@ int process_file(const char *filename) {
             continue; // Go to the next line
         }
 
-        // Validate the 3rd column against FILE_TYPES
+        // Validate the 3rd column against _FILE_TYPES
         if (!is_valid_file_type(columns[2])) {
             fprintf(stderr, "Error: Invalid file type in the third column at line %d. Row content: \"%s\"\n",
                     lineNumber, lineCopy);

@@ -1,4 +1,6 @@
 #include "rbtree.h"
+#include "../shared/shared.h"
+#include "../shared/lconsts.h"
 
 // Utility Functions
 void remove_trailing_newline(char *str) {

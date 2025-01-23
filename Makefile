@@ -26,7 +26,7 @@ RBT_CREATE_OBJS = rbt_create.o $(RBTLIB_DIR)/rbtree.o
 LIST_FILES_OBJ = list_files.o $(FLIB_DIR)/lfiles.o $(SHARED_DIR)/shared.o
 RBT_SEARCH_OBJS = rbt_search.o $(RBTLIB_DIR)/rbtree.o
 # Default target (build all executables)
-all: $(TARGET) $(LIST_FILES_TARGET) $(RBT_SEARCH_TARGET) $(RBT_SIZE_TARGET)
+all: $(TARGET) $(LIST_FILES_TARGET) $(RBT_SEARCH_TARGET) $(RBT_SIZE_TARGET) $(RBT_TARGET)
 
 # Rule to build the main target
 $(TARGET): $(OBJS)
