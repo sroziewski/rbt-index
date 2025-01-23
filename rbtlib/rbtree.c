@@ -572,7 +572,7 @@ void read_tree_from_file_to_shared_memory(char *filePath, const char *prefix) {
 }
 
 int remove_shared_memory_object(char **argv, const char *prefix) {
-    char *fileName = get_filename_from_path(argv[2]);
+    char *fileName = get_filename_from_path(argv[3]);
     const size_t fileNameLen = strlen(fileName);
     const size_t extensionLen = strlen(EXTENSION_RBT);
 
@@ -752,25 +752,24 @@ void createRbt(const int argc, char *argv[], void (*insertFunc)(Node **, FileInf
         fprintf(stderr, "Usage: %s <file> [--save] [--load filename.rbt] [--clean file.lst] [--list] [--remove sharedMemoryFilename]\n", argv[0]);
         return;
     }
-
-    if (argc == 3 && strcmp(argv[1], "--load") == 0) {
+    if (argc == 4 && strcmp(argv[2], "--load") == 0) {
         // Handle the --load command
-        read_tree_from_file_to_shared_memory(argv[2], prefix);
+        read_tree_from_file_to_shared_memory(argv[3], prefix);
         return;
     }
-    if (argc == 3 && strcmp(argv[1], "--clean") == 0) {
+    if (argc == 4 && strcmp(argv[2], "--clean") == 0) {
         // Handle the --clean command
         remove_shared_memory_object(argv, prefix);
         return;
     }
-    if (argc == 2 && strcmp(argv[1], "--list") == 0) {
+    if (argc == 3 && strcmp(argv[1], "--list") == 0) {
         // Handle the --list command
         listSharedMemoryEntities(prefix);
         return;
     }
-    if (argc == 3 && strcmp(argv[1], "--remove") == 0) {
+    if (argc == 4 && strcmp(argv[2], "--remove") == 0) {
         // Handle the --remove command
-        remove_shared_memory_object_by_name(argv[2]);
+        remove_shared_memory_object_by_name(argv[3]);
         return;
     }
     // Handle the normal processing and storing workflow

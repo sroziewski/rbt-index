@@ -33,6 +33,9 @@ endif()
 add_executable(list_files
         list_files.c  # Your main entry point for list_files
         flib/lfiles.c
+        shared/shared.c
+        shared/shared.h
+        shared/shared.c
         # File containing the implementation for list_files
 )
 

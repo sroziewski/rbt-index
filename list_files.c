@@ -1,4 +1,5 @@
 #include "flib/lfiles.h"
+#include "shared/shared.h"
 
 /**
  * @brief Entry point of the program. Processes directories and files based on given arguments.
@@ -40,7 +41,6 @@ int main(const int argc, char *argv[]) {
     char *mergeFileName = NULL;
     char *parentDirectory = NULL;
     char *accFileName = NULL;
-    // TODO replace | with - in a filename when scanning
     // Array for storing directory paths
     char **directories = NULL;
     char **tmpFileNames = NULL;
@@ -142,8 +142,7 @@ int main(const int argc, char *argv[]) {
         read_entries(outputFileName, &entries, totalCount, &totalOutputCount);
         if (directoryCount > 1) {
             sort_and_write_results_to_file(outputTmpFileName, outputFileName, &totalOutputCount, totalOutputCount,
-                                           entries,
-                                           false);
+                                           entries, false);
             copy_file(outputFileName, outputTmpFileName);
             remove_duplicates(outputTmpFileName, outputFileName);
             read_entries(outputFileName, &entries, totalCount, &totalOutputCount);

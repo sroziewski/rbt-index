@@ -143,12 +143,6 @@ char **remove_duplicate_directories(char **directories, int count, int *new_coun
 
 void free_multiple_arrays(char ***first_directory, ...);
 
-int process_file(const char *filename);
-
-int is_size_t(const char *str);
-
-void check_input_files(char **mergeFileNames, char ***tmpFileNames, int *rootCount);
-
 void process_merge_files(char **mergeFileNames, int mergeFileCount, const char *outputFileName, int *totalCount);
 
 void deleteFiles(char **tmpFileNames);

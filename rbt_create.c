@@ -1,6 +1,7 @@
 #include "rbtlib/rbtree.h"
 
 DEFINE_COMPARATOR_BY_FIELD(filename, strcmp)
+DEFINE_COMPARATOR_BY_FIELD(filepath, strcmp)
 DEFINE_NUMERIC_COMPARATOR(filesize)
 
 /**
@@ -13,7 +14,7 @@ DEFINE_NUMERIC_COMPARATOR(filesize)
  */
 int main(const int argc, char *argv[]) {
     if (argc < 2) {
-        fprintf(stderr, "Usage: --name or --size filename.lst\n");
+        fprintf(stderr, "Usage: --name, --size or --path <filename.lst>\n");
         return EXIT_FAILURE;
     }
 
@@ -21,13 +22,18 @@ int main(const int argc, char *argv[]) {
 
     // Check for command line arguments
     if (strcmp(argv[1], "--name") == 0) {
-        prefix = "shared_memory_fname_";
+        prefix = "rbt_name_";
         createRbt(argc, argv, insert_filename, prefix);
     } else if (strcmp(argv[1], "--size") == 0) {
-        prefix = "shared_memory_fsize_";
+        prefix = "rbt_size_";
         createRbt(argc, argv, insert_filesize, prefix);
-    } else {
-        fprintf(stderr, "Invalid argument. Use --name or --size.\n");
+    }
+    else if (strcmp(argv[1], "--path") == 0) {
+        prefix = "rbt_path_";
+        createRbt(argc, argv, insert_filepath, prefix);
+    }
+    else {
+        fprintf(stderr, "Invalid argument. Use --name, --size or --path <filename.lst>.\n");
         return EXIT_FAILURE;
     }
 

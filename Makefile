@@ -4,12 +4,14 @@ CFLAGS = -Wextra -g -lmagic -fopenmp -pedantic
 
 # Target executables
 TARGET = rbt_name_create
+RBT_TARGET = rbt_create
 RBT_SIZE_TARGET = rbt_size_create
 LIST_FILES_TARGET = list_files
 RBT_SEARCH_TARGET = rbt_search
 
 RBTLIB_DIR = rbtlib
 FLIB_DIR = flib
+SHARED_DIR = shared
 
 # Source files
 SRCS = rbt_name_create.c $(RBTLIB_DIR)/rbtree.c
@@ -20,7 +22,8 @@ RBT_SEARCH_SRCS = rbt_search.c $(RBTLIB_DIR)/rbtree.c
 # Object files
 OBJS = rbt_name_create.o $(RBTLIB_DIR)/rbtree.o
 RBT_SIZE_OBJS = rbt_size_create.o $(RBTLIB_DIR)/rbtree.o
-LIST_FILES_OBJ = list_files.o $(FLIB_DIR)/lfiles.o
+RBT_CREATE_OBJS = rbt_create.o $(RBTLIB_DIR)/rbtree.o
+LIST_FILES_OBJ = list_files.o $(FLIB_DIR)/lfiles.o $(SHARED_DIR)/shared.o
 RBT_SEARCH_OBJS = rbt_search.o $(RBTLIB_DIR)/rbtree.o
 # Default target (build all executables)
 all: $(TARGET) $(LIST_FILES_TARGET) $(RBT_SEARCH_TARGET) $(RBT_SIZE_TARGET)
@@ -29,8 +32,14 @@ all: $(TARGET) $(LIST_FILES_TARGET) $(RBT_SEARCH_TARGET) $(RBT_SIZE_TARGET)
 $(TARGET): $(OBJS)
 	$(CC) $(CFLAGS) -o $@ $^
 
+$(RBT_TARGET): $(RBT_CREATE_OBJS)
+	$(CC) $(CFLAGS) -o $@ $^
+
 $(RBT_SIZE_TARGET): $(RBT_SIZE_OBJS)
 	$(CC) $(CFLAGS) -o $@ $^
+
+$(SHARED_DIR)/shared.o: $(SHARED_DIR)/shared.c
+	$(CC) $(CFLAGS) -c -o $@ $<
 
 $(RBTLIB_DIR)/rbtree.o: $(RBTLIB_DIR)/rbtree.c
 	$(CC) $(CFLAGS) -c -o $@ $<
