@@ -327,7 +327,7 @@ size_t calc_file_info_size(const FileInfo *fileInfo) {
 }
 
 // Function to calculate serialized size of the whole tree
-size_t calc_tree_size(const Node *node) {
+long long calc_tree_size(const Node *node) {
     if (node == NULL) {
         return 0;
     }

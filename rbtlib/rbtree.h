@@ -137,7 +137,7 @@ long long serialize_node(Node *node, char *buffer);
 
 size_t calc_file_info_size(const FileInfo *fileInfo);
 
-size_t calc_tree_size(const Node *node);
+long long calc_tree_size(const Node *node);
 
 size_t serialize_file_info(const FileInfo *fileInfo, char *buffer);
 
