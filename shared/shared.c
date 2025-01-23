@@ -102,6 +102,26 @@ int process_file(const char *filename) {
     return EXIT_SUCCESS;
 }
 
+char *getFileSizeAsString(const long long fileSizeBytesIn) {
+    const double fileSizeBytes = (double) fileSizeBytesIn;
+    const double kB = 1024.0;
+    const double MB = 1024.0 * 1024.0;
+    const double GB = 1024.0 * 1024.0 * 1024.0;
+    char *result = malloc(20 * sizeof(char)); // Allocate memory for the result
+
+    if (fileSizeBytes >= GB) {
+        snprintf(result, 20, "%.2f GB", fileSizeBytes / GB);
+    } else if (fileSizeBytes >= MB) {
+        snprintf(result, 20, "%.2f MB", fileSizeBytes / MB);
+    } else if (fileSizeBytes >= kB) {
+        snprintf(result, 20, "%.2f kB", fileSizeBytes / kB);
+    } else {
+        snprintf(result, 20, "%f bytes", fileSizeBytes);
+    }
+
+    return result;
+}
+
 /**
  * Extracts unique root tokens from a delimiter-separated text file and stores them in a dynamically
  * allocated array while updating the root count.

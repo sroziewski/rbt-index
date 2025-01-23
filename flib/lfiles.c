@@ -652,26 +652,6 @@ void initializeFileEntries(FileEntry *entries, const size_t count) {
     }
 }
 
-char *getFileSizeAsString(const long long fileSizeBytesIn) {
-    const double fileSizeBytes = (double) fileSizeBytesIn;
-    const double kB = 1024.0;
-    const double MB = 1024.0 * 1024.0;
-    const double GB = 1024.0 * 1024.0 * 1024.0;
-    char *result = malloc(20 * sizeof(char)); // Allocate memory for the result
-
-    if (fileSizeBytes >= GB) {
-        snprintf(result, 20, "%.2f GB", fileSizeBytes / GB);
-    } else if (fileSizeBytes >= MB) {
-        snprintf(result, 20, "%.2f MB", fileSizeBytes / MB);
-    } else if (fileSizeBytes >= kB) {
-        snprintf(result, 20, "%.2f kB", fileSizeBytes / kB);
-    } else {
-        snprintf(result, 20, "%.0f bytes", fileSizeBytes);
-    }
-
-    return result;
-}
-
 void printSizeDetails(const char *type, const int count, const long long size) {
     if (count > 0) {
         printf("Total Number of %s Files: %d\n", type, count);

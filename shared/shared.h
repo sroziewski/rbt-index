@@ -24,5 +24,6 @@ void check_input_files(char **inputFileNames, char ***rootDirectories, int *root
 bool is_valid_file_type(const char *type);
 int is_size_t(const char *str);
 void get_dir_root(const char *fileName, char ***root, int *count);
+char *getFileSizeAsString(long long fileSizeBytes);
 
 #endif //SHARED_H

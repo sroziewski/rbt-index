@@ -165,8 +165,6 @@ FileInfo parseFileData(const char *inputLine);
 
 char *add_rbt_extension(const char *filename);
 
-char *getFileSizeAsString(size_t fileSizeBytes);
-
 char *get_filename_from_path(const char *path);
 
 void listSharedMemoryEntities(const char *prefix);

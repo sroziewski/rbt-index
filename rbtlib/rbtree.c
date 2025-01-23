@@ -335,26 +335,6 @@ size_t calc_tree_size(const Node *node) {
     return size + calc_tree_size(node->left) + calc_tree_size(node->right);
 }
 
-char *getFileSizeAsString(const size_t fileSizeBytesIn) {
-    const double fileSizeBytes = (double) fileSizeBytesIn;
-    const double kB = 1024.0;
-    const double MB = 1024.0 * 1024.0;
-    const double GB = 1024.0 * 1024.0 * 1024.0;
-    char *result = malloc(20 * sizeof(char)); // Allocate memory for the result
-
-    if (fileSizeBytes >= GB) {
-        snprintf(result, 20, "%.2f GB", fileSizeBytes / GB);
-    } else if (fileSizeBytes >= MB) {
-        snprintf(result, 20, "%.2f MB", fileSizeBytes / MB);
-    } else if (fileSizeBytes >= kB) {
-        snprintf(result, 20, "%.2f kB", fileSizeBytes / kB);
-    } else {
-        snprintf(result, 20, "%.2f bytes", fileSizeBytes);
-    }
-
-    return result;
-}
-
 void inorder(const Node *node) {
     if (node != NULL) {
         inorder(node->left);
@@ -774,16 +754,24 @@ void createRbt(const int argc, char *argv[], void (*insertFunc)(Node **, FileInf
         remove_shared_memory_object_by_name(argv[3]);
         return;
     }
-    const char *filename = argv[2];
+    char **filenames = malloc(2 * sizeof(char *)); // For 2 elements: argv[2] and NULL
+    if (!filenames) {
+        perror("Failed to allocate memory");
+        exit(EXIT_FAILURE);
+    }
+    filenames[0] = argv[2]; // First element is argv[2]
+    filenames[1] = NULL;    // Second element is NULL
+
     // Handle the normal processing and storing workflow
-    FILE *file = fopen(filename, "r");
+    FILE *file = fopen(filenames[0], "r");
     if (!file) {
         perror("Error opening file");
         return;
     }
     char **rootDirectories = NULL;
 
-    check_input_files()
+    int rootCount = 0;
+    check_input_files(filenames, &rootDirectories, &rootCount);
 
     char **lines = NULL;
     size_t numLines = 0;

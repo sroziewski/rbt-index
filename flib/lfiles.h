@@ -89,9 +89,6 @@ void freeQueue(TaskQueue *queue);
 void processDirectory(TaskQueue *taskQueue, FileEntry **entries, int *count, int *capacity,
                       long long sizeThreshold, int skipDirs);
 
-// File size string utility
-char *getFileSizeAsString(long long fileSizeBytes);
-
 // Print size details
 void printSizeDetails(const char *type, int count, long long size);
 
