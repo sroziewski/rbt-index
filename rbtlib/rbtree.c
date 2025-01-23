@@ -240,7 +240,7 @@ void write_tree_to_shared_memory(Node *finalRoot, const char *filePath, const ch
     // Construct the shared memory name
     snprintf(sharedMemoryName, sharedMemoryNameLength, "%s%s%s%s", prefix, fileName, EXTENSION_RBT, EXTENSION_MEM);
     // Calculate the size needed for serialization
-    const size_t requiredSize = calc_tree_size(finalRoot);
+    const long long requiredSize = calc_tree_size(finalRoot);
 
     // Align size to system page size
     const long pageSize = sysconf(_SC_PAGE_SIZE);
@@ -249,7 +249,7 @@ void write_tree_to_shared_memory(Node *finalRoot, const char *filePath, const ch
         exit(EXIT_FAILURE);
     }
 
-    const size_t alignedSize = ((requiredSize + pageSize - 1) / pageSize) * pageSize; // Align to page size
+    const long long alignedSize = ((requiredSize + pageSize - 1) / pageSize) * pageSize; // Align to page size
 
     // Create buffer for serialized tree (ensure it's still aligned)
     char *buffer = aligned_alloc(pageSize, alignedSize);
@@ -307,7 +307,7 @@ void write_tree_to_shared_memory(Node *finalRoot, const char *filePath, const ch
     const long long fileSize = getSharedMemorySize(sharedMemoryName);
     char *memSizeStr = getFileSizeAsString(fileSize);
 
-    printf("Red-black tree written to shared memory, rbt size: %s (%zu bytes), file %s size: %s (%zu bytes)\n", sizeStr, usedSize, sharedMemoryName, memSizeStr, fileSize);
+    printf("Red-black tree written to shared memory, rbt size: %s (%lld bytes), file %s size: %s (%lld bytes)\n", sizeStr, usedSize, sharedMemoryName, memSizeStr, fileSize);
     free(fileName);
     free(memSizeStr);
     free(sharedMemoryName);
@@ -419,7 +419,7 @@ void write_tree_to_file(Node *finalRoot, const char *filename) {
 }
 
 // Function to serialize a single node
-size_t serialize_node(Node *node, char *buffer) {
+long long serialize_node(Node *node, char *buffer) {
     if (node == NULL) {
         return 0;
     }

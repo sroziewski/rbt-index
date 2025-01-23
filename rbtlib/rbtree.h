@@ -133,7 +133,7 @@ size_t serialize_file_info(const FileInfo *fileInfo, char *buffer);
 
 size_t deserialize_file_info(FileInfo *fileInfo, const char *buffer);
 
-size_t serialize_node(Node *node, char *buffer);
+long long serialize_node(Node *node, char *buffer);
 
 size_t calc_file_info_size(const FileInfo *fileInfo);
 
