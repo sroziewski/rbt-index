@@ -1566,21 +1566,6 @@ void accumulateChildrenAndSize(FileEntry *entries, const size_t count) {
             entries[i].childrenCount = 0; // Reset the children count
             entries[i].size = 4096; // Reset the size (to accumulate later)
             // Check subsequent entries to see if they belong to this directory
-            if (strcmp(entries[i].path, "/home/simon/playground/trading/share/terminfo/X") == 0) {
-                int a = 1;
-            }
-            if (strcmp(entries[i].path, "/home/simon/playground/trading/share/terminfo/e") == 0) {
-                int a = 1;
-            }
-            if (strcmp(entries[i].path, "/home/simon/playground/trading/share/terminfo/n") == 0) {
-                int a = 1;
-            }
-            if (strcmp(entries[i].path, "/home/simon/playground/trading/share/terminfo/m") == 0) {
-                int a = 1;
-            }
-            if (strcmp(entries[i].path, "/home/simon/playground/trading/share/terminfo/x") == 0) {
-                int a = 1;
-            }
             for (size_t j = i + 1; j < count; j++) {
                 if (strstr(entries[j].path, entries[i].path) == entries[j].path &&
                     entries[j].path[strlen(entries[i].path)] == '/') {
@@ -1731,60 +1716,41 @@ int is_file(const char *path) {
 
 
 /**
- * Processes command-line arguments for various output options, input directories, file thresholds,
- * and flags, updating corresponding pointers and structures.
+ * Processes command-line arguments, configures various parameters, and validates argument constraints.
+ * This function interprets different flags and associated file names, storing the results in the provided
+ * parameters. It enforces mutual exclusions and ensures essential arguments are provided.
  *
- * This function parses a variety of input options, including output file locations, merge files,
- * statistics file inputs, and other command-line arguments. It validates the usage of exclusive
- * flags, allocates memory for dynamically stored file names, and ensures proper argument formats
- * are respected. If invalid or conflicting arguments are provided, the function cleans up allocated
- * resources and returns an error.
+ * @param argc              The count of command-line arguments.
+ * @param argv              The array of command-line argument strings.
+ * @param skipDirs          A pointer to an integer flag indicating whether to skip directories.
+ * @param sizeThreshold     A pointer to a long long defining the size threshold for filtering files.
+ * @param outputFileName    A pointer to a char pointer where the output file name specified with '-o'
+ *                          will be stored.
+ * @param outputTmpFileName A pointer to a char pointer for storing a temporary output file name.
+ * @param tmpFileNames      A pointer to an array of strings for temporary file names.
+ * @param directories       A pointer to an array of strings for storing directory paths.
+ * @param mergeFileNames    A pointer to an array of strings for file names used with the '-m' option.
+ * @param statFileNames     A pointer to an array of strings for file names used with the '--stats' option.
+ * @param directoryCount    A pointer to an integer where the count of processed directories will be stored.
+ * @param mergeFileName     A pointer to a char pointer where the file name specified with '--merge' will be stored.
+ * @param accFileName       A pointer to a char pointer where the file name specified with '--acc' will be stored.
+ * @param mergeFileCount    A pointer to an integer representing the count of files specified with '-m'.
+ * @param statFileCount     A pointer to an integer representing the count of files specified with '--stats'.
+ * @param printStd          A pointer to a boolean flag indicating whether '--print' was specified.
+ * @param parentDirectory   A pointer to a char pointer for storing the path to the parent directory.
+ * @param stepCount         A pointer to an integer determining step-related processing options.
+ * @param accFileCount      A pointer to an integer containing the count of rows in the '--acc' file.
  *
- * The key functionalities include:
- * - Handling `-o` for specifying output file name.
- * - Processing `--merge` and `-m` options for handling merge file inputs.
- * - Managing `--stats` to process statistics file names.
- * - Supporting additional flags such as `--print` for standard output behavior.
- * - Checking for mutual exclusions and ensuring proper usage of mandatory options.
- *
- * Memory allocated dynamically within the function needs to be freed by the caller using the
- * appropriate cleanup function (e.g., `free_multiple_arrays`). The provided pointers are updated
- * in-place, and their values vary based on the types of arguments provided.
- *
- * Errors and conditions leading to early termination include:
- * - Invalid combinations of `-o`, `--merge`, `--stats`, and `-m` options.
- * - Missing required file arguments for flags such as `-o`, `--merge`, or `--stats`.
- * - Inappropriate use of exclusive options, e.g., `--stats` with `--merge`.
- * - Memory allocation failures or malformed arguments.
- *
- * @param argc                The count of arguments provided to the program.
- * @param argv                Array of argument strings passed from the command line.
- * @param skipDirs            Pointer to an integer flag indicating whether directories should be skipped.
- * @param sizeThreshold       Pointer to a long long variable for size threshold values.
- * @param outputFileName      Pointer to a string for the output file name.
- * @param outputTmpFileName   Pointer to a string for the temporary output file name.
- * @param tmpFileNames        Pointer to a dynamically allocated array of temporary file names.
- * @param directories         Pointer to a dynamically allocated array of directory names.
- * @param mergeFileNames      Pointer to a dynamically allocated array of merge file names.
- * @param statFileNames       Pointer to a dynamically allocated array of statistics file names.
- * @param directoryCount      Pointer to an integer holding the number of input directories.
- * @param mergeFileName       Pointer to a string for a single merge file name.
- * @param mergeFileCount      Pointer to an integer count of merge files provided.
- * @param statFileCount       Pointer to an integer count of statistics files provided.
- * @param printStd            Pointer to a boolean flag for enabling or disabling standard output.
- * @param parentDirectory     Pointer to a string holding the parent directory for processed steps.
- * @param stepCount           Pointer to an integer for the number of steps.
- *
- * @return                    Returns `EXIT_SUCCESS` (0) on successful processing, or
- *                            `EXIT_FAILURE` (1) if an error occurs (e.g., invalid arguments, allocation failure).
+ * @return An integer value. Returns EXIT_SUCCESS (typically 0) if the arguments are
+ *         processed successfully, otherwise EXIT_FAILURE (typically non-zero) on error.
  */
 int process_arguments(const int argc, char **argv, int *skipDirs, long long *sizeThreshold, char **outputFileName,
                       char **outputTmpFileName,
                       char ***tmpFileNames, char ***directories, char ***mergeFileNames, char ***statFileNames,
                       int *directoryCount,
-                      char **mergeFileName, int *mergeFileCount, int *statFileCount, bool *printStd,
+                      char **mergeFileName, char **accFileName, int *mergeFileCount, int *statFileCount, bool *printStd,
                       char **parentDirectory,
-                      int *stepCount) {
+                      int *stepCount, int *accFileCount) {
     *skipDirs = 0; // Default: don't skip directories
     *sizeThreshold = 0; // Default: no size threshold
     *outputFileName = NULL;
@@ -1795,6 +1761,7 @@ int process_arguments(const int argc, char **argv, int *skipDirs, long long *siz
     *statFileNames = NULL;
     *directoryCount = 0;
     *mergeFileName = NULL;
+    *accFileName = NULL;
 
     int mergeFileCountTmp = 0;
     int statFileCountTmp = 0;
@@ -1823,7 +1790,28 @@ int process_arguments(const int argc, char **argv, int *skipDirs, long long *siz
                 free_multiple_arrays(directories, tmpFileNames, mergeFileNames, statFileNames, NULL);
                 return EXIT_FAILURE;
             }
-        } else if (strcmp(argv[i], "-m") == 0) {
+        }
+        else if (strcmp(argv[i], "--acc") == 0) {
+            if (*mergeFileName != NULL || *mergeFileNames != NULL || *statFileNames != NULL) {
+                fprintf(stderr, "Error: --acc cannot be used with --merge, -m or --stats.\n");
+                free_multiple_arrays(directories, tmpFileNames, mergeFileNames, statFileNames, NULL);
+                return EXIT_FAILURE;
+            }
+            if (i + 1 < argc) {
+                *accFileName = argv[++i];
+                *accFileCount = countRowsInFile(*accFileName);
+            } else {
+                fprintf(stderr, "File name for --acc is missing\n");
+                free_multiple_arrays(directories, tmpFileNames, mergeFileNames, statFileNames, NULL);
+                return EXIT_FAILURE;
+            }
+        }
+        else if (strcmp(argv[i], "-m") == 0) {
+            if (*accFileName != NULL) {
+                fprintf(stderr, "Error: --acc cannot be used with -m.\n");
+                free_multiple_arrays(directories, tmpFileNames, mergeFileNames, statFileNames, NULL);
+                return EXIT_FAILURE;
+            }
             if (*statFileNames != NULL) {
                 fprintf(stderr, "Error: --stats cannot be used with -m.\n");
                 free_multiple_arrays(directories, tmpFileNames, mergeFileNames, statFileNames, NULL);
@@ -2080,7 +2068,11 @@ int process_arguments(const int argc, char **argv, int *skipDirs, long long *siz
             // do nothing here
         } else if (strcmp(argv[i], "--step") == 0) {
             // do nothing here
-        } else {
+        }
+        else if (strcmp(argv[i], "--acc") == 0) {
+            // do nothing here
+        }
+        else {
             if (!belongs_to_array(argv[i], *mergeFileNames, mergeFileCountTmp) && !belongs_to_array(
                     argv[i], *statFileNames,
                     statFileCountTmp) && (*mergeFileName == NULL || *mergeFileName != NULL && strcmp(
