@@ -259,7 +259,7 @@ void write_tree_to_shared_memory(Node *finalRoot, const char *filePath, const ch
     }
 
     // Serialize the tree into the buffer
-    const size_t usedSize = serialize_node(finalRoot, buffer);
+    const long long usedSize = serialize_node(finalRoot, buffer);
 
     if (usedSize > alignedSize) {
         fprintf(stderr, "Serialized size exceeds aligned size!\n");
@@ -304,7 +304,7 @@ void write_tree_to_shared_memory(Node *finalRoot, const char *filePath, const ch
 
     char *sizeStr = getFileSizeAsString(usedSize);
 
-    const size_t fileSize = getSharedMemorySize(sharedMemoryName);
+    const long long fileSize = getSharedMemorySize(sharedMemoryName);
     char *memSizeStr = getFileSizeAsString(fileSize);
 
     printf("Red-black tree written to shared memory, rbt size: %s (%zu bytes), file %s size: %s (%zu bytes)\n", sizeStr, usedSize, sharedMemoryName, memSizeStr, fileSize);
@@ -759,11 +759,12 @@ void createRbt(const int argc, char *argv[], void (*insertFunc)(Node **, FileInf
         perror("Failed to allocate memory");
         exit(EXIT_FAILURE);
     }
-    filenames[0] = argv[2]; // First element is argv[2]
+    char *filename = argv[2]; // First element is argv[2]
+    filenames[0] = filename; // First element is argv[2]
     filenames[1] = NULL;    // Second element is NULL
 
     // Handle the normal processing and storing workflow
-    FILE *file = fopen(filenames[0], "r");
+    FILE *file = fopen(filename, "r");
     if (!file) {
         perror("Error opening file");
         return;
@@ -844,7 +845,7 @@ void createRbt(const int argc, char *argv[], void (*insertFunc)(Node **, FileInf
     freeTree(finalRoot);
 }
 
-size_t getSharedMemorySize(const char *sharedMemoryName) {
+long long getSharedMemorySize(const char *sharedMemoryName) {
     // Open the shared memory object
     const int shm_fd = shm_open(sharedMemoryName, O_RDONLY, 0);
     if (shm_fd == -1) {

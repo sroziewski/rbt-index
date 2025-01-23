@@ -14,17 +14,18 @@ FLIB_DIR = flib
 SHARED_DIR = shared
 
 # Source files
-SRCS = rbt_name_create.c $(RBTLIB_DIR)/rbtree.c
-RBT_SIZE_SRCS = rbt_size_create.c $(RBTLIB_DIR)/rbtree.c
-LIST_FILES_SRCS = list_files.c $(FLIB_DIR)/lfiles.c  # Add the source file for building list_files
-RBT_SEARCH_SRCS = rbt_search.c $(RBTLIB_DIR)/rbtree.c
+#SRCS = rbt_name_create.c $(RBTLIB_DIR)/rbtree.c $(SHARED_DIR)/shared.c
+#RBT_SIZE_SRCS = rbt_size_create.c $(RBTLIB_DIR)/rbtree.c $(SHARED_DIR)/shared.c
+#LIST_FILES_SRCS = list_files.c $(FLIB_DIR)/lfiles.c  $(SHARED_DIR)/shared.c
+#RBT_SEARCH_SRCS = rbt_search.c $(RBTLIB_DIR)/rbtree.c $(SHARED_DIR)/shared.c
 
 # Object files
-OBJS = rbt_name_create.o $(RBTLIB_DIR)/rbtree.o
-RBT_SIZE_OBJS = rbt_size_create.o $(RBTLIB_DIR)/rbtree.o
-RBT_CREATE_OBJS = rbt_create.o $(RBTLIB_DIR)/rbtree.o
+OBJS = rbt_name_create.o $(RBTLIB_DIR)/rbtree.o $(SHARED_DIR)/shared.o
+RBT_TREE = rbtree.o $(SHARED_DIR)/shared.o
+RBT_SIZE_OBJS = rbt_size_create.o $(RBTLIB_DIR)/rbtree.o $(SHARED_DIR)/shared.o
+RBT_CREATE_OBJS = rbt_create.o $(RBTLIB_DIR)/rbtree.o $(SHARED_DIR)/shared.o
 LIST_FILES_OBJ = list_files.o $(FLIB_DIR)/lfiles.o $(SHARED_DIR)/shared.o
-RBT_SEARCH_OBJS = rbt_search.o $(RBTLIB_DIR)/rbtree.o
+RBT_SEARCH_OBJS = rbt_search.o $(RBTLIB_DIR)/rbtree.o $(SHARED_DIR)/shared.o
 # Default target (build all executables)
 all: $(TARGET) $(LIST_FILES_TARGET) $(RBT_SEARCH_TARGET) $(RBT_SIZE_TARGET) $(RBT_TARGET)
 
@@ -41,11 +42,11 @@ $(RBT_SIZE_TARGET): $(RBT_SIZE_OBJS)
 $(SHARED_DIR)/shared.o: $(SHARED_DIR)/shared.c
 	$(CC) $(CFLAGS) -c -o $@ $<
 
-$(RBTLIB_DIR)/rbtree.o: $(RBTLIB_DIR)/rbtree.c
+$(RBTLIB_DIR)/rbtree.o: $(RBTLIB_DIR)/rbtree.c $(SHARED_DIR)/shared.c
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 # Rule for list_files.o in flib directory
-$(FLIB_DIR)/list_files.o: $(FLIB_DIR)/lfiles.c
+$(FLIB_DIR)/list_files.o: $(FLIB_DIR)/lfiles.c $(SHARED_DIR)/shared.c
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 # Rule to build the list_files target
