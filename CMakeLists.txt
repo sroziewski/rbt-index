@@ -44,6 +44,12 @@ set_target_properties(list_files PROPERTIES
         VS_DEBUGGER_COMMAND_ARGUMENTS "/home/simon/playground -o /home/simon/playground/playground.list"
 )
 
+# Add another executable: rbt_create
+add_executable(rbt_create
+        rbt_create.c
+        rbtlib/rbtree.c  # Your main entry point for rbt_name_create
+)
+
 # Add another executable: rbt_name_create
 add_executable(rbt_name_create
         rbt_name_create.c

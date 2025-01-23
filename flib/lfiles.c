@@ -2204,7 +2204,8 @@ int sort_and_write_results_to_file(char *tmpFileName, char *outputFileName, int 
     } else {
         char command[MAX_LINE_LENGTH];
         printToFile(entries, count, outputFileName, NEW);
-        snprintf(command, sizeof(command), "sort --parallel=12 -t %s -k1,1 %s -o %s", SEP, outputFileName, tmpFileName);
+        snprintf(command, sizeof(command), "sort --parallel=12 -t '%s' -k1,1 %s -o %s", SEP, outputFileName, tmpFileName);
+        printf("Running command: %s\n", command);
         // we treat outputFileName as temp for a while
         const int ret = system(command);
         if (ret == -1 || WEXITSTATUS(ret) != 0) {
