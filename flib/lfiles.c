@@ -800,7 +800,8 @@ void processDirectory(TaskQueue *taskQueue, FileEntry **entries, int *count, int
             struct stat fileStatForParent;
             char parentDir[MAX_LINE_LENGTH];
             findParent(fullPath, parentDir);
-            if (lstat(parentDir, &fileStatForParent) == 0 && S_ISLNK(fileStatForParent.st_mode)) { //  we don't want to proceed when parent is a link
+            if (lstat(parentDir, &fileStatForParent) == 0 && S_ISLNK(fileStatForParent.st_mode)) {
+                //  we don't want to proceed when parent is a link
                 continue;
             }
 
@@ -841,7 +842,8 @@ void processDirectory(TaskQueue *taskQueue, FileEntry **entries, int *count, int
                                              getFileTypeCategory(mimeType, fullPath));
 
                                     if (S_ISLNK(fileStat.st_mode)) {
-                                        snprintf((*entries)[current].type, sizeof((*entries)[current].type), "T_LINK_FILE");
+                                        snprintf((*entries)[current].type, sizeof((*entries)[current].type),
+                                                 "T_LINK_FILE");
                                     }
                                 }
                             }
@@ -879,10 +881,10 @@ void processDirectory(TaskQueue *taskQueue, FileEntry **entries, int *count, int
                             struct stat fileStatForQueue;
                             char parent[MAX_LINE_LENGTH];
                             findParent(fullPath, parent);
-                            if (lstat(parent, &fileStatForQueue) == 0 && !S_ISLNK(fileStatForQueue.st_mode)) { //  we don't want to proceed when parent is a link
+                            if (lstat(parent, &fileStatForQueue) == 0 && !S_ISLNK(fileStatForQueue.st_mode)) {
+                                //  we don't want to proceed when parent is a link
                                 enqueue(taskQueue, fullPath);
                             }
-
                         }
                     }
                 }
@@ -1143,8 +1145,7 @@ void read_entries(const char *filename, FileEntry **entries, const size_t fixed_
         if (strcmp(entry.type, "T_DIR") == 0 || strcmp(entry.type, "T_LINK_DIR") == 0) {
             if (strcmp(entry.type, "T_DIR") == 0) {
                 entry.isDir = true;
-            }
-            else if (strcmp(entry.type, "T_LINK_DIR") == 0) {
+            } else if (strcmp(entry.type, "T_LINK_DIR") == 0) {
                 entry.isLink = true;
             }
             // Look for additional flags (e.g., C_COUNT and F_HIDDEN)
@@ -1158,9 +1159,8 @@ void read_entries(const char *filename, FileEntry **entries, const size_t fixed_
                     }
                 } else if (strstr(token, "F_HIDDEN") != NULL) {
                     entry.isHidden = true;
-                }
-                else if (strncmp(token, "L_TARGET", 9) == 0) {
-                    token = strtok(NULL, "");  // Get the rest of the string after "L_TARGET"
+                } else if (strncmp(token, "L_TARGET", 9) == 0) {
+                    token = strtok(NULL, ""); // Get the rest of the string after "L_TARGET"
                     if (token != NULL) {
                         strncpy(entry.linkTarget, token, sizeof(entry.linkTarget) - 1);
                         entry.linkTarget[sizeof(entry.linkTarget) - 1] = '\0'; // Ensure null-termination
@@ -1441,9 +1441,13 @@ void printToStdOut(FileEntry *entries, const int count) {
         const int isHidden = (fileName[0] == '.'); // Check if the file is hidden
         char *sizeStr = getFileSizeAsString(entries[i].size);
         printf("%s %s, Size: %s (%ld bytes), Type: %s",
-               (strcmp(entries[i].type, "T_DIR") == 0) ? "Dir:" :
-               (strcmp(entries[i].type, "T_FILE") == 0) ? "File:" :
-               (strcmp(entries[i].type, "T_LINK_DIR") == 0 || strcmp(entries[i].type, "T_LINK_FILE") == 0) ? "Link:" : "Unknown:",
+               (strcmp(entries[i].type, "T_DIR") == 0)
+                   ? "Dir:"
+                   : (strcmp(entries[i].type, "T_FILE") == 0)
+                         ? "File:"
+                         : (strcmp(entries[i].type, "T_LINK_DIR") == 0 || strcmp(entries[i].type, "T_LINK_FILE") == 0)
+                               ? "Link:"
+                               : "Unknown:",
                entries[i].path, sizeStr, entries[i].size, entries[i].type);
 
         // If the entry is a directory, add the count of children
@@ -1790,8 +1794,7 @@ int process_arguments(const int argc, char **argv, int *skipDirs, long long *siz
                 free_multiple_arrays(directories, tmpFileNames, mergeFileNames, statFileNames, NULL);
                 return EXIT_FAILURE;
             }
-        }
-        else if (strcmp(argv[i], "--acc") == 0) {
+        } else if (strcmp(argv[i], "--acc") == 0) {
             if (*mergeFileName != NULL || *mergeFileNames != NULL || *statFileNames != NULL) {
                 fprintf(stderr, "Error: --acc cannot be used with --merge, -m or --stats.\n");
                 free_multiple_arrays(directories, tmpFileNames, mergeFileNames, statFileNames, NULL);
@@ -1805,8 +1808,7 @@ int process_arguments(const int argc, char **argv, int *skipDirs, long long *siz
                 free_multiple_arrays(directories, tmpFileNames, mergeFileNames, statFileNames, NULL);
                 return EXIT_FAILURE;
             }
-        }
-        else if (strcmp(argv[i], "-m") == 0) {
+        } else if (strcmp(argv[i], "-m") == 0) {
             if (*accFileName != NULL) {
                 fprintf(stderr, "Error: --acc cannot be used with -m.\n");
                 free_multiple_arrays(directories, tmpFileNames, mergeFileNames, statFileNames, NULL);
@@ -1925,10 +1927,10 @@ int process_arguments(const int argc, char **argv, int *skipDirs, long long *siz
     if (*outputFileName == NULL && *mergeFileName == NULL && *statFileNames == NULL) {
         fprintf(
             stderr,
-            "Error: The -o <outputfile> option is required otherwise use --merge <filename> or --stats <filename(s)>.\n");
+            "Error: The -o <outputfile> option is required otherwise use --merge <filename> or --stats <filename(s)> or --acc <filename>.\n");
         fprintf(
             stderr,
-            "Usage: %s [1. 4. <directory_path(s)>] [2. -m <filename(s)>] [-M maxSizeInMB] [--skip-dirs] [1. 2. -o <outputfile>] [4. --merge <filename>] [5. --stats <filename(s)>]\n",
+            "Usage: %s [1. 4. <directory_path(s)>] [2. -m <filename(s)>] [-M maxSizeInMB] [--skip-dirs] [1. 2. -o <outputfile>] [4. --merge <filename>] [5. --stats <filename(s)>] [6. --acc <filename>]\n",
             argv[0]);
         if (argc == 1) {
             exit(EXIT_FAILURE);
@@ -2068,15 +2070,14 @@ int process_arguments(const int argc, char **argv, int *skipDirs, long long *siz
             // do nothing here
         } else if (strcmp(argv[i], "--step") == 0) {
             // do nothing here
-        }
-        else if (strcmp(argv[i], "--acc") == 0) {
+        } else if (strcmp(argv[i], "--acc") == 0) {
             // do nothing here
-        }
-        else {
+        } else {
             if (!belongs_to_array(argv[i], *mergeFileNames, mergeFileCountTmp) && !belongs_to_array(
                     argv[i], *statFileNames,
                     statFileCountTmp) && (*mergeFileName == NULL || *mergeFileName != NULL && strcmp(
-                                              *mergeFileName, argv[i]) != 0)) {
+                                              *mergeFileName, argv[i]) != 0) &&
+                (*accFileName == NULL || *accFileName != NULL && strcmp(*accFileName, argv[i]) != 0)) {
                 fprintf(stderr, "Unknown option: %s\n", argv[i]);
                 free_multiple_arrays(directories, tmpFileNames, mergeFileNames, NULL);
                 release_temporary_resources(outputTmpFileName, NULL);
@@ -2196,7 +2197,8 @@ int sort_and_write_results_to_file(char *tmpFileName, char *outputFileName, int 
     } else {
         char command[MAX_LINE_LENGTH];
         printToFile(entries, count, outputFileName, NEW);
-        snprintf(command, sizeof(command), "sort --parallel=12 -t '%s' -k1,1 %s -o %s", SEP, outputFileName, tmpFileName);
+        snprintf(command, sizeof(command), "sort --parallel=12 -t '%s' -k1,1 %s -o %s", SEP, outputFileName,
+                 tmpFileName);
         printf("Running command: %s\n", command);
         // we treat outputFileName as temp for a while
         const int ret = system(command);
@@ -2241,12 +2243,10 @@ void compute_file_statistics(const FileEntry *entries, const int count, FileStat
         }
         if (entry->isDir) {
             stats->totalDirs++;
-        }
-        else if (entry->isLink) {
+        } else if (entry->isLink) {
             stats->links++;
             stats->linksSize += entry->size;
-        }
-        else {
+        } else {
             stats->totalFiles++;
         }
 

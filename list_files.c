@@ -177,6 +177,14 @@ int main(const int argc, char *argv[]) {
     if (mergeFileName == NULL && mergeFileNames != NULL) {
         read_entries(outputFileName, &entries, totalCount, &totalCount);
     }
+    if (accFileName != NULL) {
+        int outputCount = 0;
+        // Post-processing and final statistics
+        read_entries(accFileName, &entries, accFileCount, &outputCount);
+        resizeEntries(&entries, &totalCount); // Resize entries array to actual size
+        accumulateChildrenAndSize(entries, totalCount);
+        printToFile(entries, totalCount, outputFileName, NEW);
+    }
     if (statFileNames == NULL) {
         compute_file_statistics(entries, totalCount, &fileStats, directories);
         if (printStd) {
