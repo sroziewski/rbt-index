@@ -201,55 +201,49 @@ void get_dir_root(const char *fileName, char ***root, int *count) {
 }
 
 /**
- * Verifies, processes, and validates a set of merge files while managing a temporary filename list and root count.
+ * Function to validate and process a list of input file names.
+ * This function verifies that the input files exist, are regular files,
+ * and processes them if valid. It also manages memory allocation or reallocation
+ * for storing root directories.
  *
- * This function iterates through an array of provided merge file names, validates their existence and format,
- * and processes their contents to extract directory roots. It ensures that `tmpFileNames` is dynamically allocated
- * or resized as necessary and tracks the number of root elements identified. Each merge file is checked to confirm
- * it is a regular file before processing. Errors during memory allocation, file access, or invalid merge file formats
- * result in error messages being displayed and appropriate action taken (e.g., program termination).
+ * @param inputFileNames: A pointer to an array of null-terminated strings representing input file names.
+ * @param rootDirectories: A pointer to an array of null-terminated strings that store root directory paths.
+ *                         May be reallocated based on the number of input files processed.
+ * @param rootCount: A pointer to an integer that stores the total count of unique root directories.
+ *                   Updated based on the processed input files.
  *
- * - Dynamically manages memory for the `tmpFileNames` array to store extracted roots.
- * - For each file, calls `get_dir_root` to extract and update directory roots.
- * - Ensures each file in `mergeFileNames` exists and is a regular file.
- * - Uses `process_file` to handle file-specific processing for valid files.
- *
- * @param mergeFileNames An array of strings representing paths to merge files to be processed.
- *                       The array must be terminated with a NULL pointer.
- * @param tmpFileNames   A pointer to a dynamic array of strings that will store temporary filenames used during processing.
- *                       If `*tmpFileNames` is NULL, the function allocates memory for the array.
- * @param rootCount      A pointer to an integer used to count the number of root directory entries extracted
- *                       from the processed merge files.
+ * The function terminates the program with an appropriate error message if memory allocation,
+ * file access, or processing fails.
  */
-void check_input_files(char **mergeFileNames, char ***tmpFileNames, int *rootCount) {
-    if (mergeFileNames == NULL) {
-        fprintf(stderr, "Error: mergeFileNames is NULL.\n");
+void check_input_files(char **inputFileNames, char ***rootDirectories, int *rootCount) {
+    if (inputFileNames == NULL) {
+        fprintf(stderr, "Error: inputFileNames is NULL.\n");
         exit(EXIT_FAILURE);
     }
-    if (*tmpFileNames == NULL) {
-        *tmpFileNames = realloc(*tmpFileNames, sizeof(char *) * (MAX_LINE_LENGTH + 2));
-        if (*tmpFileNames == NULL) {
-            perror("Error allocating memory for tmpFileNames");
+    if (*rootDirectories == NULL) {
+        *rootDirectories = realloc(*rootDirectories, sizeof(char *) * (MAX_LINE_LENGTH + 2));
+        if (*rootDirectories == NULL) {
+            perror("Error allocating memory for rootDirectories");
             exit(EXIT_FAILURE);
         }
     } else {
-        *tmpFileNames = realloc(*tmpFileNames, sizeof(char *) * (MAX_LINE_LENGTH + 2)); // Reallocate memory
-        if (*tmpFileNames == NULL) {
-            perror("Error reallocating memory for tmpFileNames");
+        *rootDirectories = realloc(*rootDirectories, sizeof(char *) * (MAX_LINE_LENGTH + 2)); // Reallocate memory
+        if (*rootDirectories == NULL) {
+            perror("Error reallocating memory for rootDirectories");
             exit(EXIT_FAILURE);
         }
     }
     int tmp = 0;
 
     // *tmpFileNames = malloc(MAX_LINE_LENGTH * sizeof(char *));
-    if (*tmpFileNames == NULL) {
-        perror("Error allocating memory for tmpFileNames in check_merge_files");
+    if (*rootDirectories == NULL) {
+        perror("Error allocating memory for rootDirectories in check_merge_files");
         exit(EXIT_FAILURE);
     }
 
-    for (int i = 0; mergeFileNames[i] != NULL; i++) {
-        get_dir_root(mergeFileNames[i], tmpFileNames, &tmp);
-        const char *fileName = mergeFileNames[i];
+    for (int i = 0; inputFileNames[i] != NULL; i++) {
+        get_dir_root(inputFileNames[i], rootDirectories, &tmp);
+        const char *fileName = inputFileNames[i];
         fprintf(stdout, "Checking input file format: %s\n", fileName);
         // Check if the file is a regular file
         struct stat fileStat;

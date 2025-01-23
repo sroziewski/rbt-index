@@ -774,12 +774,16 @@ void createRbt(const int argc, char *argv[], void (*insertFunc)(Node **, FileInf
         remove_shared_memory_object_by_name(argv[3]);
         return;
     }
+    const char *filename = argv[2];
     // Handle the normal processing and storing workflow
-    FILE *file = fopen(argv[1], "r");
+    FILE *file = fopen(filename, "r");
     if (!file) {
         perror("Error opening file");
         return;
     }
+    char **rootDirectories = NULL;
+
+    check_input_files()
 
     char **lines = NULL;
     size_t numLines = 0;
