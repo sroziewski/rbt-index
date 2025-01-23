@@ -178,12 +178,11 @@ int main(const int argc, char *argv[]) {
         read_entries(outputFileName, &entries, totalCount, &totalCount);
     }
     if (accFileName != NULL) {
-        int outputCount = 0;
-        // Post-processing and final statistics
-        read_entries(accFileName, &entries, accFileCount, &outputCount);
-        resizeEntries(&entries, &totalCount); // Resize entries array to actual size
+        read_entries(accFileName, &entries, accFileCount, &totalCount);
         accumulateChildrenAndSize(entries, totalCount);
         printToFile(entries, totalCount, outputFileName, NEW);
+        int rootCount = -1;
+        check_input_files(&accFileName, &directories, &rootCount);
     }
     if (statFileNames == NULL) {
         compute_file_statistics(entries, totalCount, &fileStats, directories);
