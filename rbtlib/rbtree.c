@@ -31,8 +31,6 @@ FileInfo parseFileData(const char *inputLine) {
     }
 
 
-    // Remove the newline character, if present
-    int isAdded = false;
     const size_t len = strlen(lineCopy);
     if (len > 0 && lineCopy[len - 1] == '\n') {
         lineCopy[len - 1] = '\0';
@@ -50,9 +48,7 @@ FileInfo parseFileData(const char *inputLine) {
     }
     strncpy(result.path, token, strlen(token) + 1);  // Copy the full string, including the null character
     result.path[strlen(token)] = '\0';
-
     result.name = get_filename_from_path(result.path);
-
     token = strtok(NULL, SEP);
     char *endptr;
     result.size = strtol(token, &endptr, 10);
@@ -84,6 +80,7 @@ FileInfo parseFileData(const char *inputLine) {
                     perror("Failed to allocate memory");
                     exit(EXIT_FAILURE);
                 }
+                token = strtok(NULL, SEP);
                 strncpy(result.linkTarget, token, strlen(token) + 1);
                 result.linkTarget[strlen(token)] = '\0';
             } else {
