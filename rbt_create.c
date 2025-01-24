@@ -18,23 +18,32 @@ int main(const int argc, char *argv[]) {
         return EXIT_FAILURE;
     }
 
+    bool all = false;
     const char *prefix = NULL;
+    void (*insert_fn)(Node **root, FileInfo key) = NULL;
 
-    // Check for command line arguments
     if (strcmp(argv[1], "--name") == 0) {
         prefix = "rbt_name_";
-        createRbt(argc, argv, insert_filename, prefix);
+        insert_fn = insert_filename;
     } else if (strcmp(argv[1], "--size") == 0) {
         prefix = "rbt_size_";
-        createRbt(argc, argv, insert_filesize, prefix);
-    }
-    else if (strcmp(argv[1], "--path") == 0) {
+        insert_fn = insert_filesize;
+    } else if (strcmp(argv[1], "--path") == 0) {
         prefix = "rbt_path_";
-        createRbt(argc, argv, insert_filepath, prefix);
-    }
-    else {
+        insert_fn = insert_filepath;
+    } else if (strcmp(argv[1], "--all") == 0) {
+        all = true;
+    } else {
         fprintf(stderr, "Invalid argument. Use --name, --size or --path <filename.lst>.\n");
         return EXIT_FAILURE;
+    }
+
+    if (all) {
+        createRbt(argc, argv, insert_filename, "rbt_name_");
+        createRbt(argc, argv, insert_filesize, "rbt_size_");
+        createRbt(argc, argv, insert_filepath, "rbt_path_");
+    } else {
+        createRbt(argc, argv, insert_fn, prefix);
     }
 
     return EXIT_SUCCESS;

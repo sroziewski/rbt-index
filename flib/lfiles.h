@@ -130,8 +130,6 @@ int remove_duplicates(const char *inputFileName, const char *outputFileName);
 
 int copy_file(const char *inputFileName, const char *outputFileName);
 
-double get_time_difference(struct timeval start, struct timeval end);
-
 void initializeFileEntries(FileEntry *entries, size_t count);
 
 void compute_file_statistics(const FileEntry *entries, int count, FileStatistics *stats, char **directories);
@@ -143,8 +141,6 @@ void free_multiple_arrays(char ***first_directory, ...);
 void process_merge_files(char **mergeFileNames, int mergeFileCount, const char *outputFileName, int *totalCount);
 
 void deleteFiles(char **tmpFileNames);
-
-void print_elapsed_time(const char *directory, double elapsed, FILE *output, const char *message);
 
 char **concatenate_string_arrays(char **array1, char **array2);
 

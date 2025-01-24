@@ -1,4 +1,7 @@
 #include "rbtree.h"
+
+#include <sys/time.h>
+
 #include "../shared/shared.h"
 #include "../shared/lconsts.h"
 
@@ -754,6 +757,8 @@ void createRbt(const int argc, char *argv[], void (*insertFunc)(Node **, FileInf
         remove_shared_memory_object_by_name(argv[3]);
         return;
     }
+    struct timeval start, end;
+    gettimeofday(&start, NULL);
     char **filenames = malloc(2 * sizeof(char *)); // For 2 elements: argv[2] and NULL
     if (!filenames) {
         perror("Failed to allocate memory");
@@ -819,8 +824,8 @@ void createRbt(const int argc, char *argv[], void (*insertFunc)(Node **, FileInf
     }
 
     // Display the processed files in sorted Red-Black Tree order
-    printf("\nFiles stored in Red-Black Tree in sorted order by filename:\n");
-    inorder(finalRoot);
+    // printf("\nFiles stored in Red-Black Tree in sorted order by filename:\n");
+    // inorder(finalRoot);
 
     printf("Total lines successfully processed: %d\n", totalProcessedCount);
 
@@ -838,9 +843,12 @@ void createRbt(const int argc, char *argv[], void (*insertFunc)(Node **, FileInf
         write_tree_to_file(finalRoot, storeFilename);
         free(storeFilename);
     } else {
-        write_tree_to_shared_memory(finalRoot, argv[1], prefix);
+        write_tree_to_shared_memory(finalRoot, argv[2], prefix);
     }
-
+    gettimeofday(&end, NULL);
+    // Calculate and display elapsed time
+    const double elapsed = get_time_difference(start, end);
+    print_elapsed_time(NULL, elapsed, stdout, "RBT creation");
     // Free the tree if it was created or loaded
     freeTree(finalRoot);
 }

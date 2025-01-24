@@ -102,7 +102,6 @@ int main(const int argc, char *argv[]) {
         // Calculate and display elapsed time
         double elapsed = get_time_difference(start, end);
         print_elapsed_time(NULL, elapsed, stdout, "merge files");
-        fprintf(stdout, "Time taken to process merge files: %.1f seconds\n", elapsed);
     }
     if (mergeFileName != NULL) {
         display_directories_merging(mergeFileName, directories);

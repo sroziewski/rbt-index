@@ -2361,10 +2361,6 @@ int copy_file(const char *inputFileName, const char *outputFileName) {
     return EXIT_SUCCESS;
 }
 
-double get_time_difference(const struct timeval start, const struct timeval end) {
-    return (end.tv_sec - start.tv_sec) + (end.tv_usec - start.tv_usec) / 1000000.0;
-}
-
 void process_merge_files(char **mergeFileNames, const int mergeFileCount, const char *outputFileName, int *totalCount) {
     int totalCountTmp = 0;
     for (int i = 0; i < mergeFileCount; ++i) {
@@ -2372,32 +2368,6 @@ void process_merge_files(char **mergeFileNames, const int mergeFileCount, const 
         append_file(tmpFileName, outputFileName, &totalCountTmp);
         *totalCount += totalCountTmp;
         totalCountTmp = 0;
-    }
-}
-
-/**
- * Prints the elapsed time for processing a specific directory or task, formatted to an appropriate
- * precision based on the duration.
- *
- * This function outputs a message indicating the time taken to process a given directory or task.
- * The precision of the displayed time adjusts dynamically: 2 decimal places for times under 1 second,
- * 1 decimal place for times between 1 and 10 seconds, and no decimal places for times of 10 seconds or more.
- * The message is written to a specified file stream.
- *
- * @param directory  The name of the directory or description of the task being processed.
- * @param elapsed    The time taken, in seconds, to process the directory or task.
- * @param output     A pointer to the output file stream where the message will be printed.
- * @param message    A descriptive message about the operation being timed, e.g., "directory".
- */
-void print_elapsed_time(const char *directory, const double elapsed, FILE *output, const char *message) {
-    if (directory) {
-        // If directory is not NULL, include it in the output
-        fprintf(output, "Time taken to process %s '%s': %.*f seconds\n",
-                message, directory, (elapsed < 1) ? 2 : (elapsed < 10) ? 1 : 0, elapsed);
-    } else {
-        // If directory is NULL, omit the '%s'
-        fprintf(output, "Time taken to process %s: %.*f seconds\n",
-                message, (elapsed < 1) ? 2 : (elapsed < 10) ? 1 : 0, elapsed);
     }
 }
 

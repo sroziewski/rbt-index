@@ -20,10 +20,19 @@
 #define SHARED_H
 
 int process_file(const char *filename);
+
 void check_input_files(char **inputFileNames, char ***rootDirectories, int *rootCount);
+
 bool is_valid_file_type(const char *type);
+
 int is_size_t(const char *str);
+
 void get_dir_root(const char *fileName, char ***root, int *count);
+
 char *getFileSizeAsString(long long fileSizeBytes);
+
+double get_time_difference(struct timeval start, struct timeval end);
+
+void print_elapsed_time(const char *directory, double elapsed, FILE *output, const char *message);
 
 #endif //SHARED_H
