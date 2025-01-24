@@ -37,7 +37,10 @@ int main(const int argc, char *argv[]) {
         fprintf(stderr, "Invalid argument. Use --name, --size or --path <filename.lst>.\n");
         return EXIT_FAILURE;
     }
-
+    if (argc == 3 && strcmp(argv[1], "--list") == 0) {
+        listSharedMemoryEntities(prefix);
+        exit(EXIT_SUCCESS);
+    }
     if (all) {
         createRbt(argc, argv, insert_filename, "rbt_name_");
         createRbt(argc, argv, insert_filesize, "rbt_size_");

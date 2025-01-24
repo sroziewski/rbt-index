@@ -759,11 +759,6 @@ void createRbt(const int argc, char *argv[], void (*insertFunc)(Node **, FileInf
         remove_shared_memory_object(argv, prefix);
         return;
     }
-    if (argc == 3 && strcmp(argv[1], "--list") == 0) {
-        // Handle the --list command
-        listSharedMemoryEntities(prefix);
-        return;
-    }
     if (argc == 4 && strcmp(argv[2], "--remove") == 0) {
         // Handle the --remove command
         remove_shared_memory_object_by_name(argv[3]);
