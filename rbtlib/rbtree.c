@@ -310,7 +310,8 @@ void write_tree_to_shared_memory(Node *finalRoot, const char *filePath, const ch
     const long long fileSize = getSharedMemorySize(sharedMemoryName);
     char *memSizeStr = getFileSizeAsString(fileSize);
 
-    printf("Red-black tree written to shared memory, rbt size: %s (%lld bytes), file %s size: %s (%lld bytes)\n", sizeStr, usedSize, sharedMemoryName, memSizeStr, fileSize);
+    printf("Red-black tree written to shared memory, rbt size: %s (%lld bytes), file %s size: %s (%lld bytes)\n",
+           sizeStr, usedSize, sharedMemoryName, memSizeStr, fileSize);
     free(fileName);
     free(memSizeStr);
     free(sharedMemoryName);
@@ -734,8 +735,19 @@ void listSharedMemoryEntities(const char *prefix) {
 
 void createRbt(const int argc, char *argv[], void (*insertFunc)(Node **, FileInfo), const char *prefix) {
     if (argc < 2) {
-        fprintf(stderr, "Usage: %s <file> [--save] [--load filename.rbt] [--clean file.lst] [--list] [--remove sharedMemoryFilename]\n", argv[0]);
+        fprintf(
+            stderr,
+            "Usage: %s <file> [--save] [--load filename.rbt] [--clean file.lst] [--list] [--remove sharedMemoryFilename]\n",
+            argv[0]);
         return;
+    }
+    bool print = false;
+    for (int i = 1; i < argc; ++i) {
+        // Start at i = 1 to skip program name
+        if (strcmp(argv[i], "--print") == 0) {
+            print = true;
+            break; // Stop checking once found
+        }
     }
     if (argc == 4 && strcmp(argv[2], "--load") == 0) {
         // Handle the --load command
@@ -766,7 +778,7 @@ void createRbt(const int argc, char *argv[], void (*insertFunc)(Node **, FileInf
     }
     char *filename = argv[2]; // First element is argv[2]
     filenames[0] = filename; // First element is argv[2]
-    filenames[1] = NULL;    // Second element is NULL
+    filenames[1] = NULL; // Second element is NULL
 
     // Handle the normal processing and storing workflow
     FILE *file = fopen(filename, "r");
@@ -808,7 +820,7 @@ void createRbt(const int argc, char *argv[], void (*insertFunc)(Node **, FileInf
 
     // Processing the lines to insert into the Red-Black Tree
     for (size_t i = 0; i < numLines; i++) {
-        FileInfo key = { NULL, 0, NULL, NULL };
+        FileInfo key = {NULL, 0, NULL, NULL};
         if (lines != NULL && lines[i] != NULL) {
             key = parseFileData(lines[i]);
         } else {
@@ -822,11 +834,11 @@ void createRbt(const int argc, char *argv[], void (*insertFunc)(Node **, FileInf
             totalProcessedCount++;
         }
     }
-
     // Display the processed files in sorted Red-Black Tree order
-    // printf("\nFiles stored in Red-Black Tree in sorted order by filename:\n");
-    // inorder(finalRoot);
-
+    if (print) {
+        printf("\nFiles stored in Red-Black Tree in sorted order by filename:\n");
+        inorder(finalRoot);
+    }
     printf("Total lines successfully processed: %d\n", totalProcessedCount);
 
     // Free the allocated memory for lines
@@ -839,7 +851,7 @@ void createRbt(const int argc, char *argv[], void (*insertFunc)(Node **, FileInf
 
     // Handle saving to file or shared memory
     if (argc == 3 && strcmp(argv[2], "--save") == 0) {
-        char *storeFilename = add_rbt_extension(argv[1]);  // Append `.rbt` to the filename
+        char *storeFilename = add_rbt_extension(argv[1]); // Append `.rbt` to the filename
         write_tree_to_file(finalRoot, storeFilename);
         free(storeFilename);
     } else {
@@ -858,7 +870,7 @@ long long getSharedMemorySize(const char *sharedMemoryName) {
     const int shm_fd = shm_open(sharedMemoryName, O_RDONLY, 0);
     if (shm_fd == -1) {
         perror("Failed to open shared memory object");
-        exit( EXIT_FAILURE);
+        exit(EXIT_FAILURE);
     }
 
     // Get the metadata about the shared memory object
