@@ -1,8 +1,8 @@
 #include "rbtlib/rbtree.h"
 
-DEFINE_COMPARATOR_BY_FIELD(filename, strcmp)
-DEFINE_COMPARATOR_BY_FIELD(filepath, strcmp)
-DEFINE_NUMERIC_COMPARATOR(filesize)
+DEFINE_COMPARATOR_BY_FIELD(name, strcmp)
+DEFINE_COMPARATOR_BY_FIELD(path, strcmp)
+DEFINE_NUMERIC_COMPARATOR(size)
 
 /**
  * The main function serves as the program's entry point. It initializes and
@@ -24,13 +24,13 @@ int main(const int argc, char *argv[]) {
 
     if (strcmp(argv[1], "--name") == 0) {
         prefix = "rbt_name_";
-        insert_fn = insert_filename;
+        insert_fn = insert_name;
     } else if (strcmp(argv[1], "--size") == 0) {
         prefix = "rbt_size_";
-        insert_fn = insert_filesize;
+        insert_fn = insert_size;
     } else if (strcmp(argv[1], "--path") == 0) {
         prefix = "rbt_path_";
-        insert_fn = insert_filepath;
+        insert_fn = insert_path;
     } else if (strcmp(argv[1], "--all") == 0) {
         all = true;
     } else {
@@ -42,9 +42,9 @@ int main(const int argc, char *argv[]) {
         exit(EXIT_SUCCESS);
     }
     if (all) {
-        createRbt(argc, argv, insert_filename, "rbt_name_");
-        createRbt(argc, argv, insert_filesize, "rbt_size_");
-        createRbt(argc, argv, insert_filepath, "rbt_path_");
+        createRbt(argc, argv, insert_name, "rbt_name_");
+        createRbt(argc, argv, insert_size, "rbt_size_");
+        createRbt(argc, argv, insert_path, "rbt_path_");
     } else {
         createRbt(argc, argv, insert_fn, prefix);
     }

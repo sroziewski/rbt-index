@@ -1,6 +1,6 @@
 #include "rbtlib/rbtree.h"
 
-DEFINE_NUMERIC_COMPARATOR(filesize)
+DEFINE_NUMERIC_COMPARATOR(size)
 
 /**
  * @brief Entry point function for the program that initializes and creates a red-black tree (RBT) with key as a file size using provided arguments.

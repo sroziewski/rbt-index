@@ -18,10 +18,15 @@ typedef enum { RED, BLACK } NodeColor;
 
 // File information structure
 typedef struct FileInfo {
-    char *filename;
-    size_t filesize;
-    char *filepath;
-    char *filetype;
+    char *name;
+    size_t size;
+    char *path;
+    char *type;
+    char *linkTarget;
+    size_t childrenCount;
+    bool isHidden;
+    bool isDir;
+    int isLink; // 1 is link to file, 2 link to directory
 } FileInfo;
 
 // Node structure for the Red-Black Tree

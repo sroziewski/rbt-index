@@ -43,9 +43,9 @@ void search_tree_for_name_and_type2(Node *root, const char *namePattern, const c
     }
 
     // Check if the current node matches the name regex and file type
-    if (regexec(&regex, root->key.filename, 0, NULL, 0) == 0 && strcmp(root->key.filetype, targetType) == 0) {
+    if (regexec(&regex, root->key.name, 0, NULL, 0) == 0 && strcmp(root->key.type, targetType) == 0) {
         printf("Found file: %s (Type: %s, Size: %zu, Path: %s)\n",
-               root->key.filename, root->key.filetype, root->key.filesize, root->key.filepath);
+               root->key.name, root->key.type, root->key.size, root->key.path);
     }
 
     // Free the regex memory after usage

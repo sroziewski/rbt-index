@@ -1,6 +1,6 @@
 #include "rbtlib/rbtree.h"
 
-DEFINE_COMPARATOR_BY_FIELD(filename, strcmp)
+DEFINE_COMPARATOR_BY_FIELD(name, strcmp)
 
 /**
  * The main function serves as the program's entry point. It initializes and
