@@ -6,12 +6,19 @@ DEFINE_COMPARATOR_BY_FIELD(path, strcmp)
 DEFINE_NUMERIC_COMPARATOR(size)
 
 /**
- * The main function serves as the program's entry point. It initializes and
- * invokes the creation process of a red-black with key as a filename tree by calling createRbt.
+ * Main entry point for the program. Processes the command-line arguments to determine
+ * the operation type (e.g., working with name, size, or path) and invokes the appropriate
+ * functions to process input files, create red-black trees (RBT), or list shared memory
+ * entities.
  *
- * @param argc The number of command-line arguments provided to the program.
- * @param argv The array of command-line arguments. The first element is the program name.
- * @return Returns EXIT_SUCCESS to indicate successful program termination.
+ * @param argc The number of arguments passed to the program.
+ * @param argv The array of arguments passed to the program. The first argument specifies
+ *             the operation type (--name, --size, --path, or --all), and subsequent
+ *             arguments may include filenames or other related options.
+ *
+ * @return Returns EXIT_SUCCESS (0) if the program completes successfully or
+ *         EXIT_FAILURE (1) if an error occurs, such as invalid arguments or memory
+ *         allocation failure.
  */
 int main(const int argc, char *argv[]) {
     if (argc < 2) {

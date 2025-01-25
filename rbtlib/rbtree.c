@@ -764,6 +764,11 @@ void search_tree_for_name_and_type(Node *root, const char *namePattern, const ch
     search_tree_for_name_and_type(root->right, namePattern, targetType);
 }
 
+/**
+ * Lists all shared memory entities in the specified directory that start with a given prefix.
+ *
+ * @param prefix The prefix to filter shared memory entity names.
+ */
 void listSharedMemoryEntities(const char *prefix) {
     const char *shmDir = "/dev/shm"; // POSIX shared memory location
     DIR *dir = opendir(shmDir);
@@ -784,6 +789,17 @@ void listSharedMemoryEntities(const char *prefix) {
     closedir(dir);
 }
 
+/**
+ * Create and manage a Red-Black Tree (RBT) based on input commands and filename arguments.
+ * This function handles various operations such as loading, cleaning, removing shared memory objects,
+ * and storing data to files or shared memory, depending on provided command-line arguments.
+ *
+ * @param argc The count of command-line arguments provided to the program.
+ * @param argv An array of command-line argument strings, where the first element is the program name.
+ * @param insertFunc A function pointer to be used for inserting nodes into the Red-Black Tree.
+ *                   This function should modify the tree structure based on the provided data.
+ * @param prefix A prefix string used for naming or identifying shared memory objects in specific operations.
+ */
 void createRbt(const int argc, char *argv[], void (*insertFunc)(Node **, FileInfo), const char *prefix) {
     if (argc < 2) {
         fprintf(
