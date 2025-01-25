@@ -19,7 +19,6 @@ char *get_filename_from_path(const char *path) {
     return slash ? strdup(slash + 1) : strdup(path); // Duplicate the file name
 }
 
-
 // File parsing into FileInfo
 void parseFileData(const char *inputLine, FileInfo *result) {
     char *lineCopy = strdup(inputLine);
@@ -28,7 +27,6 @@ void parseFileData(const char *inputLine, FileInfo *result) {
         perror("Failed to duplicate the input line");
         exit(EXIT_FAILURE);
     }
-
 
     const size_t len = strlen(lineCopy);
     if (len > 0 && lineCopy[len - 1] == '\n') {
@@ -816,12 +814,13 @@ void createRbt(const int argc, char *argv[], void (*insertFunc)(Node **, FileInf
             break; // Stop checking once found
         }
     }
-    if (argc == 4 && strcmp(argv[2], "--load") == 0) {
+    if (argc == 3 && strcmp(argv[1], "--load") == 0) {
         // Handle the --load command
-        read_tree_from_file_to_shared_memory(argv[3], prefix);
+        // TODO
+        read_tree_from_file_to_shared_memory(argv[2], prefix);
         return;
     }
-    if (argc == 4 && strcmp(argv[2], "--clean") == 0) {
+    if (argc == 3 && strcmp(argv[1], "--clean") == 0) {
         // Handle the --clean command
         remove_shared_memory_object(argv, prefix);
         return;
@@ -910,6 +909,7 @@ void createRbt(const int argc, char *argv[], void (*insertFunc)(Node **, FileInf
 
     // Handle saving to file or shared memory
     if (argc == 4 && strcmp(argv[3], "--save") == 0) {
+        // TODO
         char *storeFilename = add_rbt_extension(argv[2]); // Append `.rbt` to the filename
         write_tree_to_file(finalRoot, storeFilename);
         free(storeFilename);
