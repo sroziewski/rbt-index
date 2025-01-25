@@ -909,8 +909,8 @@ void createRbt(const int argc, char *argv[], void (*insertFunc)(Node **, FileInf
     free(lines);
 
     // Handle saving to file or shared memory
-    if (argc == 3 && strcmp(argv[2], "--save") == 0) {
-        char *storeFilename = add_rbt_extension(argv[1]); // Append `.rbt` to the filename
+    if (argc == 4 && strcmp(argv[3], "--save") == 0) {
+        char *storeFilename = add_rbt_extension(argv[2]); // Append `.rbt` to the filename
         write_tree_to_file(finalRoot, storeFilename);
         free(storeFilename);
     } else {

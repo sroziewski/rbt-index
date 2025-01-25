@@ -27,6 +27,7 @@ int main(const int argc, char *argv[]) {
     }
 
     bool all = false;
+    bool skipCheck = false;
     const char *prefix = NULL;
     void (*insert_fn)(Node **root, FileInfo key) = NULL;
 
@@ -41,6 +42,8 @@ int main(const int argc, char *argv[]) {
         insert_fn = insert_path;
     } else if (strcmp(argv[1], "--all") == 0) {
         all = true;
+    } else if (strcmp(argv[1], "--load") == 0) {
+        skipCheck = true;
     } else {
         fprintf(stderr, "Invalid argument. Use --name, --size or --path <filename.lst>.\n");
         return EXIT_FAILURE;
@@ -49,20 +52,21 @@ int main(const int argc, char *argv[]) {
         listSharedMemoryEntities(prefix);
         exit(EXIT_SUCCESS);
     }
-    char **filenames = malloc(2 * sizeof(char *)); // For 2 elements: argv[2] and NULL
-    char **rootDirectories = NULL;
+    if (!skipCheck) {
+        char **filenames = malloc(2 * sizeof(char *)); // For 2 elements: argv[2] and NULL
+        char **rootDirectories = NULL;
 
-    if (!filenames) {
-        perror("Failed to allocate memory");
-        exit(EXIT_FAILURE);
+        if (!filenames) {
+            perror("Failed to allocate memory");
+            exit(EXIT_FAILURE);
+        }
+        char *filename = argv[2];
+        filenames[0] = filename;
+        filenames[1] = NULL;
+
+        int rootCount = 0;
+        check_input_files(filenames, &rootDirectories, &rootCount);
     }
-    char *filename = argv[2];
-    filenames[0] = filename;
-    filenames[1] = NULL;
-
-    int rootCount = 0;
-    check_input_files(filenames, &rootDirectories, &rootCount);
-
     if (all) {
         createRbt(argc, argv, insert_name, "rbt_name_");
         createRbt(argc, argv, insert_size, "rbt_size_");
