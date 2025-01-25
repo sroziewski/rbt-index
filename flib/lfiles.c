@@ -748,32 +748,27 @@ void resizeEntries(FileEntry **entries, int *count) {
 }
 
 /**
- * Reads and parses file entries from a specified file into a dynamically allocated array.
+ * Reads entries from a file into a fixed-size array of FileEntry structures.
  *
- * This function opens a file containing information about file entries, reads each line,
- * and parses the data into an array of `FileEntry` structures. Each line in the file
- * should follow the format: `path|size|type[|C_COUNT|childrenCount][|F_HIDDEN]`.
- * The function processes up to a fixed number of entries and dynamically allocates memory
- * for the array based on `fixed_count`.
+ * This function parses a file line by line, extracting information about paths,
+ * file types, sizes, and additional metadata. The extracted entries are stored
+ * in a preallocated array of FileEntry structures. It supports parsing specific
+ * flags (e.g., `F_HIDDEN`, `C_COUNT`, `L_TARGET`) and handles various file types,
+ * such as directories and symbolic links. Errors related to parsing or invalid
+ * data are logged, but the function continues processing subsequent lines.
  *
- * The parsed information includes the file's path, size, type, and additional metadata such
- * as whether it is a directory, its children count (if applicable), and whether it is hidden.
- * Duplicate directories are handled by replacing earlier entries with the new one.
+ * The function stops reading when the fixed number of entries (`fixed_count`)
+ * is reached or when the file ends.
  *
- * The function performs robust error checking for parsing issues and ensures proper memory
- * management. If any error occurs (e.g., file access, memory allocation failure), the program
- * terminates with an error message. Malformed lines in the file are skipped with a warning.
- *
- * @param filename     The name of the file to read from. The file must be accessible and
- *                     formatted correctly.
- * @param entries      A double pointer to a `FileEntry` array. The function allocates memory
- *                     to this pointer, and the caller is responsible for freeing it afterward.
- *                     If this pointer already contains allocated memory, it will be freed
- *                     before reallocating.
- * @param fixed_count  The maximum number of entries to read. This defines the size of the
- *                     allocated array.
- * @param count        Pointer to an integer where the number of successfully read entries will
- *                     be stored.
+ * @param filename      The path to the file containing file and directory entries in
+ *                      a predefined format.
+ * @param entries       A pointer to the dynamically allocated array of FileEntry structures.
+ *                      This array is preallocated with a fixed size (`fixed_count`) to store
+ *                      the entries parsed from the file.
+ * @param fixed_count   The maximum number of FileEntry structures to process and store
+ *                      in the `entries` array.
+ * @param count         A pointer to an integer that stores the number of successfully added
+ *                      entries in the `entries` array.
  */
 void read_entries(const char *filename, FileEntry **entries, const size_t fixed_count, int *count) {
     *count = 0;
@@ -908,28 +903,19 @@ void read_entries(const char *filename, FileEntry **entries, const size_t fixed_
 }
 
 /**
- * Writes detailed information about a collection of file entries to a specified file.
+ * Writes the information of a file or directory collection into a specified file in a formatted manner.
  *
- * This function iterates over an array of `FileEntry` structures and writes information
- * for each entry to the provided file. The output includes the file's path, size, type,
- * and additional metadata.
+ * The function iterates over an array of FileEntry structures and writes their attributes to a given
+ * file. Each entry's path, size, and type are written. Additional metadata, such as the number of child
+ * entries for directories, symbolic link targets, or a hidden file flag, is appended where applicable.
+ * Hidden files are identified based on their names starting with a period (`.`). The file is created
+ * or opened with the specified mode and closed upon completion.
  *
- * If the entry represents a directory, the number of its children is appended to the output.
- * Entries that are hidden (i.e., filenames starting with a '.') are explicitly flagged in the output.
- *
- * The output format follows this structure: `path|size|type[|C_COUNT|childrenCount][|F_HIDDEN]\n`.
- * Each entry is written as a single line in the output file. If the file cannot be opened,
- * an error message is printed, and the function terminates early.
- *
- * The user must ensure that the provided filename and file mode are valid for the intended operation.
- *
- * @param entries  Pointer to an array of `FileEntry` structures containing details of each file.
- *                 Each entry must include valid data for `path`, `size`, `type`, and directory status.
- * @param count    The number of file entries in the array. This specifies how many entries to process.
- * @param filename The name of the file to which the information will be written. This file will
- *                 be created or modified according to the specified mode.
- * @param mode     The file access mode (e.g., "w" for write, "a" for append). The mode must be a
- *                 valid format recognized by `fopen`.
+ * @param entries   A pointer to an array of FileEntry structures containing file and directory data to
+ *                  be written to the file.
+ * @param count     The number of entries in the `entries` array to be processed.
+ * @param filename  The path to the file where the information will be written.
+ * @param mode      The mode in which the file will be opened (e.g., "w" for write, "a" for append).
  */
 void printToFile(FileEntry *entries, const int count, const char *filename, const char *mode) {
     FILE *outputFile = fopen(filename, mode);

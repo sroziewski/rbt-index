@@ -42,7 +42,7 @@ int main(const int argc, char *argv[]) {
         exit(EXIT_SUCCESS);
     }
     if (all) {
-        createRbt(argc, argv, insert_name, "rbt_name_");
+        // createRbt(argc, argv, insert_name, "rbt_name_");
         createRbt(argc, argv, insert_size, "rbt_size_");
         createRbt(argc, argv, insert_path, "rbt_path_");
     } else {

@@ -11,9 +11,9 @@ DEFINE_COMPARATOR_BY_FIELD(name, strcmp)
  * @return Returns EXIT_SUCCESS to indicate successful program termination.
  */
 int main(const int argc, char *argv[]) {
-    const char *prefix = "shared_memory_fname_";
+    const char *prefix = "rbt_name_";
 
-    createRbt(argc, argv, insert_filename, prefix);
+    createRbt(argc, argv, insert_name, prefix);
 
     return EXIT_SUCCESS;
 }

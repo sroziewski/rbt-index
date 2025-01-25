@@ -18,11 +18,11 @@ typedef enum { RED, BLACK } NodeColor;
 
 // File information structure
 typedef struct FileInfo {
-    char *name;
+    char name[LINK_LENGTH];
     size_t size;
-    char *path;
-    char *type;
-    char *linkTarget;
+    char path[MAX_LINE_LENGTH];
+    char type[MAX_TYPE_LENGTH];
+    char linkTarget[LINK_LENGTH];
     size_t childrenCount;
     bool isHidden;
     bool isDir;
@@ -95,11 +95,11 @@ Node *createNode(FileInfo key, NodeColor color, Node *parent);
 
 void freeTree(Node *node);
 
-void freeFileInfo(const FileInfo *fileInfo);
+void freeFileInfo(FileInfo *fileInfo);
 
 Node *deserialize_node(char *buffer, size_t *currentOffset);
 
-void free_node(Node *node);
+void freeNode(Node *node);
 
 void search_tree_for_size_and_type(Node *root, size_t targetSize, const char *targetType);
 
@@ -166,7 +166,7 @@ int remove_shared_memory_object_by_name(const char *sharedMemoryName);
 
 void remove_trailing_newline(char *str);
 
-FileInfo parseFileData(const char *inputLine);
+void parseFileData(const char *inputLine, FileInfo *result);
 
 char *add_rbt_extension(const char *filename);
 

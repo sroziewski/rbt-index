@@ -172,7 +172,7 @@ int main(int argc, char *argv[]) {
     close(shm_fd);
 
     // Free deserialized nodes
-    free_node(root);
+    freeNode(root);
 
     // Optionally remove the shared memory
     if (shouldClose) {

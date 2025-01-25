@@ -11,9 +11,9 @@ DEFINE_NUMERIC_COMPARATOR(size)
  *         Returns EXIT_SUCCESS on successful execution.
  */
 int main(const int argc, char *argv[]) {
-    const char *prefix = "shared_memory_fsize_";
+    const char *prefix = "rbt_size_";
 
-    createRbt(argc, argv, insert_filesize, prefix);
+    createRbt(argc, argv, insert_size, prefix);
 
     return EXIT_SUCCESS;
 }

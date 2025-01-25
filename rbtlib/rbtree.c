@@ -21,9 +21,8 @@ char *get_filename_from_path(const char *path) {
 
 
 // File parsing into FileInfo
-FileInfo parseFileData(const char *inputLine) {
+void parseFileData(const char *inputLine, FileInfo *result) {
     char *lineCopy = strdup(inputLine);
-    FileInfo result = {0};
 
     if (!lineCopy) {
         perror("Failed to duplicate the input line");
@@ -37,21 +36,15 @@ FileInfo parseFileData(const char *inputLine) {
     }
 
     if (strstr(lineCopy, "F_HIDDEN") != NULL) {
-        result.isHidden = true;
+        result->isHidden = true;
     }
     char *token = strtok(lineCopy, SEP);
 
-    result.path = malloc(strlen(token) + 1);  // +1 for the null terminator
-    if (result.path == NULL) {
-        perror("Failed to allocate memory");
-        exit(EXIT_FAILURE);
-    }
-    strncpy(result.path, token, strlen(token) + 1);  // Copy the full string, including the null character
-    result.path[strlen(token)] = '\0';
-    result.name = get_filename_from_path(result.path);
+    strcpy(result->path, token);
+    strcpy(result->name, get_filename_from_path(result->path));
     token = strtok(NULL, SEP);
     char *endptr;
-    result.size = strtol(token, &endptr, 10);
+    result->size = strtol(token, &endptr, 10);
     if (*endptr != '\0') {
         fprintf(stderr, "Invalid numeric format for size in line: %s\n", lineCopy);
         exit(EXIT_FAILURE);
@@ -62,141 +55,47 @@ FileInfo parseFileData(const char *inputLine) {
         fprintf(stderr, "Error parsing type in line: %s\n", lineCopy);
         exit(EXIT_FAILURE);
     }
-    result.type = malloc(strlen(token) + 1);  // +1 for the null terminator
-    if (result.type == NULL) {
-        perror("Failed to allocate memory");
-        exit(EXIT_FAILURE);
-    }
-    strncpy(result.type, token, strlen(token) + 1);
-    result.type[strlen(token)] = '\0';
+    strcpy(result->type, token);
 
-    if (strcmp(result.type, "T_LINK_FILE") == 0) {
-        result.isLink = 1;
+    if (strcmp(result->type, "T_LINK_FILE") == 0) {
+        result->isLink = 1;
         token = strtok(NULL, SEP);
         if (strncmp(token, "L_TARGET", 9) == 0) {
             if (token != NULL) {
-                result.linkTarget = malloc(strlen(token) + 1);  // +1 for the null terminator
-                if (result.linkTarget == NULL) {
-                    perror("Failed to allocate memory");
-                    exit(EXIT_FAILURE);
-                }
-                token = strtok(NULL, SEP);
-                strncpy(result.linkTarget, token, strlen(token) + 1);
-                result.linkTarget[strlen(token)] = '\0';
+                strcpy(result->linkTarget, token);
             } else {
-                fprintf(stderr, "Missing target path after L_TARGET: %s\n", result.type);
+                fprintf(stderr, "Missing target path after L_TARGET: %s\n", result->type);
             }
         }
     }
     // Check if the entry is a directory and process extra flags
-    if (strcmp(result.type, "T_DIR") == 0 || strcmp(result.type, "T_LINK_DIR") == 0) {
-        if (strcmp(result.type, "T_DIR") == 0) {
-            result.isDir = true;
-        } else if (strcmp(result.type, "T_LINK_DIR") == 0) {
-            result.isLink = 2;
+    if (strcmp(result->type, "T_DIR") == 0 || strcmp(result->type, "T_LINK_DIR") == 0) {
+        if (strcmp(result->type, "T_DIR") == 0) {
+            result->isDir = true;
+        } else if (strcmp(result->type, "T_LINK_DIR") == 0) {
+            result->isLink = 2;
         }
         // Look for additional flags (e.g., C_COUNT and F_HIDDEN)
         token = strtok(NULL, SEP);
         while (token) {
             if (strncmp(token, "C_COUNT", 8) == 0) {
                 token = strtok(NULL, SEP);
-                result.childrenCount = strtol(token, &endptr, 10);
+                result->childrenCount = strtol(token, &endptr, 10);
                 if (*endptr != '\0') {
                     fprintf(stderr, "Invalid numeric format in C_COUNT: %s\n", token);
                 }
-            }
-            else if (strncmp(token, "L_TARGET", 9) == 0) {
+            } else if (strncmp(token, "L_TARGET", 9) == 0) {
                 token = strtok(NULL, ""); // Get the rest of the string after "L_TARGET"
                 if (token != NULL) {
-                    result.linkTarget = malloc(strlen(token) + 1);  // +1 for the null terminator
-                    if (result.linkTarget == NULL) {
-                        perror("Failed to allocate memory");
-                        exit(EXIT_FAILURE);
-                    }
-                    strncpy(result.linkTarget, token, strlen(token) + 1);
-                    result.linkTarget[strlen(token)] = '\0';
+                    strcpy(result->linkTarget, token);
                 } else {
-                    fprintf(stderr, "Missing target path after L_TARGET: %s\n", result.path);
+                    fprintf(stderr, "Missing target path after L_TARGET: %s\n", result->path);
                 }
             }
             token = strtok(NULL, SEP);
-            int k =1;
+            int k = 1;
         }
-
-        /*const char *start = lineCopy;
-
-        // Extract filepath
-        char *sepPos = strstr(start, SEP);
-        if (sepPos) {
-            *sepPos = '\0';
-            result.path = strdup(start);
-            result.name = get_filename_from_path(start);
-            start = sepPos + strlen(SEP);
-        }
-
-        // Extract filesize
-        sepPos = strstr(start, SEP);
-        if (sepPos) {
-            *sepPos = '\0';
-            result.size = strtoul(start, NULL, 10);
-            start = sepPos + strlen(SEP);
-        }
-
-        // Extract filetype
-        sepPos = strstr(start, SEP);
-        if (sepPos) {
-            *sepPos = '\0';
-            result.type = strdup(start);
-            if (strcmp(result.type, "T_DIR") == 0) {
-                result.isDir = true;
-            }
-            if (strcmp(result.type, "T_LINK_FILE") == 0) {
-                result.isLink = 1;
-            }
-            if (strcmp(result.type, "T_LINK_DIR") == 0) {
-                result.isLink = 2;
-            }
-            start = sepPos + strlen(SEP);
-        }
-        if (result.isDir || result.isLink == 2) {
-            sepPos = strstr(start, SEP);
-            if (sepPos) {
-                *sepPos = '\0';
-                start = sepPos + strlen(SEP);
-                result.childrenCount = strtoul(start, NULL, 10);
-                sepPos = strstr(start, SEP);
-                if (sepPos) {
-                    *sepPos = '\0';
-                    start = sepPos + strlen(SEP);
-                    sepPos = strstr(start, SEP);
-                    if (sepPos) {
-                        *sepPos = '\0';
-                        start = sepPos + strlen(SEP);
-                        result.linkTarget = strdup(start);
-                        sepPos = strstr(start, SEP);
-                    }
-                }
-            }
-        }
-        if (result.isLink == 1) {
-            if (sepPos) {
-                *sepPos = '\0';
-                start = sepPos + strlen(SEP);
-                sepPos = strstr(start, SEP);
-                if (sepPos) {
-                    *sepPos = '\0';
-                    start = sepPos + strlen(SEP);
-                    result.linkTarget = strdup(start);
-                    sepPos = strstr(start, SEP);
-                }
-            }
-        }
-        if (*start) {
-            // result.filetype = strdup(start);
-        }*/
-
         free(lineCopy);
-        return result;
     }
 }
 
@@ -215,20 +114,16 @@ Node *createNode(const FileInfo key, const NodeColor color, Node *parent) {
 }
 
 // Free FileInfo
-void freeFileInfo(const FileInfo *fileInfo) {
-    free(fileInfo->name);
-    free(fileInfo->path);
-    free(fileInfo->type);
+void freeFileInfo(FileInfo *fileInfo) {
+    free(fileInfo);
 }
 
 // Free Tree
 void freeTree(Node *node) {
     if (!node) return;
-
     freeTree(node->left);
     freeTree(node->right);
     freeFileInfo(&node->key);
-    free(node);
 }
 
 void insert(Node **root, const FileInfo key, int (*comparator)(const FileInfo *, const FileInfo *)) {
@@ -249,7 +144,8 @@ void insert(Node **root, const FileInfo key, int (*comparator)(const FileInfo *,
 
     while (x != NULL) {
         y = x;
-        if (comparator(&n->key, &x->key) < 0) // Use comparator to determine order
+        // if (strcmp(n->key.path, y->key.path) < 0) // Use comparator to determine order
+        if (n->key.size < y->key.size ) // Use comparator to determine order
             x = x->left;
         else
             x = x->right;
@@ -258,7 +154,8 @@ void insert(Node **root, const FileInfo key, int (*comparator)(const FileInfo *,
     n->parent = y;
     if (y == NULL) {
         *root = n; // Tree was empty
-    } else if (strcmp(n->key.name, y->key.name) < 0) {
+    } else if (n->key.size < y->key.size ) {
+    // } else if (strcmp(n->key.path, y->key.path) < 0) {
         y->left = n;
     } else {
         y->right = n;
@@ -345,25 +242,42 @@ size_t deserialize_file_info(FileInfo *fileInfo, const char *buffer) {
     size_t offset = 0;
     size_t length;
 
+    // Deserialize name
     memcpy(&length, buffer + offset, sizeof(size_t));
     offset += sizeof(size_t);
-    fileInfo->name = (char *) malloc(length);
+
+    // Ensure the name fits into the static array
+    if (length > sizeof(fileInfo->name)) {
+        length = sizeof(fileInfo->name) - 1; // Reserve space for the null terminator
+    }
     memcpy(fileInfo->name, buffer + offset, length);
+    fileInfo->name[length] = '\0'; // Ensure null-terminated
     offset += length;
 
+    // Deserialize size
     memcpy(&fileInfo->size, buffer + offset, sizeof(size_t));
     offset += sizeof(size_t);
 
+    // Deserialize path
     memcpy(&length, buffer + offset, sizeof(size_t));
     offset += sizeof(size_t);
-    fileInfo->path = (char *) malloc(length);
+
+    if (length > sizeof(fileInfo->path)) {
+        length = sizeof(fileInfo->path) - 1; // Reserve space for the null terminator
+    }
     memcpy(fileInfo->path, buffer + offset, length);
+    fileInfo->path[length] = '\0'; // Ensure null-terminated
     offset += length;
 
+    // Deserialize type
     memcpy(&length, buffer + offset, sizeof(size_t));
     offset += sizeof(size_t);
-    fileInfo->type = (char *) malloc(length);
+
+    if (length > sizeof(fileInfo->type)) {
+        length = sizeof(fileInfo->type) - 1; // Reserve space for the null terminator
+    }
     memcpy(fileInfo->type, buffer + offset, length);
+    fileInfo->type[length] = '\0'; // Ensure null-terminated
     offset += length;
 
     return offset;
@@ -802,14 +716,11 @@ Node *deserialize_node(char *buffer, size_t *currentOffset) {
 }
 
 // Recursive function to free allocated nodes
-void free_node(Node *node) {
+void freeNode(Node *node) {
     if (node == NULL) return;
-    free_node(node->left);
-    free_node(node->right);
+    freeNode(node->left);
+    freeNode(node->right);
     free(node->key.name);
-    free(node->key.path);
-    free(node->key.type);
-    free(node);
 }
 
 // Function to search and print files with a given size and type
@@ -960,7 +871,7 @@ void createRbt(const int argc, char *argv[], void (*insertFunc)(Node **, FileInf
     for (size_t i = 0; i < numLines; i++) {
         FileInfo key = {0};
         if (lines != NULL && lines[i] != NULL) {
-            key = parseFileData(lines[i]);
+            parseFileData(lines[i], &key);
         } else {
             fprintf(stderr, "Error: lines[%ld] is NULL\n", i);
             continue;
