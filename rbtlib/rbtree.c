@@ -833,11 +833,6 @@ void createRbt(const int argc, char *argv[], void (*insertFunc)(Node **, FileInf
         perror("Error opening file");
         return;
     }
-    char **rootDirectories = NULL;
-
-    int rootCount = 0;
-    check_input_files(filenames, &rootDirectories, &rootCount);
-
     char **lines = NULL;
     size_t numLines = 0;
     char buffer[8 * MAX_LINE_LENGTH];

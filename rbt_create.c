@@ -1,4 +1,5 @@
 #include "rbtlib/rbtree.h"
+#include "shared/shared.h"
 
 DEFINE_COMPARATOR_BY_FIELD(name, strcmp)
 DEFINE_COMPARATOR_BY_FIELD(path, strcmp)
@@ -41,6 +42,20 @@ int main(const int argc, char *argv[]) {
         listSharedMemoryEntities(prefix);
         exit(EXIT_SUCCESS);
     }
+    char **filenames = malloc(2 * sizeof(char *)); // For 2 elements: argv[2] and NULL
+    char **rootDirectories = NULL;
+
+    if (!filenames) {
+        perror("Failed to allocate memory");
+        exit(EXIT_FAILURE);
+    }
+    char *filename = argv[2];
+    filenames[0] = filename;
+    filenames[1] = NULL;
+
+    int rootCount = 0;
+    check_input_files(filenames, &rootDirectories, &rootCount);
+
     if (all) {
         createRbt(argc, argv, insert_name, "rbt_name_");
         createRbt(argc, argv, insert_size, "rbt_size_");
