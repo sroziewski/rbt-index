@@ -144,8 +144,7 @@ void insert(Node **root, const FileInfo key, int (*comparator)(const FileInfo *,
 
     while (x != NULL) {
         y = x;
-        // if (strcmp(n->key.path, y->key.path) < 0) // Use comparator to determine order
-        if (n->key.size < y->key.size ) // Use comparator to determine order
+        if (comparator(&n->key, &x->key) < 0) // Use comparator to determine order
             x = x->left;
         else
             x = x->right;
@@ -154,8 +153,7 @@ void insert(Node **root, const FileInfo key, int (*comparator)(const FileInfo *,
     n->parent = y;
     if (y == NULL) {
         *root = n; // Tree was empty
-    } else if (n->key.size < y->key.size ) {
-    // } else if (strcmp(n->key.path, y->key.path) < 0) {
+    } else if (comparator(&n->key, &y->key) < 0) {
         y->left = n;
     } else {
         y->right = n;
