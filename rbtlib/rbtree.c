@@ -400,9 +400,9 @@ long long calc_tree_size(const Node *node) {
 void inorder(const Node *node) {
     if (node != NULL) {
         inorder(node->left);
-        printf("Filename: %s, Size: %zu bytes, Path: %s, Type: %s\n",
+        printf("Filename: %s, Size: %zu bytes, Path: %s, Type: %s, Hash: %s\n",
                node->key.name, node->key.size, node->key.path,
-               node->key.type);
+               node->key.type, node->key.hash);
         inorder(node->right);
     }
 }
