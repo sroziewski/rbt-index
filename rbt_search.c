@@ -8,107 +8,21 @@
 #include <regex.h>
 #include <unistd.h>
 #include "rbtlib/rbtree.h"
+#include "rbtlib/search.h"
 
-int MAX_THREADS = 1;
-
-// Global thread counter
-int active_threads = 0;
-pthread_mutex_t thread_counter_mutex = PTHREAD_MUTEX_INITIALIZER;
-
-// Struct for passing arguments to threads
-typedef struct SearchArgs {
-    Node *root;
-    const char *namePattern;
-    const char *targetType;
-} SearchArgs;
-
-// Function declarations
-void *search_tree_thread(void *args);
-void search_tree_for_name_and_type(Node *root, const char *namePattern, const char *targetType);
-void initialize_threads();
-
-void search_tree_for_name_and_type2(Node *root, const char *namePattern, const char *targetType) {
-    if (root == NULL) {
-        return;
-    }
-    // printf("Active threads: %d\n", active_threads);
-    // Compile the regular expression for the name pattern
-    regex_t regex;
-    const int ret = regcomp(&regex, namePattern, REG_EXTENDED | REG_NOSUB);
-    if (ret != 0) {
-        char errbuf[128];
-        regerror(ret, &regex, errbuf, sizeof(errbuf));
-        fprintf(stderr, "Regex compilation error: %s\n", errbuf);
-        return;
-    }
-
-    // Check if the current node matches the name regex and file type
-    if (regexec(&regex, root->key.name, 0, NULL, 0) == 0 && strcmp(root->key.type, targetType) == 0) {
-        printf("Found file: %s (Type: %s, Size: %zu, Path: %s)\n",
-               root->key.name, root->key.type, root->key.size, root->key.path);
-    }
-
-    // Free the regex memory after usage
-    regfree(&regex);
-
-    // Initiate thread creation or run sequentially if max threads are reached
-    pthread_t leftThread, rightThread;
-    SearchArgs leftArgs = { root->left, namePattern, targetType };
-    SearchArgs rightArgs = { root->right, namePattern, targetType };
-
-    int create_left_thread = 0, create_right_thread = 0;
-
-    // Check and increment the global thread counter
-    pthread_mutex_lock(&thread_counter_mutex);
-    if (active_threads < MAX_THREADS) {
-        active_threads++;
-        create_left_thread = 1;
-    }
-    if (active_threads < MAX_THREADS) {
-        active_threads++;
-        create_right_thread = 1;
-    }
-    pthread_mutex_unlock(&thread_counter_mutex);
-
-    // Create or execute the left subtree search
-    if (create_left_thread) {
-        pthread_create(&leftThread, NULL, search_tree_thread, &leftArgs);
-    } else {
-        search_tree_for_name_and_type2(root->left, namePattern, targetType);
-    }
-
-    // Create or execute the right subtree search
-    if (create_right_thread) {
-        pthread_create(&rightThread, NULL, search_tree_thread, &rightArgs);
-    } else {
-        search_tree_for_name_and_type2(root->right, namePattern, targetType);
-    }
-
-    // Join threads if they were created
-    if (create_left_thread) {
-        pthread_join(leftThread, NULL);
-        pthread_mutex_lock(&thread_counter_mutex);
-        active_threads--;
-        pthread_mutex_unlock(&thread_counter_mutex);
-    }
-    if (create_right_thread) {
-        pthread_join(rightThread, NULL);
-        pthread_mutex_lock(&thread_counter_mutex);
-        active_threads--;
-        pthread_mutex_unlock(&thread_counter_mutex);
-    }
-}
-
-void *search_tree_thread(void *args) {
-    const SearchArgs *searchArgs = (SearchArgs *)args;
-    search_tree_for_name_and_type2(searchArgs->root, searchArgs->namePattern, searchArgs->targetType);
-    return NULL;
-}
-
-int main(int argc, char *argv[]) {
+int main(const int argc, char *argv[]) {
     struct timespec start, end;
     initialize_threads();
-    const char *name = "shared_memory_fname_merged.lst.rbt.mem";
+    char *name;
+
+    // Parse command-line arguments
+    for (int i = 1; i < argc; i++) {
+        if (strcmp(argv[i], "-t") == 0 && i + 1 < argc) {
+            name = strdup(argv[i + 1]);
+            break;
+        }
+    }
+
     const size_t targetSize = 2340;  // Example size to search for
     const char *targetType = "T_FILM";  // Example file type to search for
 
@@ -154,7 +68,7 @@ int main(int argc, char *argv[]) {
     // Capture start time
     clock_gettime(CLOCK_MONOTONIC, &start);
     for (int i = 0; i < 1; ++i) {
-        search_tree_for_name_and_type2(root, targetName, targetType);
+        search_tree_by_filename_and_type(root, targetName, targetType);
         // Print progress every 100 iterations
         if (i % 100 == 0) {
             printf("Completed %d iterations...\n", i);
@@ -184,17 +98,4 @@ int main(int argc, char *argv[]) {
     }
 
     return 0;
-}
-
-void initialize_threads() {
-    const long cores = sysconf(_SC_NPROCESSORS_ONLN); // Get the number of cores
-    if (cores <= 0) {
-        perror("Failed to determine the number of processors");
-        MAX_THREADS = 1;  // Fallback to a single thread if detection fails
-    } else if (cores >= 14) {
-        MAX_THREADS = 14; // Limit to 16 threads if 16 or more cores are available
-    } else {
-        MAX_THREADS = 6;  // Otherwise, use up to 8 threads
-    }
-    printf("Number of cores available: %ld, MAX_THREADS set to: %d\n", cores, MAX_THREADS);
 }

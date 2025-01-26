@@ -1,6 +1,6 @@
 # Compiler and flags
 CC = gcc
-CFLAGS = -Wextra -g -lmagic -fopenmp -pedantic
+CFLAGS = -Wextra -g -lmagic -fopenmp -pedantic -lcrypto -lssl
 
 # Target executables
 TARGET = rbt_name_create
@@ -25,7 +25,7 @@ RBT_TREE = rbtree.o $(SHARED_DIR)/shared.o
 RBT_SIZE_OBJS = rbt_size_create.o $(RBTLIB_DIR)/rbtree.o $(SHARED_DIR)/shared.o
 RBT_CREATE_OBJS = rbt_create.o $(RBTLIB_DIR)/rbtree.o $(SHARED_DIR)/shared.o
 LIST_FILES_OBJ = list_files.o $(FLIB_DIR)/lfiles.o $(SHARED_DIR)/shared.o
-RBT_SEARCH_OBJS = rbt_search.o $(RBTLIB_DIR)/rbtree.o $(SHARED_DIR)/shared.o
+RBT_SEARCH_OBJS = rbt_search.o $(RBTLIB_DIR)/rbtree.o $(SHARED_DIR)/shared.o $(RBTLIB_DIR)/search.o
 # Default target (build all executables)
 all: $(TARGET) $(LIST_FILES_TARGET) $(RBT_SEARCH_TARGET) $(RBT_SIZE_TARGET) $(RBT_TARGET)
 

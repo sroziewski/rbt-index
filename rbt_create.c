@@ -3,6 +3,7 @@
 
 DEFINE_COMPARATOR_BY_FIELD(name, strcmp)
 DEFINE_COMPARATOR_BY_FIELD(path, strcmp)
+DEFINE_COMPARATOR_BY_FIELD(hash, strcmp)
 DEFINE_NUMERIC_COMPARATOR(size)
 
 /**
@@ -22,7 +23,7 @@ DEFINE_NUMERIC_COMPARATOR(size)
  */
 int main(const int argc, char *argv[]) {
     if (argc < 2) {
-        fprintf(stderr, "Usage: --name, --size or --path <filename.lst>\n");
+        fprintf(stderr, "Usage: --name, --size, --path, --all or --hash <filename.lst>\n");
         return EXIT_FAILURE;
     }
 
@@ -40,7 +41,12 @@ int main(const int argc, char *argv[]) {
     } else if (strcmp(argv[1], "--path") == 0) {
         prefix = "rbt_path_";
         insert_fn = insert_path;
-    } else if (strcmp(argv[1], "--all") == 0) {
+    }
+    else if (strcmp(argv[1], "--hash") == 0) {
+        prefix = "rbt_hash_";
+        insert_fn = insert_path;
+    }
+    else if (strcmp(argv[1], "--all") == 0) {
         all = true;
     } else if (strcmp(argv[1], "--load") == 0) {
         skipCheck = true;
@@ -71,6 +77,7 @@ int main(const int argc, char *argv[]) {
         createRbt(argc, argv, insert_name, "rbt_name_");
         createRbt(argc, argv, insert_size, "rbt_size_");
         createRbt(argc, argv, insert_path, "rbt_path_");
+        createRbt(argc, argv, insert_hash, "rbt_hash_");
     } else {
         createRbt(argc, argv, insert_fn, prefix);
     }

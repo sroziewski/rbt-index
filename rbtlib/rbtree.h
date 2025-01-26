@@ -11,6 +11,11 @@
 #include <unistd.h>
 #include <regex.h>
 #include <dirent.h>
+#include <openssl/evp.h>
+#include <wchar.h>
+#include <wctype.h>
+#include <locale.h>
+
 #include "../shared/lconsts.h"
 
 // Enum to represent node colors
@@ -23,6 +28,7 @@ typedef struct FileInfo {
     char path[MAX_LINE_LENGTH];
     char type[MAX_TYPE_LENGTH];
     char linkTarget[LINK_LENGTH];
+    char hash[33];
     size_t childrenCount;
     bool isHidden;
     bool isDir;
@@ -177,5 +183,15 @@ void listSharedMemoryEntities(const char *prefix);
 void createRbt(const int argc, char *argv[], void (*insertFunc)(Node **, FileInfo), const char *prefix);
 
 long long getSharedMemorySize(const char *sharedMemoryName);
+
+void compute_md5(const char *input, char *output);
+
+void to_lowercase(const wchar_t *input, wchar_t *output);
+
+void concatenate_strings(const FileInfo *result, char *out);
+
+void convert_char_to_wchar(const char *input, wchar_t *output, size_t output_size);
+
+void convert_wchar_to_char(const wchar_t *input, char *output, size_t output_size);
 
 #endif // RBTREE_H

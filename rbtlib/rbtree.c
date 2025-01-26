@@ -1,5 +1,6 @@
 #include "rbtree.h"
 
+#include <openssl/md5.h>
 #include <sys/time.h>
 
 #include "../shared/shared.h"
@@ -91,8 +92,14 @@ void parseFileData(const char *inputLine, FileInfo *result) {
                 }
             }
             token = strtok(NULL, SEP);
-            int k = 1;
         }
+        char hash[33];
+        char hash_input[LINK_LENGTH];
+        concatenate_strings(result, hash_input);
+        compute_md5(hash_input, hash);
+        memcpy(result->hash, hash, 32);
+        result->hash[32] = '\0';
+
         free(lineCopy);
     }
 }
@@ -888,8 +895,6 @@ void createRbt(const int argc, char *argv[], void (*insertFunc)(Node **, FileInf
         if (key.name && key.path && key.type) {
             insertFunc(&finalRoot, key); // Use the provided insertion function
             totalProcessedCount++;
-        } else {
-            int k = 11;
         }
     }
     // Display the processed files in sorted Red-Black Tree order
@@ -945,4 +950,96 @@ long long getSharedMemorySize(const char *sharedMemoryName) {
 
     // Return the size of the shared memory object
     return shm_stat.st_size;
+}
+
+void compute_md5(const char *input, char *output) {
+    EVP_MD_CTX *mdctx = EVP_MD_CTX_new();
+
+    if (mdctx == NULL) {
+        fprintf(stderr, "Failed to create MD context\n");
+        return;
+    }
+
+    if (EVP_DigestInit_ex(mdctx, EVP_md5(), NULL) != 1) {
+        fprintf(stderr, "Failed to initialize digest\n");
+        EVP_MD_CTX_free(mdctx);
+        return;
+    }
+
+    if (EVP_DigestUpdate(mdctx, input, strlen(input)) != 1) {
+        fprintf(stderr, "Failed to update digest\n");
+        EVP_MD_CTX_free(mdctx);
+        return;
+    }
+
+    unsigned char md5_hash[16]; // 16 bytes = 128 bits
+    unsigned int hash_length;
+    if (EVP_DigestFinal_ex(mdctx, md5_hash, &hash_length) != 1) {
+        fprintf(stderr, "Failed to finalize digest\n");
+        EVP_MD_CTX_free(mdctx);
+        return;
+    }
+    // Convert binary hash to hexadecimal
+    for (int i = 0; i < 16; i++) {
+        sprintf(output + (i * 2), "%02x", md5_hash[i]);
+    }
+    // Null-terminate
+    output[32] = '\0';
+
+    EVP_MD_CTX_free(mdctx);
+}
+
+void to_lowercase(const wchar_t *input, wchar_t *output) {
+    for (size_t i = 0; input[i] != L'\0'; i++) {
+        switch (input[i]) {
+            case L'Ż': output[i] = L'ż';
+                break;
+            case L'Ź': output[i] = L'ź';
+                break;
+            case L'Ł': output[i] = L'ł';
+                break;
+            case L'Ć': output[i] = L'ć';
+                break;
+            // Add more cases as needed
+            default: output[i] = (wchar_t) towlower(input[i]);
+                break;
+        }
+    }
+    output[wcslen(input)] = L'\0'; // Null-terminate wide string
+}
+
+void concatenate_strings(const FileInfo *result, char *out) {
+    wchar_t lower_name[LINK_LENGTH]; // Buffer to hold the lowercase version of result->name
+    wchar_t wide_string[LINK_LENGTH]; // Make sure this buffer is large enough
+    convert_char_to_wchar(result->name, wide_string, strlen(result->name) + 1);
+    to_lowercase(wide_string, lower_name);
+    char narrow_string_lower_name[sizeof(lower_name)];
+    convert_wchar_to_char(lower_name, narrow_string_lower_name, sizeof(lower_name));
+    snprintf(out, LINK_LENGTH, "%s%zu", narrow_string_lower_name, result->size);
+}
+
+void convert_char_to_wchar(const char *input, wchar_t *output, const size_t output_size) {
+    // Set the locale to ensure proper interpretation of input encoding
+    setlocale(LC_ALL, "");
+
+    const size_t result = mbstowcs(output, input, output_size);
+    if (result == (size_t)-1) {
+        wprintf(L"Error: Conversion failed.\n");
+        output[0] = L'\0'; // Null-terminate in case of failure
+    } else {
+        output[output_size - 1] = L'\0';
+    }
+}
+
+void convert_wchar_to_char(const wchar_t *input, char *output, const size_t output_size) {
+    // Set the locale to ensure proper interpretation of wide characters
+    setlocale(LC_ALL, "");
+
+    const size_t result = wcstombs(output, input, output_size);
+    if (result == (size_t)-1) {
+        printf("Error: Conversion failed.\n");
+        output[0] = '\0'; // Null-terminate in case of failure
+    } else {
+        output[output_size - 1] = '\0'; // Ensure the output string is null-terminated
+    }
 }

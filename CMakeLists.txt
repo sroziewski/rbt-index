@@ -29,6 +29,14 @@ else()
     message(STATUS "Found libmagic library: ${MAGIC_LIB}")
 endif()
 
+# Find OpenSSL library
+find_package(OpenSSL REQUIRED)
+if(OpenSSL_FOUND)
+    include_directories(${OPENSSL_INCLUDE_DIR})     # Include OpenSSL headers
+else()
+    message(FATAL_ERROR "OpenSSL not found! Ensure libssl-dev (or equivalent) is installed.")
+endif()
+
 # Add your source files for list_files
 add_executable(list_files
         list_files.c  # Your main entry point for list_files
@@ -37,8 +45,8 @@ add_executable(list_files
         # File containing the implementation for list_files
 )
 
-# Link libraries: libmagic and OpenMP for list_files
-target_link_libraries(list_files PRIVATE ${MAGIC_LIB} OpenMP::OpenMP_C)
+# Link libraries: libmagic, OpenMP, and OpenSSL (libcrypto) for list_files
+target_link_libraries(list_files PRIVATE ${MAGIC_LIB} OpenMP::OpenMP_C OpenSSL::Crypto)
 
 # Add arguments to the list_files executable for IDEs/debugging (optional)
 set_target_properties(list_files PROPERTIES
@@ -52,11 +60,28 @@ add_executable(rbt_create
         shared/shared.c
 )
 
+# Link libraries: OpenSSL for rbt_create
+target_link_libraries(rbt_create PRIVATE OpenSSL::Crypto)
+
+# Add another executable: rbt_search
+add_executable(rbt_search
+        rbt_search.c
+        rbtlib/rbtree.c
+        shared/shared.c
+        rbtlib/search.c
+)
+
+# Link libraries: OpenSSL for rbt_search
+target_link_libraries(rbt_search PRIVATE OpenSSL::Crypto)
+
 # Add another executable: rbt_name_create
 add_executable(rbt_name_create
         rbt_name_create.c
         rbtlib/rbtree.c  # Your main entry point for rbt_name_create
 )
+
+# Link libraries: OpenSSL for rbt_name_create
+target_link_libraries(rbt_name_create PRIVATE OpenSSL::Crypto)
 
 # Add arguments to the rbt_name_create executable for IDEs/debugging (optional)
 set_target_properties(rbt_name_create PROPERTIES
@@ -66,16 +91,13 @@ set_target_properties(rbt_name_create PROPERTIES
 # Add another executable: rbt_size_create
 add_executable(rbt_size_create
         rbt_size_create.c
-        rbtlib/rbtree.c  # Your main entry point for rbt_name_create
+        rbtlib/rbtree.c  # Your main entry point for rbt_size_create
 )
 
-# Add arguments to the rbt_name_create executable for IDEs/debugging (optional)
+# Link libraries: OpenSSL for rbt_size_create
+target_link_libraries(rbt_size_create PRIVATE OpenSSL::Crypto)
+
+# Add arguments to the rbt_size_create executable for IDEs/debugging (optional)
 set_target_properties(rbt_size_create PROPERTIES
         VS_DEBUGGER_COMMAND_ARGUMENTS "/home/simon/playground/playground.list"
-)
-
-# Add another executable: rbt_search
-add_executable(rbt_search
-        rbt_search.c
-        rbtlib/rbtree.c  # Your main entry point for rbt_search
 )
