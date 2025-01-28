@@ -1009,14 +1009,41 @@ void to_lowercase(const wchar_t *input, wchar_t *output) {
 }
 
 void concatenate_strings(const FileInfo *result, char *out) {
-    wchar_t lower_name[LINK_LENGTH]; // Buffer to hold the lowercase version of result->name
-    wchar_t wide_string[LINK_LENGTH]; // Make sure this buffer is large enough
-    convert_char_to_wchar(result->name, wide_string, strlen(result->name) + 1);
+    wchar_t lower_name[LINK_LENGTH]; // Buffer for lowercase wide version of result->name
+    wchar_t wide_string[LINK_LENGTH]; // Buffer to hold wide string of result->name
+
+    // Convert result->name to a wide string
+    const size_t len = strlen(result->name);
+    if (len + 1 > LINK_LENGTH) { // Ensure result->name fits in the buffer
+        fprintf(stderr, "Error: input string too long");
+        out[0] = '\0'; // Output empty string and return early
+        return;
+    }
+    convert_char_to_wchar(result->name, wide_string, len + 1);
+
+    // Convert wide string to lowercase and store it in lower_name
     to_lowercase(wide_string, lower_name);
-    char narrow_string_lower_name[sizeof(lower_name)];
-    convert_wchar_to_char(lower_name, narrow_string_lower_name, sizeof(lower_name));
-    snprintf(out, LINK_LENGTH, "%s%zu", narrow_string_lower_name, result->size);
+
+    // Convert the lowercase wide string back to a narrow string
+    char narrow_string_lower_name[LINK_LENGTH];
+    const size_t lower_name_len = wcslen(lower_name);
+    if (lower_name_len + 1 > LINK_LENGTH) { // Ensure it fits in the buffer
+        fprintf(stderr, "Error: lowercased wide string too long");
+        out[0] = '\0'; // Output empty string and return early
+        return;
+    }
+    convert_wchar_to_char(lower_name, narrow_string_lower_name, LINK_LENGTH);
+
+    // Safely concatenate and truncate if necessary
+    const size_t out_len = snprintf(out, LINK_LENGTH, "%s%zu", narrow_string_lower_name, result->size);
+
+    // Check if truncation has occurred
+    if (out_len >= LINK_LENGTH) {
+        fprintf(stderr, "Warning: output string was truncated\n");
+        out[LINK_LENGTH - 1] = '\0'; // Null-terminate string
+    }
 }
+
 
 void convert_char_to_wchar(const char *input, wchar_t *output, const size_t output_size) {
     // Set the locale to ensure proper interpretation of input encoding

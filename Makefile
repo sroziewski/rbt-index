@@ -1,73 +1,64 @@
 # Compiler and flags
 CC = gcc
-CFLAGS = -Wextra -g -lmagic -fopenmp -pedantic -lcrypto -lssl
+CFLAGS = -Wextra -g -fopenmp -pedantic
+LDFLAGS_RBT_CREATE = -lcrypto -lssl  # Linker flags for OpenSSL (only for rbt_create)
+LDFLAGS_LIST_FILES = -lmagic  # Linker flags for list_files (libmagic)
 
 # Target executables
-TARGET = rbt_name_create
 RBT_TARGET = rbt_create
-RBT_SIZE_TARGET = rbt_size_create
 LIST_FILES_TARGET = list_files
 RBT_SEARCH_TARGET = rbt_search
 
+# Directories
 RBTLIB_DIR = rbtlib
 FLIB_DIR = flib
 SHARED_DIR = shared
 
-# Source files
-#SRCS = rbt_name_create.c $(RBTLIB_DIR)/rbtree.c $(SHARED_DIR)/shared.c
-#RBT_SIZE_SRCS = rbt_size_create.c $(RBTLIB_DIR)/rbtree.c $(SHARED_DIR)/shared.c
-#LIST_FILES_SRCS = list_files.c $(FLIB_DIR)/lfiles.c  $(SHARED_DIR)/shared.c
-#RBT_SEARCH_SRCS = rbt_search.c $(RBTLIB_DIR)/rbtree.c $(SHARED_DIR)/shared.c
-
 # Object files
-OBJS = rbt_name_create.o $(RBTLIB_DIR)/rbtree.o $(SHARED_DIR)/shared.o
-RBT_TREE = rbtree.o $(SHARED_DIR)/shared.o
-RBT_SIZE_OBJS = rbt_size_create.o $(RBTLIB_DIR)/rbtree.o $(SHARED_DIR)/shared.o
+RBT_TREE = $(RBTLIB_DIR)/rbtree.o $(SHARED_DIR)/shared.o
 RBT_CREATE_OBJS = rbt_create.o $(RBTLIB_DIR)/rbtree.o $(SHARED_DIR)/shared.o
 LIST_FILES_OBJ = list_files.o $(FLIB_DIR)/lfiles.o $(SHARED_DIR)/shared.o
 RBT_SEARCH_OBJS = rbt_search.o $(RBTLIB_DIR)/rbtree.o $(SHARED_DIR)/shared.o $(RBTLIB_DIR)/search.o
+
 # Default target (build all executables)
-all: $(TARGET) $(LIST_FILES_TARGET) $(RBT_SEARCH_TARGET) $(RBT_SIZE_TARGET) $(RBT_TARGET)
+all: $(RBT_TARGET) $(LIST_FILES_TARGET) $(RBT_SEARCH_TARGET)
 
-# Rule to build the main target
-$(TARGET): $(OBJS)
-	$(CC) $(CFLAGS) -o $@ $^
-
+# Rule to build the 'rbt_create' target
 $(RBT_TARGET): $(RBT_CREATE_OBJS)
-	$(CC) $(CFLAGS) -o $@ $^
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS_RBT_CREATE)
 
-$(RBT_SIZE_TARGET): $(RBT_SIZE_OBJS)
-	$(CC) $(CFLAGS) -o $@ $^
+# Rule to build the 'list_files' target
+$(LIST_FILES_TARGET): $(LIST_FILES_OBJ)
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS_LIST_FILES)
 
+# Rule to build the 'rbt_search' target
+$(RBT_SEARCH_TARGET): $(RBT_SEARCH_OBJS)
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS_RBT_CREATE)
+
+# Rules to build shared object files
 $(SHARED_DIR)/shared.o: $(SHARED_DIR)/shared.c
 	$(CC) $(CFLAGS) -c -o $@ $<
 
+# Rules to build rbtlib object files
 $(RBTLIB_DIR)/rbtree.o: $(RBTLIB_DIR)/rbtree.c $(SHARED_DIR)/shared.c
+	$(CC) $(CFLAGS) -c -o $@ $< $(LDFLAGS_RBT_CREATE)
+
+$(FLIB_DIR)/lfiles.o: $(FLIB_DIR)/lfiles.c $(SHARED_DIR)/shared.c
 	$(CC) $(CFLAGS) -c -o $@ $<
 
-# Rule for list_files.o in flib directory
-$(FLIB_DIR)/list_files.o: $(FLIB_DIR)/lfiles.c $(SHARED_DIR)/shared.c
-	$(CC) $(CFLAGS) -c -o $@ $<
-
-# Rule to build the list_files target
-$(LIST_FILES_TARGET): $(LIST_FILES_OBJ)
-	$(CC) $(CFLAGS) -o $@ $^ $(CFLAGS)
-
-$(RBT_SEARCH_TARGET): $(RBT_SEARCH_OBJS)
-	$(CC) $(CFLAGS) -o $@ $^
 # Rule to build object files for list_files
 list_files.o: list_files.c
-	$(CC) $(CFLAGS) -c $<
+	$(CC) $(CFLAGS) -c -o $@ $<
 
-# Run the program with specific arguments
-run_load: $(TARGET)
-	./$(TARGET) --load /home/simon/playground/test.out.abc.rbt
+# Run the `rbt_name_create` program with specific arguments
+run_load: $(RBT_TARGET)
+	./$(RBT_TARGET) --load /home/simon/playground/test.out.abc.rbt
 
-run_save: $(TARGET)
-	./$(TARGET) /home/simon/playground/test.out.abc --save
+run_save: $(RBT_TARGET)
+	./$(RBT_TARGET) /home/simon/playground/test.out.abc --save
 
-run_save_mem: $(TARGET)
-	./$(TARGET) /home/simon/playground/test.out.abc
+run_save_mem: $(RBT_TARGET)
+	./$(RBT_TARGET) /home/simon/playground/test.out.abc
 
 # Optional run target for list_files
 run_list_files: $(LIST_FILES_TARGET)
@@ -75,4 +66,4 @@ run_list_files: $(LIST_FILES_TARGET)
 
 # Clean up build files
 clean:
-	rm -f $(OBJS) $(LIST_FILES_OBJ) $(TARGET) $(LIST_FILES_TARGET) $(RBT_SEARCH_OBJS) $(RBT_SEARCH_TARGET)
+	rm -f $(LIST_FILES_OBJ) $(RBT_TARGET) $(LIST_FILES_TARGET) $(RBT_SEARCH_TARGET) $(RBT_SEARCH_OBJS)
