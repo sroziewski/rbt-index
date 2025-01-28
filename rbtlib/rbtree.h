@@ -172,7 +172,7 @@ int remove_shared_memory_object_by_name(const char *sharedMemoryName);
 
 void remove_trailing_newline(char *str);
 
-void parseFileData(const char *inputLine, FileInfo *result);
+void parseFileData(const char *inputLine, FileInfo *result, EVP_MD_CTX *ctx);
 
 char *add_rbt_extension(const char *filename);
 
@@ -193,5 +193,7 @@ void concatenate_strings(const FileInfo *result, char *out);
 void convert_char_to_wchar(const char *input, wchar_t *output, size_t output_size);
 
 void convert_wchar_to_char(const wchar_t *input, char *output, size_t output_size);
+
+void sha256_first_64bits_to_hex(const char *input, char *output_hex, EVP_MD_CTX *ctx);
 
 #endif // RBTREE_H

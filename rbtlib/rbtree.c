@@ -1,6 +1,6 @@
 #include "rbtree.h"
 
-#include <openssl/md5.h>
+#include <openssl/sha.h>
 #include <sys/time.h>
 
 #include "../shared/shared.h"
@@ -19,9 +19,18 @@ char *get_filename_from_path(const char *path) {
     const char *slash = strrchr(path, '/'); // Find the last '/' in the path
     return slash ? strdup(slash + 1) : strdup(path); // Duplicate the file name
 }
+void compute_and_store_hash(FileInfo *result, EVP_MD_CTX *ctx) {
+    char hash[17];
+    char hash_input[LINK_LENGTH];
+
+    concatenate_strings(result, hash_input);
+    sha256_first_64bits_to_hex(hash_input, hash, ctx);
+
+    memcpy(result->hash, hash, 17);
+}
 
 // File parsing into FileInfo
-void parseFileData(const char *inputLine, FileInfo *result) {
+void parseFileData(const char *inputLine, FileInfo *result, EVP_MD_CTX *ctx) {
     char *lineCopy = strdup(inputLine);
 
     if (!lineCopy) {
@@ -93,15 +102,10 @@ void parseFileData(const char *inputLine, FileInfo *result) {
             }
             token = strtok(NULL, SEP);
         }
-        char hash[33];
-        char hash_input[LINK_LENGTH];
-        concatenate_strings(result, hash_input);
-        compute_md5(hash_input, hash);
-        memcpy(result->hash, hash, 32);
-        result->hash[32] = '\0';
-
-        free(lineCopy);
     }
+    compute_and_store_hash(result, ctx);
+
+    free(lineCopy);
 }
 
 // Tree Node Allocation
@@ -882,11 +886,17 @@ void createRbt(const int argc, char *argv[], void (*insertFunc)(Node **, FileInf
 
     int totalProcessedCount = 0;
 
+    EVP_MD_CTX *ctx = EVP_MD_CTX_new();
+    if (ctx == NULL) {
+        fprintf(stderr, "Error: Unable to create hashing context\n");
+        exit(EXIT_FAILURE);
+    }
+
     // Processing the lines to insert into the Red-Black Tree
     for (size_t i = 0; i < numLines; i++) {
         FileInfo key = {0};
         if (lines != NULL && lines[i] != NULL) {
-            parseFileData(lines[i], &key);
+            parseFileData(lines[i], &key, ctx);
         } else {
             fprintf(stderr, "Error: lines[%ld] is NULL\n", i);
             continue;
@@ -927,6 +937,8 @@ void createRbt(const int argc, char *argv[], void (*insertFunc)(Node **, FileInf
     print_elapsed_time(NULL, elapsed, stdout, "RBT creation");
     // Free the tree if it was created or loaded
     freeTree(finalRoot);
+    free(filenames);
+    EVP_MD_CTX_free(ctx);
 }
 
 long long getSharedMemorySize(const char *sharedMemoryName) {
@@ -952,41 +964,20 @@ long long getSharedMemorySize(const char *sharedMemoryName) {
     return shm_stat.st_size;
 }
 
-void compute_md5(const char *input, char *output) {
+EVP_MD_CTX *initialize_evp_context() {
     EVP_MD_CTX *mdctx = EVP_MD_CTX_new();
-
     if (mdctx == NULL) {
-        fprintf(stderr, "Failed to create MD context\n");
-        return;
+        fprintf(stderr, "Failed to create SHA256 context\n");
+        return NULL;
     }
 
-    if (EVP_DigestInit_ex(mdctx, EVP_md5(), NULL) != 1) {
-        fprintf(stderr, "Failed to initialize digest\n");
+    if (EVP_DigestInit_ex(mdctx, EVP_sha256(), NULL) != 1) {
+        fprintf(stderr, "Failed to initialize SHA256 digest\n");
         EVP_MD_CTX_free(mdctx);
-        return;
+        return NULL;
     }
 
-    if (EVP_DigestUpdate(mdctx, input, strlen(input)) != 1) {
-        fprintf(stderr, "Failed to update digest\n");
-        EVP_MD_CTX_free(mdctx);
-        return;
-    }
-
-    unsigned char md5_hash[16]; // 16 bytes = 128 bits
-    unsigned int hash_length;
-    if (EVP_DigestFinal_ex(mdctx, md5_hash, &hash_length) != 1) {
-        fprintf(stderr, "Failed to finalize digest\n");
-        EVP_MD_CTX_free(mdctx);
-        return;
-    }
-    // Convert binary hash to hexadecimal
-    for (int i = 0; i < 16; i++) {
-        sprintf(output + (i * 2), "%02x", md5_hash[i]);
-    }
-    // Null-terminate
-    output[32] = '\0';
-
-    EVP_MD_CTX_free(mdctx);
+    return mdctx;
 }
 
 void to_lowercase(const wchar_t *input, wchar_t *output) {
@@ -1014,7 +1005,8 @@ void concatenate_strings(const FileInfo *result, char *out) {
 
     // Convert result->name to a wide string
     const size_t len = strlen(result->name);
-    if (len + 1 > LINK_LENGTH) { // Ensure result->name fits in the buffer
+    if (len + 1 > LINK_LENGTH) {
+        // Ensure result->name fits in the buffer
         fprintf(stderr, "Error: input string too long");
         out[0] = '\0'; // Output empty string and return early
         return;
@@ -1027,7 +1019,8 @@ void concatenate_strings(const FileInfo *result, char *out) {
     // Convert the lowercase wide string back to a narrow string
     char narrow_string_lower_name[LINK_LENGTH];
     const size_t lower_name_len = wcslen(lower_name);
-    if (lower_name_len + 1 > LINK_LENGTH) { // Ensure it fits in the buffer
+    if (lower_name_len + 1 > LINK_LENGTH) {
+        // Ensure it fits in the buffer
         fprintf(stderr, "Error: lowercased wide string too long");
         out[0] = '\0'; // Output empty string and return early
         return;
@@ -1050,7 +1043,7 @@ void convert_char_to_wchar(const char *input, wchar_t *output, const size_t outp
     setlocale(LC_ALL, "");
 
     const size_t result = mbstowcs(output, input, output_size);
-    if (result == (size_t)-1) {
+    if (result == (size_t) -1) {
         wprintf(L"Error: Conversion failed.\n");
         output[0] = L'\0'; // Null-terminate in case of failure
     } else {
@@ -1063,10 +1056,31 @@ void convert_wchar_to_char(const wchar_t *input, char *output, const size_t outp
     setlocale(LC_ALL, "");
 
     const size_t result = wcstombs(output, input, output_size);
-    if (result == (size_t)-1) {
+    if (result == (size_t) -1) {
         printf("Error: Conversion failed.\n");
         output[0] = '\0'; // Null-terminate in case of failure
     } else {
         output[output_size - 1] = '\0'; // Ensure the output string is null-terminated
     }
+}
+
+
+void sha256_first_64bits_to_hex(const char *input, char *output_hex, EVP_MD_CTX *ctx) {
+    unsigned char hash[SHA256_DIGEST_LENGTH];
+    if (EVP_DigestInit_ex(ctx, EVP_sha256(), NULL) != 1) {
+        fprintf(stderr, "Error: Unable to reinitialize context for SHA-256\n");
+        return;
+    }
+    if (EVP_DigestUpdate(ctx, input, strlen(input)) != 1) {
+        fprintf(stderr, "Error: Unable to update hash with input\n");
+        return;
+    }
+    if (EVP_DigestFinal_ex(ctx, hash, NULL) != 1) {
+        fprintf(stderr, "Error: Unable to finalize hash\n");
+        return;
+    }
+    for (int i = 0; i < 8; i++) {
+        sprintf(output_hex + (i * 2), "%02x", hash[i]);
+    }
+    output_hex[16] = '\0'; // Null-terminate the string
 }
