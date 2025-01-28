@@ -44,7 +44,7 @@ int main(const int argc, char *argv[]) {
     }
     else if (strcmp(argv[1], "--hash") == 0) {
         prefix = "rbt_hash_";
-        insert_fn = insert_path;
+        insert_fn = insert_hash;
     }
     else if (strcmp(argv[1], "--all") == 0) {
         all = true;
