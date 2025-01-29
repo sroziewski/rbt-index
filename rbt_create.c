@@ -8,15 +8,6 @@ DEFINE_NUMERIC_COMPARATOR(size)
 
 #define USAGE_MSG "Usage: --name, --size, --path, --all, --hash <filename.lst>, or --list <filename.lst>\n"
 
-typedef struct {
-    const char *prefix;
-
-    void (*insert_fn)(Node **root, FileInfo key);
-
-    bool all;
-    bool skipCheck;
-} Config;
-
 void print_usage_and_exit() {
     fprintf(stderr, "%s", USAGE_MSG);
     exit(EXIT_FAILURE);
@@ -28,9 +19,8 @@ void print_usage_and_exit() {
  * @param argc Number of command-line arguments.
  * @param argv Pointer to argument strings.
  * @param config Output configuration structure populated based on parsed arguments.
- * @return Filename argument if applicable, otherwise NULL.
  */
-const char *parse_arguments(const int argc, char *argv[], Config *config) {
+void *parse_arguments(const int argc, char *argv[], Config *config) {
     if (argc < 2) {
         print_usage_and_exit();
     }
@@ -38,9 +28,11 @@ const char *parse_arguments(const int argc, char *argv[], Config *config) {
     const char *filename = NULL;
     config->all = false;
     config->skipCheck = false;
+    config->save = false; // Initialize the "save" field to false
     config->insert_fn = NULL;
     config->prefix = NULL;
 
+    // Handle operation flags
     if (strcmp(argv[1], "--name") == 0) {
         config->prefix = "rbt_name_";
         config->insert_fn = insert_name;
@@ -63,10 +55,14 @@ const char *parse_arguments(const int argc, char *argv[], Config *config) {
     } else {
         print_usage_and_exit();
     }
-
-    filename = argv[2];
-
-    return filename;
+    if (argc >= 3) {
+        config->filename = strdup(argv[2]);
+    } else {
+        print_usage_and_exit();
+    }
+    if (argc == 4 && strcmp(argv[3], "--save") == 0) {
+        config->save = true;
+    }
 }
 
 /**
@@ -107,17 +103,18 @@ void handle_input_file_checks(const char *filename) {
  */
 int main(const int argc, char *argv[]) {
     Config config;
-    const char *filename = parse_arguments(argc, argv, &config);
+    parse_arguments(argc, argv, &config);
 
-    handle_input_file_checks(filename);
-
+    if (config.filename) {
+        handle_input_file_checks(config.filename);
+    }
     if (config.all) {
-        createRbt(argc, argv, insert_name, "rbt_name_");
-        createRbt(argc, argv, insert_size, "rbt_size_");
-        createRbt(argc, argv, insert_path, "rbt_path_");
-        createRbt(argc, argv, insert_hash, "rbt_hash_");
+        createRbt(argc, argv, insert_name, "rbt_name_", config);
+        createRbt(argc, argv, insert_size, "rbt_size_", config);
+        createRbt(argc, argv, insert_path, "rbt_path_", config);
+        createRbt(argc, argv, insert_hash, "rbt_hash_", config);
     } else {
-        createRbt(argc, argv, config.insert_fn, config.prefix);
+        createRbt(argc, argv, config.insert_fn, config.prefix, config);
     }
 
     return EXIT_SUCCESS;

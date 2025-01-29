@@ -42,6 +42,15 @@ typedef struct Node {
     struct Node *left, *right, *parent;
 } Node;
 
+typedef struct {
+    const char *prefix;
+    void (*insert_fn)(Node **root, FileInfo key);
+    bool all;
+    bool skipCheck;
+    bool save;
+    const char *filename;
+} Config;
+
 #define EXTENSION_RBT ".rbt"
 #define EXTENSION_MEM ".mem"
 
@@ -180,7 +189,7 @@ char *get_filename_from_path(const char *path);
 
 void listSharedMemoryEntities(const char *prefix);
 
-void createRbt(const int argc, char *argv[], void (*insertFunc)(Node **, FileInfo), const char *prefix);
+void createRbt(const int argc, char *argv[], void (*insertFunc)(Node **, FileInfo), const char *prefix, Config config);
 
 long long getSharedMemorySize(const char *sharedMemoryName);
 
@@ -188,12 +197,14 @@ void compute_md5(const char *input, char *output);
 
 void to_lowercase(const wchar_t *input, wchar_t *output);
 
-void concatenate_strings(const FileInfo *result, char *out);
+void concatenate_name_and_size(const FileInfo *result, char *out);
 
 void convert_char_to_wchar(const char *input, wchar_t *output, size_t output_size);
 
 void convert_wchar_to_char(const wchar_t *input, char *output, size_t output_size);
 
 void sha256_first_64bits_to_hex(const char *input, char *output_hex, EVP_MD_CTX *ctx);
+
+void concatenate_strings(const char *string1, const char *string2, char *output);
 
 #endif // RBTREE_H

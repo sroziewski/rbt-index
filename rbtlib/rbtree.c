@@ -23,7 +23,7 @@ void compute_and_store_hash(FileInfo *result, EVP_MD_CTX *ctx) {
     char hash[17];
     char hash_input[LINK_LENGTH];
 
-    concatenate_strings(result, hash_input);
+    concatenate_name_and_size(result, hash_input);
     sha256_first_64bits_to_hex(hash_input, hash, ctx);
 
     memcpy(result->hash, hash, 17);
@@ -809,7 +809,7 @@ void listSharedMemoryEntities(const char *prefix) {
  *                   This function should modify the tree structure based on the provided data.
  * @param prefix A prefix string used for naming or identifying shared memory objects in specific operations.
  */
-void createRbt(const int argc, char *argv[], void (*insertFunc)(Node **, FileInfo), const char *prefix) {
+void createRbt(const int argc, char *argv[], void (*insertFunc)(Node **, FileInfo), const char *prefix, Config config) {
     if (argc < 2) {
         fprintf(
             stderr,
@@ -923,9 +923,11 @@ void createRbt(const int argc, char *argv[], void (*insertFunc)(Node **, FileInf
     free(lines);
 
     // Handle saving to file or shared memory
-    if (argc == 4 && strcmp(argv[3], "--save") == 0) {
-        // TODO
-        char *storeFilename = add_rbt_extension(argv[2]); // Append `.rbt` to the filename
+    if (config.save) {
+        size_t bufferSize = strlen(prefix) + strlen(config.filename) + 1;
+        char tmpFileName[bufferSize];
+        concatenate_strings(prefix, get_filename_from_path(config.filename), tmpFileName);
+        char *storeFilename = add_rbt_extension(tmpFileName); // Append `.rbt` to the filename
         write_tree_to_file(finalRoot, storeFilename);
         free(storeFilename);
     } else {
@@ -999,7 +1001,7 @@ void to_lowercase(const wchar_t *input, wchar_t *output) {
     output[wcslen(input)] = L'\0'; // Null-terminate wide string
 }
 
-void concatenate_strings(const FileInfo *result, char *out) {
+void concatenate_name_and_size(const FileInfo *result, char *out) {
     wchar_t lower_name[LINK_LENGTH]; // Buffer for lowercase wide version of result->name
     wchar_t wide_string[LINK_LENGTH]; // Buffer to hold wide string of result->name
 
@@ -1083,4 +1085,14 @@ void sha256_first_64bits_to_hex(const char *input, char *output_hex, EVP_MD_CTX 
         sprintf(output_hex + (i * 2), "%02x", hash[i]);
     }
     output_hex[16] = '\0'; // Null-terminate the string
+}
+
+void concatenate_strings(const char *string1, const char *string2, char *output) {
+    // Ensure the input and output strings are valid
+    if (string1 == NULL || string2 == NULL || output == NULL) {
+        fprintf(stderr, "Invalid input to concatenate_strings\n");
+        return;
+    }
+    strcpy(output, string1);
+    strcat(output, string2);
 }
