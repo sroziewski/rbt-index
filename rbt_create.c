@@ -6,80 +6,118 @@ DEFINE_COMPARATOR_BY_FIELD(path, strcmp)
 DEFINE_COMPARATOR_BY_FIELD(hash, strcmp)
 DEFINE_NUMERIC_COMPARATOR(size)
 
+#define USAGE_MSG "Usage: --name, --size, --path, --all, --hash <filename.lst>, or --list <filename.lst>\n"
+
+typedef struct {
+    const char *prefix;
+
+    void (*insert_fn)(Node **root, FileInfo key);
+
+    bool all;
+    bool skipCheck;
+} Config;
+
+void print_usage_and_exit() {
+    fprintf(stderr, "%s", USAGE_MSG);
+    exit(EXIT_FAILURE);
+}
+
 /**
- * Main entry point for the program. Processes the command-line arguments to determine
- * the operation type (e.g., working with name, size, or path) and invokes the appropriate
- * functions to process input files, create red-black trees (RBT), or list shared memory
- * entities.
+ * Parses command-line arguments to set up the configuration.
  *
- * @param argc The number of arguments passed to the program.
- * @param argv The array of arguments passed to the program. The first argument specifies
- *             the operation type (--name, --size, --path, or --all), and subsequent
- *             arguments may include filenames or other related options.
- *
- * @return Returns EXIT_SUCCESS (0) if the program completes successfully or
- *         EXIT_FAILURE (1) if an error occurs, such as invalid arguments or memory
- *         allocation failure.
+ * @param argc Number of command-line arguments.
+ * @param argv Pointer to argument strings.
+ * @param config Output configuration structure populated based on parsed arguments.
+ * @return Filename argument if applicable, otherwise NULL.
  */
-int main(const int argc, char *argv[]) {
+const char *parse_arguments(const int argc, char *argv[], Config *config) {
     if (argc < 2) {
-        fprintf(stderr, "Usage: --name, --size, --path, --all or --hash <filename.lst>\n");
-        return EXIT_FAILURE;
+        print_usage_and_exit();
     }
 
-    bool all = false;
-    bool skipCheck = false;
-    const char *prefix = NULL;
-    void (*insert_fn)(Node **root, FileInfo key) = NULL;
+    const char *filename = NULL;
+    config->all = false;
+    config->skipCheck = false;
+    config->insert_fn = NULL;
+    config->prefix = NULL;
 
     if (strcmp(argv[1], "--name") == 0) {
-        prefix = "rbt_name_";
-        insert_fn = insert_name;
+        config->prefix = "rbt_name_";
+        config->insert_fn = insert_name;
     } else if (strcmp(argv[1], "--size") == 0) {
-        prefix = "rbt_size_";
-        insert_fn = insert_size;
+        config->prefix = "rbt_size_";
+        config->insert_fn = insert_size;
     } else if (strcmp(argv[1], "--path") == 0) {
-        prefix = "rbt_path_";
-        insert_fn = insert_path;
-    }
-    else if (strcmp(argv[1], "--hash") == 0) {
-        prefix = "rbt_hash_";
-        insert_fn = insert_hash;
-    }
-    else if (strcmp(argv[1], "--all") == 0) {
-        all = true;
+        config->prefix = "rbt_path_";
+        config->insert_fn = insert_path;
+    } else if (strcmp(argv[1], "--hash") == 0) {
+        config->prefix = "rbt_hash_";
+        config->insert_fn = insert_hash;
+    } else if (strcmp(argv[1], "--all") == 0) {
+        config->all = true;
     } else if (strcmp(argv[1], "--load") == 0) {
-        skipCheck = true;
-    } else {
-        fprintf(stderr, "Invalid argument. Use --name, --size or --path <filename.lst>.\n");
-        return EXIT_FAILURE;
-    }
-    if (argc == 3 && strcmp(argv[1], "--list") == 0) {
-        listSharedMemoryEntities(prefix);
+        config->skipCheck = true;
+    } else if (strcmp(argv[1], "--list") == 0 && argc == 3) {
+        listSharedMemoryEntities(argv[2]);
         exit(EXIT_SUCCESS);
+    } else {
+        print_usage_and_exit();
     }
-    if (!skipCheck) {
-        char **filenames = malloc(2 * sizeof(char *)); // For 2 elements: argv[2] and NULL
-        char **rootDirectories = NULL;
 
-        if (!filenames) {
-            perror("Failed to allocate memory");
-            exit(EXIT_FAILURE);
-        }
-        char *filename = argv[2];
-        filenames[0] = filename;
-        filenames[1] = NULL;
+    filename = argv[2];
 
-        int rootCount = 0;
-        check_input_files(filenames, &rootDirectories, &rootCount);
+    return filename;
+}
+
+/**
+ * Handles input file checks if skipCheck is false.
+ *
+ * @param filename The name of the input file (if provided).
+ */
+void handle_input_file_checks(const char *filename) {
+    if (!filename) {
+        fprintf(stderr, "Error: No filename provided for the operation.\n");
+        exit(EXIT_FAILURE);
     }
-    if (all) {
+
+    char **filenames = malloc(2 * sizeof(char *)); // For filename and NULL terminator
+    char **rootDirectories = NULL;
+
+    if (!filenames) {
+        perror("Failed to allocate memory for filenames");
+        exit(EXIT_FAILURE);
+    }
+
+    filenames[0] = (char *) filename;
+    filenames[1] = NULL;
+
+    int rootCount = 0;
+    check_input_files(filenames, &rootDirectories, &rootCount);
+
+    // Free allocated memory
+    free(filenames);
+    for (int i = 0; i < rootCount; ++i) {
+        free(rootDirectories[i]);
+    }
+    free(rootDirectories);
+}
+
+/**
+ * Main entry point for the program.
+ */
+int main(const int argc, char *argv[]) {
+    Config config;
+    const char *filename = parse_arguments(argc, argv, &config);
+
+    handle_input_file_checks(filename);
+
+    if (config.all) {
         createRbt(argc, argv, insert_name, "rbt_name_");
         createRbt(argc, argv, insert_size, "rbt_size_");
         createRbt(argc, argv, insert_path, "rbt_path_");
         createRbt(argc, argv, insert_hash, "rbt_hash_");
     } else {
-        createRbt(argc, argv, insert_fn, prefix);
+        createRbt(argc, argv, config.insert_fn, config.prefix);
     }
 
     return EXIT_SUCCESS;

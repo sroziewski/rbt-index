@@ -21,8 +21,8 @@
 const char *FILE_TYPES[] = {
     "T_DIR", "T_TEXT", "T_BINARY", "T_IMAGE", "T_JSON", "T_AUDIO", "T_FILM",
     "T_COMPRESSED", "T_YAML", "T_EXE", "T_C", "T_PYTHON", "T_JS",
-    "T_JAVA", "T_LOG", "T_PACKAGE", "T_CLASS", "T_TEMPLATE",
-    "T_PDF", "T_JAR", "T_HTML", "T_XML", "T_XHTML",
+    "T_JAVA", "T_LOG", "T_PACKAGE", "T_CLASS", "T_TEMPLATE", "T_PHP", "T_MATHEMATICA",
+    "T_PDF", "T_JAR", "T_HTML", "T_XML", "T_XHTML", "T_MATLAB", "T_FORTRAN", "T_SCIENCE",
     "T_TS", "T_DOC", "T_CALC", "T_LATEX", "T_SQL",
     "T_CSV", "T_CSS", "T_LINK_DIR", "T_LINK_FILE"
 };
@@ -30,7 +30,8 @@ const char *FILE_TYPES[] = {
 // Check if the file has the .json extension (case insensitive)
 int isJsonFile(const char *filePath) {
     const char *dot = strrchr(filePath, '.');
-    return dot && strcasecmp(dot, ".json") == 0;
+    return dot && strcasecmp(dot, ".json") == 0 || dot && strcasecmp(dot, ".jsonl") == 0
+    || dot && strcasecmp(dot, ".ndjson") == 0 || dot && strcasecmp(dot, ".geojson") == 0;
 }
 
 // Check if the file has the .yaml or .yml extension (case insensitive)
@@ -79,7 +80,7 @@ int isCFile(const char *filePath) {
 // Check if the file has a .py extension (case insensitive)
 int isPythonFile(const char *filePath) {
     const char *dot = strrchr(filePath, '.');
-    return dot && strcasecmp(dot, ".py") == 0;
+    return dot && strcasecmp(dot, ".py") == 0 || dot && strcasecmp(dot, ".pyw") == 0 || dot && strcasecmp(dot, ".pyc") == 0;
 }
 
 // Check if the file has a .java extension (case insensitive)
@@ -91,13 +92,20 @@ int isJavaFile(const char *filePath) {
 // Check if the file has a .java extension (case insensitive)
 int isCompressedFile(const char *filePath) {
     const char *dot = strrchr(filePath, '.');
-    return dot && strcasecmp(dot, ".7z") == 0 || dot && strcasecmp(dot, ".tbz") == 0 || dot && strcasecmp(dot, ".bz2")
-           == 0 || dot && strcasecmp(dot, ".tar") == 0 || dot && strcasecmp(dot, ".arj") == 0;
+    return dot && strcasecmp(dot, ".7z") == 0 || dot && strcasecmp(dot, ".tbz") == 0 ||
+           dot && strcasecmp(dot, ".bz2") == 0 || dot && strcasecmp(dot, ".tar") == 0 ||
+           dot && strcasecmp(dot, ".arj") == 0 || dot && strcasecmp(dot, ".rar") == 0 ||
+           dot && strcasecmp(dot, ".zip") == 0 || dot && strcasecmp(dot, ".gz") == 0 ||
+           dot && strcasecmp(dot, ".xz") == 0 || dot && strcasecmp(dot, ".tgz") == 0;
 }
 
 int isPackageFile(const char *filePath) {
     const char *dot = strrchr(filePath, '.');
-    return dot && strcasecmp(dot, ".deb") == 0 || dot && strcasecmp(dot, ".rpm") == 0;
+    return dot && strcasecmp(dot, ".deb") == 0 || dot && strcasecmp(dot, ".rpm") == 0 ||
+           dot && strcasecmp(dot, ".pkg") == 0 || dot && strcasecmp(dot, ".msi") == 0 ||
+           dot && strcasecmp(dot, ".apk") == 0 || dot && strcasecmp(dot, ".snap") == 0 ||
+           dot && strcasecmp(dot, ".flatpak") == 0 || dot && strcasecmp(dot, ".egg") == 0 ||
+           dot && strcasecmp(dot, ".pyz") == 0 || dot && strcasecmp(dot, ".whl") == 0;
 }
 
 int isLogFile(const char *filePath) {
@@ -117,12 +125,13 @@ int isTemplateFile(const char *filePath) {
 
 int isPdfFile(const char *filePath) {
     const char *dot = strrchr(filePath, '.');
-    return dot && strcasecmp(dot, ".pdf") == 0;
+    return dot && strcasecmp(dot, ".pdf") == 0 ||dot && strcasecmp(dot, ".eps") == 0;
 }
 
 int isJarFile(const char *filePath) {
     const char *dot = strrchr(filePath, '.');
-    return dot && strcasecmp(dot, ".jar") == 0;
+    return dot && strcasecmp(dot, ".jar") == 0 || dot && strcasecmp(dot, ".war") == 0 || dot && strcasecmp(dot, ".ear")
+           == 0;
 }
 
 int isHtmlFile(const char *filePath) {
@@ -181,6 +190,51 @@ int isCsvFile(const char *filePath) {
 int isCssFile(const char *filePath) {
     const char *dot = strrchr(filePath, '.');
     return dot && strcasecmp(dot, ".css") == 0 || dot && strcasecmp(dot, ".scss") == 0;
+}
+
+int isPhpFile(const char *filePath) {
+    const char *dot = strrchr(filePath, '.');
+    return dot && strcasecmp(dot, ".php") == 0 || dot && strcasecmp(dot, ".php3") == 0 || dot &&
+           strcasecmp(dot, ".php4") == 0 || dot && strcasecmp(dot, ".php5") == 0 || dot && strcasecmp(dot, ".php6") == 0
+           || dot && strcasecmp(dot, ".php7") == 0 || dot && strcasecmp(dot, ".php8") == 0 || dot && strcasecmp(
+               dot, ".phtml") == 0;
+}
+
+int isMathematicaFile(const char *filePath) {
+    const char *dot = strrchr(filePath, '.');
+    return dot && strcasecmp(dot, ".nb") == 0 || dot && strcasecmp(dot, ".wl") == 0 || dot && strcasecmp(dot, ".mt") ==
+           0;
+}
+
+int isMatlabFile(const char *filePath) {
+    const char *dot = strrchr(filePath, '.');
+    return dot && strcasecmp(dot, ".m") == 0 || dot && strcasecmp(dot, ".mat") == 0 || dot && strcasecmp(dot, ".mlx") ==
+           0 || dot && strcasecmp(dot, ".mex") == 0;
+}
+
+int isFortranFile(const char *filePath) {
+    const char *dot = strrchr(filePath, '.');
+    return dot && strcasecmp(dot, ".f") == 0 || dot && strcasecmp(dot, ".f90") == 0 || dot && strcasecmp(dot, ".f95") ==
+           0 || dot && strcasecmp(dot, ".for") == 0
+           || dot && strcasecmp(dot, ".f77") == 0 || dot && strcasecmp(dot, ".f03") == 0 || dot &&
+           strcasecmp(dot, ".f08") == 0 || dot && strcasecmp(dot, ".fpp") == 0 || dot && strcasecmp(dot, ".mod") == 0;
+}
+
+int isScienceFile(const char *filePath) {
+    const char *dot = strrchr(filePath, '.');
+    return dot && strcasecmp(dot, ".jnl") == 0 || dot && strcasecmp(dot, ".tif") == 0;
+}
+
+int isDataFile(const char *filePath) {
+    const char *dot = strrchr(filePath, '.');
+    return dot && strcasecmp(dot, ".nc") == 0 || dot && strcasecmp(dot, ".grd") == 0 ||
+           dot && strcasecmp(dot, ".hdf") == 0 || dot && strcasecmp(dot, ".cdf") == 0 ||
+           dot && strcasecmp(dot, ".ncdf") == 0 || dot && strcasecmp(dot, ".pkl") == 0 ||
+           dot && strcasecmp(dot, ".bin") == 0 || dot && strcasecmp(dot, ".h5") == 0 ||
+           dot && strcasecmp(dot, ".db") == 0 || dot && strcasecmp(dot, ".mdb") == 0 ||
+           dot && strcasecmp(dot, ".accdb") == 0 || dot && strcasecmp(dot, ".dat") == 0 ||
+           dot && strcasecmp(dot, ".shp") == 0 || dot && strcasecmp(dot, ".npy") == 0 ||
+           dot && strcasecmp(dot, ".npz") == 0 || dot && strcasecmp(dot, ".pb") == 0;
 }
 
 const char *getFileTypeCategory(const char *mimeType, const char *filePath) {
@@ -242,6 +296,21 @@ const char *getFileTypeCategory(const char *mimeType, const char *filePath) {
         }
         if (isCsvFile(filePath)) {
             return "T_CSV";
+        }
+        if (isScienceFile(filePath)) {
+            return "T_SCIENCE";
+        }
+        if (isFortranFile(filePath)) {
+            return "T_FORTRAN";
+        }
+        if (isMathematicaFile(filePath)) {
+            return "T_MATHEMATICA";
+        }
+        if (isMatlabFile(filePath)) {
+            return "T_MATLAB";
+        }
+        if (isPhpFile(filePath)) {
+            return "T_PHP";
         }
         return "T_TEXT";
     }
