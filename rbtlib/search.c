@@ -16,6 +16,38 @@ int MAX_THREADS = 1;
 int active_threads = 0;
 pthread_mutex_t thread_counter_mutex = PTHREAD_MUTEX_INITIALIZER;
 
+void node_array_init(NodeArray *array, const size_t initial_capacity) {
+    array->data = malloc(initial_capacity * sizeof(Node *));
+    if (!array->data) {
+        perror("Failed to allocate memory for NodeArray");
+        exit(EXIT_FAILURE);
+    }
+    array->size = 0;
+    array->capacity = initial_capacity;
+}
+
+// Free the memory used by the dynamic array
+void node_array_free(NodeArray *array) {
+    free(array->data);
+    array->data = NULL;
+    array->size = 0;
+    array->capacity = 0;
+}
+
+// Add a node to the dynamic array
+void node_array_add(NodeArray *array, Node *node) {
+    if (array->size == array->capacity) {
+        // Resize the array if it's full
+        array->capacity *= 2;
+        array->data = realloc(array->data, array->capacity * sizeof(Node *));
+        if (!array->data) {
+            perror("Failed to resize NodeArray");
+            exit(EXIT_FAILURE);
+        }
+    }
+    array->data[array->size++] = node;
+}
+
 Node *load_tree_from_shared_memory(const char *name) {
     // Open the shared memory object
     const int shm_fd = shm_open(name, O_RDONLY, 0666);
@@ -178,19 +210,18 @@ int matches_pattern(const char *str, const char *namePattern) {
     return match; // Return 1 if match, 0 otherwise
 }
 
-void search_tree_by_filename_and_type(Node *root, const char *namePattern, const char *targetType) {
+void search_tree_by_filename_and_type(Node *root, const char *namePattern, const char *targetType, NodeArray *results) {
     if (root == NULL) {
         return;
     }
     // Check if the current node matches the filename pattern and type
     if (matches_pattern(root->key.name, namePattern) && strcmp(root->key.type, targetType) == 0) {
-        printf("Found file: %s (Type: %s, Size: %zu, Path: %s)\n",
-               root->key.name, root->key.type, root->key.size, root->key.path);
+        node_array_add(results, root);
     }
     // Prepare threading arguments
     pthread_t leftThread, rightThread;
-    SearchArgs leftArgs = {root->left, namePattern, targetType};
-    SearchArgs rightArgs = {root->right, namePattern, targetType};
+    SearchArgs leftArgs = {root->left, namePattern, targetType, results};
+    SearchArgs rightArgs = {root->right, namePattern, targetType, results};
 
     int create_left_thread = 0, create_right_thread = 0;
 
@@ -210,14 +241,14 @@ void search_tree_by_filename_and_type(Node *root, const char *namePattern, const
     if (create_left_thread) {
         pthread_create(&leftThread, NULL, search_tree_thread, &leftArgs);
     } else {
-        search_tree_by_filename_and_type(root->left, namePattern, targetType);
+        search_tree_by_filename_and_type(root->left, namePattern, targetType, results);
     }
 
     // Create or execute the right subtree search
     if (create_right_thread) {
         pthread_create(&rightThread, NULL, search_tree_thread, &rightArgs);
     } else {
-        search_tree_by_filename_and_type(root->right, namePattern, targetType);
+        search_tree_by_filename_and_type(root->right, namePattern, targetType, results);
     }
 
     // Join threads if they were created
@@ -237,7 +268,7 @@ void search_tree_by_filename_and_type(Node *root, const char *namePattern, const
 
 void *search_tree_thread(void *args) {
     const SearchArgs *searchArgs = (SearchArgs *) (args);
-    search_tree_by_filename_and_type(searchArgs->root, searchArgs->namePattern, searchArgs->targetType);
+    search_tree_by_filename_and_type(searchArgs->root, searchArgs->namePattern, searchArgs->targetType, searchArgs->results);
     return NULL;
 }
 
