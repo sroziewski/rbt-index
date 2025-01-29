@@ -49,14 +49,16 @@ typedef struct FileStatistics {
     int jsonFiles, yamlFiles, exeFiles, templateFiles, pdfFiles, jarFiles, htmlFiles;
     int xhtmlFiles, xmlFiles, tsFiles, jsFiles, cFiles, pythonFiles, javaFiles;
     int packageFiles, logFiles, classFiles, docFiles, calcFiles, sqlFiles, csvFiles, cssFiles;
-    int hiddenFiles, hiddenDirs, links;
+    int hiddenFiles, hiddenDirs, links, phpFiles, mathematicaFiles, matlabFiles, fortranFiles;
+    int scienceFiles, dataFiles, presentationFiles, libFiles, objFiles, cppFiles;
 
     // File type sizes
     long long textSize, musicSize, filmSize, imageSize, binarySize, compressedSize, texSize;
     long long jsonSize, yamlSize, exeSize, classSize, templateSize, pdfSize, jarSize;
     long long docSize, calcSize, cSize, pythonSize, javaSize, packageSize, logSize;
     long long htmlSize, xmlSize, tsSize, jsSize, xhtmlSize, sqlSize, csvSize, cssSize;
-    long long hiddenFilesSize, hiddenDirsSize, linksSize;
+    long long hiddenFilesSize, hiddenDirsSize, linksSize, phpSize, mathematicaSize, matlabSize, fortranSize;
+    long long scienceSize, dataSize, presentationSize, libSize, objSize, cppSize;
 
 } FileStatistics;
 
@@ -69,6 +71,6 @@ typedef struct FileStatistics {
 // Declare the constant array as extern
 extern const char* FILE_TYPES[];
 // Define its size as a macro for array iteration
-#define FILE_TYPES_COUNT 37
+#define FILE_TYPES_COUNT 43
 
 #endif // FILE_TYPES_H

@@ -22,8 +22,8 @@ const char *FILE_TYPES[] = {
     "T_DIR", "T_TEXT", "T_BINARY", "T_IMAGE", "T_JSON", "T_AUDIO", "T_FILM",
     "T_COMPRESSED", "T_YAML", "T_EXE", "T_C", "T_PYTHON", "T_JS",
     "T_JAVA", "T_LOG", "T_PACKAGE", "T_CLASS", "T_TEMPLATE", "T_PHP", "T_MATHEMATICA",
-    "T_PDF", "T_JAR", "T_HTML", "T_XML", "T_XHTML", "T_MATLAB", "T_FORTRAN", "T_SCIENCE",
-    "T_TS", "T_DOC", "T_CALC", "T_LATEX", "T_SQL",
+    "T_PDF", "T_JAR", "T_HTML", "T_XML", "T_XHTML", "T_MATLAB", "T_FORTRAN", "T_SCIENCE", "T_CPP",
+    "T_TS", "T_DOC", "T_CALC", "T_LATEX", "T_SQL", "T_PRESENTATION", "T_DATA", "T_LIBRARY", "T_OBJECT",
     "T_CSV", "T_CSS", "T_LINK_DIR", "T_LINK_FILE"
 };
 
@@ -74,13 +74,22 @@ int isFilmFile(const char *filePath) {
 // Check if the file has a .c extension (case insensitive)
 int isCFile(const char *filePath) {
     const char *dot = strrchr(filePath, '.');
-    return dot && strcasecmp(dot, ".c") == 0;
+    return dot && strcasecmp(dot, ".c") == 0 || dot && strcasecmp(dot, ".h") == 0;
+}
+
+int isCppFile(const char *filePath) {
+    const char *dot = strrchr(filePath, '.');
+    return dot && strcasecmp(dot, ".cpp") == 0 || dot && strcasecmp(dot, ".hpp") == 0 ||
+           dot && strcasecmp(dot, ".cxx") == 0 || dot && strcasecmp(dot, ".cc") == 0 ||
+           dot && strcasecmp(dot, ".hh") == 0 || dot && strcasecmp(dot, ".hxx") == 0 ||
+           dot && strcasecmp(dot, ".tpp") == 0 || dot && strcasecmp(dot, ".inl") == 0;
 }
 
 // Check if the file has a .py extension (case insensitive)
 int isPythonFile(const char *filePath) {
     const char *dot = strrchr(filePath, '.');
-    return dot && strcasecmp(dot, ".py") == 0 || dot && strcasecmp(dot, ".pyw") == 0 || dot && strcasecmp(dot, ".pyc") == 0;
+    return dot && strcasecmp(dot, ".py") == 0 || dot && strcasecmp(dot, ".pyw") == 0 ||
+           dot && strcasecmp(dot, ".pyc") == 0 || dot && strcasecmp(dot, ".pyd") == 0;
 }
 
 // Check if the file has a .java extension (case insensitive)
@@ -166,8 +175,9 @@ int isTexFile(const char *filePath) {
 
 int isDocFile(const char *filePath) {
     const char *dot = strrchr(filePath, '.');
-    return dot && strcasecmp(dot, ".doc") == 0 || dot && strcasecmp(dot, ".rtf") == 0 || dot && strcasecmp(dot, ".docx")
-           == 0;
+    return dot && strcasecmp(dot, ".doc") == 0 || dot && strcasecmp(dot, ".rtf") == 0 ||
+           dot && strcasecmp(dot, ".docx") == 0 || dot && strcasecmp(dot, ".odt") == 0 ||
+           dot && strcasecmp(dot, ".pages") == 0;
 }
 
 int isSqlFile(const char *filePath) {
@@ -180,6 +190,12 @@ int isCalcFile(const char *filePath) {
     const char *dot = strrchr(filePath, '.');
     return dot && strcasecmp(dot, ".ods") == 0 || dot && strcasecmp(dot, ".xls") == 0 || dot && strcasecmp(dot, ".xlsx")
            == 0;
+}
+
+int isPresentationFile(const char *filePath) {
+    const char *dot = strrchr(filePath, '.');
+    return dot && strcasecmp(dot, ".ppt") == 0 || dot && strcasecmp(dot, ".pptx") == 0 ||
+        dot && strcasecmp(dot, ".odp") == 0 || dot && strcasecmp(dot, ".key") == 0;
 }
 
 int isCsvFile(const char *filePath) {
@@ -237,6 +253,23 @@ int isDataFile(const char *filePath) {
            dot && strcasecmp(dot, ".npz") == 0 || dot && strcasecmp(dot, ".pb") == 0;
 }
 
+int isLibFile(const char *filePath) {
+    const char *dot = strrchr(filePath, '.');
+    return dot && strcasecmp(dot, ".so") == 0 || dot && strcasecmp(dot, ".a") == 0 ||
+           dot && strcasecmp(dot, ".dll") == 0 || dot && strcasecmp(dot, ".lib") == 0 ||
+           dot && strcasecmp(dot, ".ocx") == 0 || dot && strcasecmp(dot, ".dylib") == 0 ||
+           dot && strcasecmp(dot, ".bundle") == 0 || dot && strcasecmp(dot, ".rlib") == 0 ||
+           dot && strcasecmp(dot, ".klib") == 0 || dot && strcasecmp(dot, ".mod") == 0 ||
+           dot && strcasecmp(dot, ".pak") == 0 || dot && strcasecmp(dot, ".framework") == 0;
+}
+
+int isObjectFile(const char *filePath) {
+    const char *dot = strrchr(filePath, '.');
+    return dot && strcasecmp(dot, ".o") == 0 || dot && strcasecmp(dot, ".obj") == 0 ||
+           dot && strcasecmp(dot, ".lo") == 0 || dot && strcasecmp(dot, ".ko") == 0 ||
+           dot && strcasecmp(dot, ".mex") == 0 || dot && strcasecmp(dot, ".aout") == 0;
+}
+
 const char *getFileTypeCategory(const char *mimeType, const char *filePath) {
     struct stat pathStat;
     if (stat(filePath, &pathStat) == 0 && S_ISDIR(pathStat.st_mode)) {
@@ -251,6 +284,9 @@ const char *getFileTypeCategory(const char *mimeType, const char *filePath) {
         }
         if (isCFile(filePath)) {
             return "T_C";
+        }
+        if (isCppFile(filePath)) {
+            return "T_CPP";
         }
         if (isPythonFile(filePath)) {
             return "T_PYTHON";
@@ -312,6 +348,9 @@ const char *getFileTypeCategory(const char *mimeType, const char *filePath) {
         if (isPhpFile(filePath)) {
             return "T_PHP";
         }
+        if (isDataFile(filePath)) {
+            return "T_DATA";
+        }
         return "T_TEXT";
     }
     if (strstr(mimeType, "image/") == mimeType || isImageFile(filePath)) {
@@ -355,6 +394,37 @@ const char *getFileTypeCategory(const char *mimeType, const char *filePath) {
     if (isJsonFile(filePath)) {
         return "T_JSON";
     }
+    if (isDataFile(filePath)) {
+        return "T_DATA";
+    }
+    if (isPresentationFile(filePath)) {
+        return "T_PRESENTATION";
+    }
+    if (isMathematicaFile(filePath)) {
+        return "T_MATHEMATICA";
+    }
+    if (isMatlabFile(filePath)) {
+        return "T_MATLAB";
+    }
+    if (isScienceFile(filePath)) {
+        return "T_SCIENCE";
+    }
+    if (isObjectFile(filePath)) {
+        return "T_OBJECT";
+    }
+    if (isLibFile(filePath)) {
+        return "T_LIBRARY";
+    }
+    if (isFortranFile(filePath)) {
+        return "T_FORTRAN";
+    }
+    if (isPhpFile(filePath)) {
+        return "T_PHP";
+    }
+    if (isCppFile(filePath)) {
+        return "T_PHP";
+    }
+
     return "T_BINARY";
 }
 
@@ -1924,6 +1994,8 @@ void printFileStatistics(const FileStatistics fileStats) {
     printSizeDetails("Packages", fileStats.packageFiles, fileStats.packageSize);
     printSizeDetails("Log", fileStats.logFiles, fileStats.logSize);
     printSizeDetails("Class", fileStats.classFiles, fileStats.classSize);
+    printSizeDetails("Object", fileStats.objFiles, fileStats.objSize);
+    printSizeDetails("Php", fileStats.phpFiles, fileStats.phpSize);
     printSizeDetails("Template", fileStats.templateFiles, fileStats.templateSize);
     printSizeDetails("Pdf", fileStats.pdfFiles, fileStats.pdfSize);
     printSizeDetails("Doc", fileStats.docFiles, fileStats.docSize);
@@ -1931,7 +2003,15 @@ void printFileStatistics(const FileStatistics fileStats) {
     printSizeDetails("Calc", fileStats.calcFiles, fileStats.calcSize);
     printSizeDetails("Jar", fileStats.jarFiles, fileStats.jarSize);
     printSizeDetails("C Source", fileStats.cFiles, fileStats.cSize);
+    printSizeDetails("Cpp Source", fileStats.cppFiles, fileStats.cppSize);
     printSizeDetails("EXE", fileStats.exeFiles, fileStats.exeSize);
+    printSizeDetails("Mathematica", fileStats.mathematicaFiles, fileStats.mathematicaSize);
+    printSizeDetails("Matlab", fileStats.matlabFiles, fileStats.matlabSize);
+    printSizeDetails("Fortran", fileStats.fortranFiles, fileStats.fortranSize);
+    printSizeDetails("Science", fileStats.scienceFiles, fileStats.scienceSize);
+    printSizeDetails("Data", fileStats.dataFiles, fileStats.dataSize);
+    printSizeDetails("Presentation", fileStats.presentationFiles, fileStats.presentationSize);
+    printSizeDetails("Library", fileStats.libFiles, fileStats.libSize);
 
     if (fileStats.links > 0) {
         printf("------------------------------------\n");
@@ -2112,7 +2192,48 @@ void compute_file_statistics(const FileEntry *entries, const int count, FileStat
         } else if (strcmp(entry->type, "T_CSS") == 0) {
             stats->cssFiles++;
             stats->cssSize += entry->size;
-        } else if (!entry->isDir && !entry->isLink) {
+        }
+        else if (strcmp(entry->type, "T_PHP") == 0) {
+            stats->phpFiles++;
+            stats->phpSize += entry->size;
+        }
+        else if (strcmp(entry->type, "T_MATHEMATICA") == 0) {
+            stats->mathematicaFiles++;
+            stats->mathematicaSize += entry->size;
+        }
+        else if (strcmp(entry->type, "T_MATLAB") == 0) {
+            stats->matlabFiles++;
+            stats->matlabSize += entry->size;
+        }
+        else if (strcmp(entry->type, "T_FORTRAN") == 0) {
+            stats->fortranFiles++;
+            stats->fortranSize += entry->size;
+        }
+        else if (strcmp(entry->type, "T_SCIENCE") == 0) {
+            stats->scienceFiles++;
+            stats->scienceSize += entry->size;
+        }
+        else if (strcmp(entry->type, "T_DATA") == 0) {
+            stats->dataFiles++;
+            stats->dataSize += entry->size;
+        }
+        else if (strcmp(entry->type, "T_PRESENTATION") == 0) {
+            stats->presentationFiles++;
+            stats->presentationSize += entry->size;
+        }
+        else if (strcmp(entry->type, "T_LIBRARY") == 0) {
+            stats->libFiles++;
+            stats->libSize += entry->size;
+        }
+        else if (strcmp(entry->type, "T_OBJECT") == 0) {
+            stats->objFiles++;
+            stats->objSize += entry->size;
+        }
+        else if (strcmp(entry->type, "T_CPP") == 0) {
+            stats->cppFiles++;
+            stats->cppSize += entry->size;
+        }
+        else if (!entry->isDir && !entry->isLink) {
             stats->binaryFiles++;
             stats->binarySize += entry->size;
         }
@@ -2306,6 +2427,16 @@ FileStatistics addFileStatistics(const FileStatistics *a, const FileStatistics *
     result.cssFiles = a->cssFiles + b->cssFiles;
     result.hiddenFiles = a->hiddenFiles + b->hiddenFiles;
     result.hiddenDirs = a->hiddenDirs + b->hiddenDirs;
+    result.phpFiles = a->phpFiles + b->phpFiles;
+    result.mathematicaFiles = a->mathematicaFiles + b->mathematicaFiles;
+    result.matlabFiles = a->matlabFiles + b->matlabFiles;
+    result.fortranFiles = a->fortranFiles + b->fortranFiles;
+    result.scienceFiles = a->scienceFiles + b->scienceFiles;
+    result.dataFiles = a->dataFiles + b->dataFiles;
+    result.presentationFiles = a->presentationFiles + b->presentationFiles;
+    result.libFiles = a->libFiles + b->libFiles;
+    result.objFiles = a->objFiles + b->objFiles;
+    result.cppFiles = a->cppFiles + b->cppFiles;
 
     // Add file type sizes
     result.textSize = a->textSize + b->textSize;
@@ -2339,6 +2470,16 @@ FileStatistics addFileStatistics(const FileStatistics *a, const FileStatistics *
     result.cssSize = a->cssSize + b->cssSize;
     result.hiddenFilesSize = a->hiddenFilesSize + b->hiddenFilesSize;
     result.hiddenDirsSize = a->hiddenDirsSize + b->hiddenDirsSize;
+    result.phpSize = a->phpSize + b->phpSize;
+    result.mathematicaSize = a->mathematicaSize + b->mathematicaSize;
+    result.matlabSize = a->matlabSize + b->matlabSize;
+    result.fortranSize = a->fortranSize + b->fortranSize;
+    result.scienceSize = a->scienceSize + b->scienceSize;
+    result.dataSize = a->dataSize + b->dataSize;
+    result.presentationSize = a->presentationSize + b->presentationSize;
+    result.libSize = a->libSize + b->libSize;
+    result.objSize = a->objSize + b->objSize;
+    result.cppSize = a->cppSize + b->cppSize;
 
     return result;
 }

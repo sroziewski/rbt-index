@@ -146,7 +146,7 @@ char *getFileSizeAsString(const long long fileSizeBytesIn) {
     } else if (fileSizeBytes >= kB) {
         snprintf(result, 20, "%.2f kB", fileSizeBytes / kB);
     } else {
-        snprintf(result, 20, "%f bytes", fileSizeBytes);
+        snprintf(result, 20, "%.0f bytes", fileSizeBytes);
     }
 
     return result;
