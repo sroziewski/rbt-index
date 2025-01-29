@@ -20,7 +20,7 @@ void print_usage_and_exit() {
  * @param argv Pointer to argument strings.
  * @param config Output configuration structure populated based on parsed arguments.
  */
-void *parse_arguments(const int argc, char *argv[], Config *config) {
+void parse_arguments(const int argc, char *argv[], Config *config) {
     if (argc < 2) {
         print_usage_and_exit();
     }
