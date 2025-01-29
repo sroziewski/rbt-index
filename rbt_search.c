@@ -66,5 +66,8 @@ int main(const int argc, char *argv[]) {
     if (arguments.path) printf("Path: %s\n", arguments.path);
     if (arguments.type) printf("Type: %s\n", arguments.type);
 
+    Node *root = load_tree_from_shared_memory(arguments.mem_filename);
+    search_tree_by_filename_and_type(root, arguments.name, arguments.type);
+
     return 0;
 }

@@ -22,4 +22,10 @@ void search_tree_by_filename_and_type(Node *root, const char *namePattern, const
 
 void initialize_threads();
 
+Node *load_tree_from_shared_memory(const char *name);
+
+int matches_pattern(const char *str, const char *namePattern);
+
+char *convert_glob_to_regex(const char *namePattern);
+
 #endif //RBTSEARCH_H
