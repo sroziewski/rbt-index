@@ -10,92 +10,61 @@
 #include "rbtlib/rbtree.h"
 #include "rbtlib/search.h"
 
+void parse_arguments(const int argc, char *argv[], Arguments *args) {
+    // Initialize all struct members to default values
+    args->mem_filename = NULL;
+    args->name = NULL;
+    args->size = 0;
+    args->path = NULL;
+    args->type = NULL;
+    args->hash = NULL;
+
+    // Iterate through the arguments
+    for (int i = 1; i < argc; i++) {
+        if (!strcmp(argv[i], "-f") && i + 1 < argc) {
+            args->mem_filename = argv[++i]; // Required argument
+        } else if (!strcmp(argv[i], "-n") && i + 1 < argc) {
+            args->name = argv[++i];
+        } else if (!strcmp(argv[i], "-s") && i + 1 < argc) {
+            char *endptr = NULL;
+            const long value = strtol(argv[++i], &endptr, 10);
+            if (*endptr != '\0' || value < 0 || value > INT_MAX) {
+                fprintf(stderr, "Invalid value for -s (size): %s\n", argv[i]);
+                exit(EXIT_FAILURE);
+            }
+            args->size = (int) value; // Safely assign to integer (after validation)
+        } else if (!strcmp(argv[i], "-p") && i + 1 < argc) {
+            args->path = argv[++i];
+        } else if (!strcmp(argv[i], "-t") && i + 1 < argc) {
+            args->type = argv[++i];
+        } else if (!strcmp(argv[i], "-h") && i + 1 < argc) {
+            // Added "hash" argument
+            args->hash = argv[++i];
+        } else {
+            fprintf(stderr, "Unknown or improperly formatted argument: %s\n", argv[i]);
+            exit(EXIT_FAILURE);
+        }
+    }
+    // Ensure the required argument -f (mem_filename) is provided
+    if (args->mem_filename == NULL) {
+        fprintf(stderr, "Error: -f <memory_filename> is mandatory.\n");
+        exit(EXIT_FAILURE);
+    }
+}
+
 int main(const int argc, char *argv[]) {
     struct timespec start, end;
     initialize_threads();
-    char *name;
 
-    // Parse command-line arguments
-    for (int i = 1; i < argc; i++) {
-        if (strcmp(argv[i], "-t") == 0 && i + 1 < argc) {
-            name = strdup(argv[i + 1]);
-            break;
-        }
-    }
+    Arguments arguments = {0};
+    parse_arguments(argc, argv, &arguments);
 
-    const size_t targetSize = 2340;  // Example size to search for
-    const char *targetType = "T_FILM";  // Example file type to search for
-
-    // Parse command line arguments
-    int shouldClose = 0;
-    for (int i = 1; i < argc; i++) {
-        if (strcmp(argv[i], "--close") == 0) {
-            shouldClose = 1;
-        }
-    }
-
-    // Open shared memory
-    const int shm_fd = shm_open(name, O_RDONLY, 0666);
-    if (shm_fd == -1) {
-        perror("Failed to open shared memory");
-        exit(EXIT_FAILURE);
-    }
-
-    // Get the size of the shared memory
-    struct stat shm_stat;
-    if (fstat(shm_fd, &shm_stat) == -1) {
-        perror("Failed to get the shared memory size");
-        close(shm_fd);
-        exit(EXIT_FAILURE);
-    }
-
-    // Map shared memory
-    void *ptr = mmap(0, shm_stat.st_size, PROT_READ, MAP_SHARED, shm_fd, 0);
-    if (ptr == MAP_FAILED) {
-        perror("Failed to map shared memory");
-        close(shm_fd);
-        exit(EXIT_FAILURE);
-    }
-
-    // Deserialize the tree from shared memory
-    size_t offset = 0;
-    Node *root = deserialize_node(ptr, &offset);
-
-    // Search for files with the specified size and type
-    search_tree_for_size_and_type(root, targetSize, targetType);
-
-    const char *targetName = "zaba.*";
-    // Capture start time
-    clock_gettime(CLOCK_MONOTONIC, &start);
-    for (int i = 0; i < 1; ++i) {
-        search_tree_by_filename_and_type(root, targetName, targetType);
-        // Print progress every 100 iterations
-        if (i % 100 == 0) {
-            printf("Completed %d iterations...\n", i);
-        }
-    }
-    // Capture end time
-    clock_gettime(CLOCK_MONOTONIC, &end);
-    // Calculate elapsed time in seconds
-    double elapsed_time = (end.tv_sec - start.tv_sec) +
-                          (end.tv_nsec - start.tv_nsec) / 1e9;
-
-    printf("Elapsed time: %.9f seconds\n", elapsed_time);
-    // Clean up
-    munmap(ptr, shm_stat.st_size);
-    close(shm_fd);
-
-    // Free deserialized nodes
-    freeNode(root);
-
-    // Optionally remove the shared memory
-    if (shouldClose) {
-        if (shm_unlink(name) == -1) {
-            perror("Failed to remove shared memory");
-            exit(EXIT_FAILURE);
-        }
-        printf("Shared memory successfully removed.\n");
-    }
+    // Output parsed arguments
+    printf("Memory Filename: %s\n", arguments.mem_filename);
+    if (arguments.name) printf("Name: %s\n", arguments.name);
+    if (arguments.size) printf("Size: %d\n", arguments.size);
+    if (arguments.path) printf("Path: %s\n", arguments.path);
+    if (arguments.type) printf("Type: %s\n", arguments.type);
 
     return 0;
 }
