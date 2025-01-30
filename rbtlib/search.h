@@ -64,4 +64,8 @@ void search_tree(Node *root, Arguments arguments, bool (*match_function)(const F
 
 void search_tree_by_name(Node *root, Arguments arguments, MapResults *results);
 
+bool match_by_name(const FileInfo *node, char **names);
+
+bool match_by_path(const FileInfo *node, char **paths);
+
 #endif //RBTSEARCH_H

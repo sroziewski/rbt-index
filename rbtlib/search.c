@@ -28,16 +28,16 @@ void map_results_add_node(MapResults *mapResults, Node *node, const char *key) {
             exit(EXIT_FAILURE);
         }
         // Initialize the new NodeHashmapEntry
-        entry->key = strdup(key);           // Use strdup to copy the key
-        entry->data = malloc(10 * sizeof(Node *));  // Start with an initial capacity of 10
+        entry->key = strdup(key); // Use strdup to copy the key
+        entry->data = malloc(10 * sizeof(Node *)); // Start with an initial capacity of 10
         if (!entry->data) {
             perror("Failed to allocate initial memory for Node array in NodeHashmapEntry");
             exit(EXIT_FAILURE);
         }
-        entry->data_count = 0;             // No nodes added yet
-        entry->capacity = 10;              // Initial capacity
+        entry->data_count = 0; // No nodes added yet
+        entry->capacity = 10; // Initial capacity
         HASH_ADD_STR(mapResults->entry, key, entry); // Add the entry to the hashmap
-        mapResults->size++;                // Increment the total number of keys in the hashmap
+        mapResults->size++; // Increment the total number of keys in the hashmap
     }
     // If the entry exists or is newly created, add the Node to its data array
     if (entry->data_count == entry->capacity) {
@@ -58,9 +58,9 @@ void cleanup_map_results(MapResults *mapResults) {
     // Free all hashmap entries
     HASH_ITER(hh, mapResults->entry, entry, tmp) {
         HASH_DEL(mapResults->entry, entry); // Remove from hashmap
-        free(entry->key);                  // Free key string
-        free(entry->data);                 // Free data array
-        free(entry);                       // Free hashmap entry
+        free(entry->key); // Free key string
+        free(entry->data); // Free data array
+        free(entry); // Free hashmap entry
     }
     mapResults->size = 0;
 }
@@ -205,7 +205,7 @@ char *convert_glob_to_regex(const char *namePattern) {
     }
 
     *p++ = '$'; // Add end anchor
-    *p = '\0';  // Null-terminate the string
+    *p = '\0'; // Null-terminate the string
 
     return regexPattern;
 }
@@ -255,11 +255,16 @@ bool match_by_name(const FileInfo *node, char **names) {
     return matches_pattern(node->name, names, 1);
 }
 
+bool match_by_path(const FileInfo *node, char **paths) {
+    return matches_pattern(node->path, paths, 1);
+}
+
 void search_tree_by_name(Node *root, const Arguments arguments, MapResults *results) {
     search_tree(root, arguments, match_by_name, results);
 }
 
-void search_tree(Node *root, const Arguments arguments, bool (*match_function)(const FileInfo *, char **), MapResults *results) {
+void search_tree(Node *root, const Arguments arguments, bool (*match_function)(const FileInfo *, char **),
+                 MapResults *results) {
     if (root == NULL) {
         return;
     }
@@ -346,8 +351,13 @@ void print_results(const MapResults *results) {
         // Loop through the data array of Nodes in the current entry
         for (size_t i = 0; i < entry->data_count; i++) {
             Node *node = entry->data[i]; // Access each Node pointer
-            printf("  File: %s | Type: %s | Size: %zu | Path: %s\n",
-                node->key.name, node->key.type, node->key.size, node->key.path);
+            printf("%s: %s | Type: %s | Size: %zu | Path: %s\n",
+                   (strcmp(node->key.type, "T_DIR") == 0)
+                       ? "Dir"
+                       : (strcmp(node->key.type, "T_LINK_DIR") == 0 || strcmp(node->key.type, "T_LINK_FILE") == 0)
+                             ? "Link"
+                             : "File",
+                   node->key.name, node->key.type, node->key.size, node->key.path);
         }
     }
 }

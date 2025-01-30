@@ -84,6 +84,8 @@ int main(const int argc, char *argv[]) {
     struct timespec start, end;
     initialize_threads();
 
+    bool (*match_function)(const FileInfo *, char **) = NULL;
+
     Arguments arguments = {0};
     parse_arguments(argc, argv, &arguments);
 
@@ -95,6 +97,7 @@ int main(const int argc, char *argv[]) {
             for (int i = 0; i < arguments.names_count; i++) {
                 printf("  - %s\n", arguments.names[i]);
             }
+            match_function = match_by_name;
         }
     }
     if (arguments.paths != NULL) {
@@ -103,16 +106,17 @@ int main(const int argc, char *argv[]) {
             for (int i = 0; i < arguments.paths_count; i++) {
                 printf("  - %s\n", arguments.paths[i]);
             }
+            match_function = match_by_path;
         }
     }
-
     if (arguments.size) printf("Size: %d\n", arguments.size);
     if (arguments.type) printf("Type: %s\n", arguments.type);
 
     Node *root = load_tree_from_shared_memory(arguments.mem_filename);
     MapResults results = {NULL, 0};
     // search_tree_by_filename_and_type(root, arguments, &results);
-    search_tree_by_name(root, arguments, &results);
+    // search_tree_by_name(root, arguments, &results);
+    search_tree(root, arguments, match_function, &results);
     print_results(&results);
     cleanup_map_results(&results);
 
