@@ -13,18 +13,31 @@
 void parse_arguments(const int argc, char *argv[], Arguments *args) {
     // Initialize all struct members to default values
     args->mem_filename = NULL;
-    args->name = NULL;
+    args->names = NULL;
+    args->names_count = 0;
     args->size = 0;
     args->path = NULL;
     args->type = NULL;
     args->hash = NULL;
-
     // Iterate through the arguments
     for (int i = 1; i < argc; i++) {
         if (!strcmp(argv[i], "-f") && i + 1 < argc) {
             args->mem_filename = argv[++i]; // Required argument
-        } else if (!strcmp(argv[i], "-n") && i + 1 < argc) {
-            args->name = argv[++i];
+        } else if (!strcmp(argv[i], "-n")) {
+            // Handle multiple names
+            i++;
+            // Allocate memory for names array (initially NULL)
+            args->names = malloc((argc - i) * sizeof(char *));
+            if (args->names == NULL) {
+                fprintf(stderr, "Memory allocation failed.\n");
+                exit(EXIT_FAILURE);
+            }
+            while (i < argc && argv[i][0] != '-') {
+                args->names[args->names_count] = argv[i];
+                args->names_count++;
+                i++;
+            }
+            i--; // Step back to process next argument correctly
         } else if (!strcmp(argv[i], "-s") && i + 1 < argc) {
             char *endptr = NULL;
             const long value = strtol(argv[++i], &endptr, 10);
@@ -32,13 +45,12 @@ void parse_arguments(const int argc, char *argv[], Arguments *args) {
                 fprintf(stderr, "Invalid value for -s (size): %s\n", argv[i]);
                 exit(EXIT_FAILURE);
             }
-            args->size = (int) value; // Safely assign to integer (after validation)
+            args->size = (int)value; // Safely assign to integer (after validation)
         } else if (!strcmp(argv[i], "-p") && i + 1 < argc) {
             args->path = argv[++i];
         } else if (!strcmp(argv[i], "-t") && i + 1 < argc) {
             args->type = argv[++i];
         } else if (!strcmp(argv[i], "-h") && i + 1 < argc) {
-            // Added "hash" argument
             args->hash = argv[++i];
         } else {
             fprintf(stderr, "Unknown or improperly formatted argument: %s\n", argv[i]);
@@ -61,7 +73,12 @@ int main(const int argc, char *argv[]) {
 
     // Output parsed arguments
     printf("Memory Filename: %s\n", arguments.mem_filename);
-    if (arguments.name) printf("Name: %s\n", arguments.name);
+    if (arguments.names_count > 0) {
+        printf("Names (%d):\n", arguments.names_count);
+        for (int i = 0; i < arguments.names_count; i++) {
+            printf("  - %s\n", arguments.names[i]);
+        }
+    }
     if (arguments.size) printf("Size: %d\n", arguments.size);
     if (arguments.path) printf("Path: %s\n", arguments.path);
     if (arguments.type) printf("Type: %s\n", arguments.type);
@@ -69,7 +86,7 @@ int main(const int argc, char *argv[]) {
     Node *root = load_tree_from_shared_memory(arguments.mem_filename);
     NodeArray results;
     node_array_init(&results, 10);
-    search_tree_by_filename_and_type(root, arguments.name, arguments.type, &results);
+    search_tree_by_filename_and_type(root, arguments, &results);
 
     printf("Found %zu matching nodes:\n", results.size);
     for (size_t i = 0; i < results.size; i++) {
@@ -77,10 +94,7 @@ int main(const int argc, char *argv[]) {
         printf("  File: %s | Type: %s | Size: %zu | Path: %s\n",
                node->key.name, node->key.type, node->key.size, node->key.path);
     }
-
-    // Free the dynamically allocated array
     node_array_free(&results);
-
 
     return 0;
 }

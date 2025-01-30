@@ -185,43 +185,59 @@ char *convert_glob_to_regex(const char *namePattern) {
     return regexPattern;
 }
 
-// Function to compile the regex and check if a string matches the given pattern
-int matches_pattern(const char *str, const char *namePattern) {
-    regex_t regex;
-
-    // Convert the glob-style pattern to a regex pattern
-    char *regexPattern = convert_glob_to_regex(namePattern);
-
+int matches_pattern(const char *str, char **names, const int names_count) {
+    // Create a buffer to hold the full regex pattern for all names
+    size_t total_length = 0;
+    for (int i = 0; i < names_count; i++) {
+        char *glob = convert_glob_to_regex(names[i]);
+        total_length += strlen(glob) + 3; // Include space for '|', parentheses, or '\0'.
+        free(glob); // Free the temporary converted regex string
+    }
+    // Allocate memory for the combined regex pattern
+    char *regexPattern = malloc(total_length + 3); // Additional space for start/end parenthesis
+    if (!regexPattern) {
+        fprintf(stderr, "Memory allocation failed.\n");
+        exit(EXIT_FAILURE);
+    }
+    // Construct the full regex: Combine all names into a single OR regex, e.g., "(name1|name2|name3)"
+    strcpy(regexPattern, "(");
+    for (int i = 0; i < names_count; i++) {
+        char *glob = convert_glob_to_regex(names[i]);
+        strcat(regexPattern, glob); // Append each regex converted glob
+        free(glob); // Free memory from each converted glob
+        if (i < names_count - 1) {
+            strcat(regexPattern, "|"); // Add OR operator between patterns
+        }
+    }
+    strcat(regexPattern, ")"); // Close the parentheses
     // Compile the constructed regex pattern
+    regex_t regex;
     const int ret = regcomp(&regex, regexPattern, REG_EXTENDED | REG_NOSUB);
-    free(regexPattern); // Free the converted regex string after compiling
-
+    free(regexPattern); // Free the combined regex pattern after compiling
     if (ret != 0) {
-        fprintf(stderr, "Failed to compile regex pattern: %s\n", namePattern);
+        fprintf(stderr, "Failed to compile regex pattern.\n");
         return 0; // Return false on compilation failure
     }
-
     // Execute regex match
     const int match = regexec(&regex, str, 0, NULL, 0) == 0;
-
     // Free resources used by the regex engine
     regfree(&regex);
 
-    return match; // Return 1 if match, 0 otherwise
+    return match;
 }
 
-void search_tree_by_filename_and_type(Node *root, const char *namePattern, const char *targetType, NodeArray *results) {
+void search_tree_by_filename_and_type(Node *root, const Arguments arguments, NodeArray *results) {
     if (root == NULL) {
         return;
     }
     // Check if the current node matches the filename pattern and type
-    if (matches_pattern(root->key.name, namePattern) && strcmp(root->key.type, targetType) == 0) {
+    if (matches_pattern(root->key.name, arguments.names, arguments.names_count) && strcmp(root->key.type, arguments.type) == 0) {
         node_array_add(results, root);
     }
     // Prepare threading arguments
     pthread_t leftThread, rightThread;
-    SearchArgs leftArgs = {root->left, namePattern, targetType, results};
-    SearchArgs rightArgs = {root->right, namePattern, targetType, results};
+    SearchArgs leftArgs = {root->left, arguments, results};
+    SearchArgs rightArgs = {root->right, arguments, results};
 
     int create_left_thread = 0, create_right_thread = 0;
 
@@ -241,16 +257,14 @@ void search_tree_by_filename_and_type(Node *root, const char *namePattern, const
     if (create_left_thread) {
         pthread_create(&leftThread, NULL, search_tree_thread, &leftArgs);
     } else {
-        search_tree_by_filename_and_type(root->left, namePattern, targetType, results);
+        search_tree_by_filename_and_type(root->left, arguments, results);
     }
-
     // Create or execute the right subtree search
     if (create_right_thread) {
         pthread_create(&rightThread, NULL, search_tree_thread, &rightArgs);
     } else {
-        search_tree_by_filename_and_type(root->right, namePattern, targetType, results);
+        search_tree_by_filename_and_type(root->right, arguments, results);
     }
-
     // Join threads if they were created
     if (create_left_thread) {
         pthread_join(leftThread, NULL);
@@ -268,7 +282,7 @@ void search_tree_by_filename_and_type(Node *root, const char *namePattern, const
 
 void *search_tree_thread(void *args) {
     const SearchArgs *searchArgs = (SearchArgs *) (args);
-    search_tree_by_filename_and_type(searchArgs->root, searchArgs->namePattern, searchArgs->targetType, searchArgs->results);
+    search_tree_by_filename_and_type(searchArgs->root, searchArgs->arguments, searchArgs->results);
     return NULL;
 }
 
