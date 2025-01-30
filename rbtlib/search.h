@@ -14,7 +14,8 @@ typedef struct {
     char **names;
     int names_count;
     int size;
-    char *path;
+    char **paths;
+    int paths_count;
     char *type;
     char *hash;
 } Arguments;
@@ -36,6 +37,7 @@ typedef struct SearchArgs {
     Node *root;                // The root of the tree to search
     Arguments arguments;       // Arguments provided to the search
     MapResults *results;      // The hashmap to store search results
+    bool (*match_function)(const FileInfo *, char **);
 } SearchArgs;
 
 void *search_tree_thread(void *args);
@@ -57,5 +59,9 @@ void node_array_free(NodeArray *array);
 void cleanup_map_results(MapResults *mapResults);
 
 void print_results(const MapResults *results);
+
+void search_tree(Node *root, Arguments arguments, bool (*match_function)(const FileInfo *, char **), MapResults *results);
+
+void search_tree_by_name(Node *root, Arguments arguments, MapResults *results);
 
 #endif //RBTSEARCH_H

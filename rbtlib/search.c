@@ -251,13 +251,22 @@ int matches_pattern(const char *str, char **names, const int names_count) {
     return match;
 }
 
-void search_tree_by_filename_and_type(Node *root, const Arguments arguments, MapResults *results) {
+bool match_by_name(const FileInfo *node, char **names) {
+    return matches_pattern(node->name, names, 1);
+}
+
+void search_tree_by_name(Node *root, const Arguments arguments, MapResults *results) {
+    search_tree(root, arguments, match_by_name, results);
+}
+
+void search_tree(Node *root, const Arguments arguments, bool (*match_function)(const FileInfo *, char **), MapResults *results) {
     if (root == NULL) {
         return;
     }
-    if (arguments.type == NULL || strcmp(root->key.type, arguments.type) == 0) { // Check type condition
+    if (arguments.type == NULL || strcmp(root->key.type, arguments.type) == 0) {
         for (int i = 0; i < arguments.names_count; ++i) {
-            if (matches_pattern(root->key.name, &arguments.names[i], 1)) { // Check for a match
+            // if (matches_pattern(root->key.name, &arguments.names[i], 1)) {
+            if (match_function(&root->key, &arguments.names[i])) {
                 map_results_add_node(results, root, arguments.names[i]);
                 break;
             }
@@ -265,8 +274,8 @@ void search_tree_by_filename_and_type(Node *root, const Arguments arguments, Map
     }
     // Prepare threading arguments
     pthread_t leftThread, rightThread;
-    SearchArgs leftArgs = {root->left, arguments, results};
-    SearchArgs rightArgs = {root->right, arguments, results};
+    SearchArgs leftArgs = {root->left, arguments, results, match_function};
+    SearchArgs rightArgs = {root->right, arguments, results, match_function};
 
     int create_left_thread = 0, create_right_thread = 0;
 
@@ -286,13 +295,13 @@ void search_tree_by_filename_and_type(Node *root, const Arguments arguments, Map
     if (create_left_thread) {
         pthread_create(&leftThread, NULL, search_tree_thread, &leftArgs);
     } else {
-        search_tree_by_filename_and_type(root->left, arguments, results);
+        search_tree(root->left, arguments, match_function, results);
     }
     // Create or execute the right subtree search
     if (create_right_thread) {
         pthread_create(&rightThread, NULL, search_tree_thread, &rightArgs);
     } else {
-        search_tree_by_filename_and_type(root->right, arguments, results);
+        search_tree(root->right, arguments, match_function, results);
     }
     // Join threads if they were created
     if (create_left_thread) {
@@ -311,7 +320,7 @@ void search_tree_by_filename_and_type(Node *root, const Arguments arguments, Map
 
 void *search_tree_thread(void *args) {
     const SearchArgs *searchArgs = (SearchArgs *) (args);
-    search_tree_by_filename_and_type(searchArgs->root, searchArgs->arguments, searchArgs->results);
+    search_tree(searchArgs->root, searchArgs->arguments, searchArgs->match_function, searchArgs->results);
     return NULL;
 }
 
