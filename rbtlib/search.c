@@ -255,16 +255,10 @@ void search_tree_by_filename_and_type(Node *root, const Arguments arguments, Map
     if (root == NULL) {
         return;
     }
-    // Check if the current node matches the filename pattern and type
-    if (matches_pattern(root->key.name, arguments.names, arguments.names_count) && strcmp(root->key.type, arguments.type) == 0) {
+    if (arguments.type == NULL || strcmp(root->key.type, arguments.type) == 0) { // Check type condition
         for (int i = 0; i < arguments.names_count; ++i) {
-            char **patterns = malloc(2 * sizeof(char *));
-            patterns[0] = strdup(arguments.names[i]); // Copy the string into the first slot
-            patterns[1] = NULL;
-            if (matches_pattern(root->key.name, patterns, 1)) { // Check for a match
-                if (strcmp(root->key.type, arguments.type) == 0) {
-                    map_results_add_node(results, root, arguments.names[i]);
-                }
+            if (matches_pattern(root->key.name, &arguments.names[i], 1)) { // Check for a match
+                map_results_add_node(results, root, arguments.names[i]);
                 break;
             }
         }
