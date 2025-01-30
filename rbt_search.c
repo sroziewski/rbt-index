@@ -75,8 +75,8 @@ void parse_arguments(const int argc, char *argv[], Arguments *args) {
                     lower_str[dash - size_arg] = '\0';
                     strcpy(upper_str, dash + 1);
 
-                    args->size_lower_bound = parse_size(upper_str);
-                    args->size_upper_bound = parse_size(lower_str);
+                    args->size_lower_bound = parse_size(lower_str);
+                    args->size_upper_bound = parse_size(upper_str);
 
                     // Validate sizes
                     if (args->size_lower_bound > args->size_upper_bound) {
