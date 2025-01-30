@@ -311,9 +311,9 @@ void search_tree(Node *root, const Arguments arguments, bool (*match_function)(c
         return;
     }
     if ((arguments.type == NULL || strcmp(root->key.type, arguments.type) == 0) &&
-        (arguments.size_lower_bound == 0 || arguments.size_lower_bound > 0 && root->key.size > arguments.size_lower_bound) &&
-        (arguments.size_upper_bound == 0 || arguments.size_upper_bound > 0 && root->key.size < arguments.size_upper_bound) ||
-        (arguments.size_lower_bound < root->key.size && root->key.size < arguments.size_upper_bound) ||
+        (arguments.size_lower_bound == 0 || arguments.size_lower_bound > 0 && root->key.size >= arguments.size_lower_bound) &&
+        (arguments.size_upper_bound == 0 || arguments.size_upper_bound > 0 && root->key.size <= arguments.size_upper_bound) ||
+        (arguments.size_lower_bound <= root->key.size && root->key.size <= arguments.size_upper_bound) ||
         (arguments.size_lower_bound == 0 && arguments.size_upper_bound == 0 )) {
         if (arguments.names != NULL) {
             for (int i = 0; i < arguments.names_count; ++i) {
