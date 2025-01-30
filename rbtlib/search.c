@@ -16,14 +16,53 @@ int MAX_THREADS = 1;
 int active_threads = 0;
 pthread_mutex_t thread_counter_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-void node_array_init(NodeArray *array, const size_t initial_capacity) {
-    array->data = malloc(initial_capacity * sizeof(Node *));
-    if (!array->data) {
-        perror("Failed to allocate memory for NodeArray");
-        exit(EXIT_FAILURE);
+void map_results_add_node(MapResults *mapResults, Node *node, const char *key) {
+    NodeHashmapEntry *entry;
+    // Check if the key exists in the hashmap
+    HASH_FIND_STR(mapResults->entry, key, entry);
+    // If the entry does not exist, create a new one
+    if (!entry) {
+        entry = malloc(sizeof(NodeHashmapEntry));
+        if (!entry) {
+            perror("Failed to allocate memory for NodeHashmapEntry");
+            exit(EXIT_FAILURE);
+        }
+        // Initialize the new NodeHashmapEntry
+        entry->key = strdup(key);           // Use strdup to copy the key
+        entry->data = malloc(10 * sizeof(Node *));  // Start with an initial capacity of 10
+        if (!entry->data) {
+            perror("Failed to allocate initial memory for Node array in NodeHashmapEntry");
+            exit(EXIT_FAILURE);
+        }
+        entry->data_count = 0;             // No nodes added yet
+        entry->capacity = 10;              // Initial capacity
+        HASH_ADD_STR(mapResults->entry, key, entry); // Add the entry to the hashmap
+        mapResults->size++;                // Increment the total number of keys in the hashmap
     }
-    array->size = 0;
-    array->capacity = initial_capacity;
+    // If the entry exists or is newly created, add the Node to its data array
+    if (entry->data_count == entry->capacity) {
+        // Resize the data array if full
+        entry->capacity *= 2;
+        entry->data = realloc(entry->data, entry->capacity * sizeof(Node *));
+        if (!entry->data) {
+            perror("Failed to resize Node array in NodeHashmapEntry");
+            exit(EXIT_FAILURE);
+        }
+    }
+    // Add the Node to the data array
+    entry->data[entry->data_count++] = node;
+}
+
+void cleanup_map_results(MapResults *mapResults) {
+    NodeHashmapEntry *entry, *tmp;
+    // Free all hashmap entries
+    HASH_ITER(hh, mapResults->entry, entry, tmp) {
+        HASH_DEL(mapResults->entry, entry); // Remove from hashmap
+        free(entry->key);                  // Free key string
+        free(entry->data);                 // Free data array
+        free(entry);                       // Free hashmap entry
+    }
+    mapResults->size = 0;
 }
 
 // Free the memory used by the dynamic array
@@ -32,20 +71,6 @@ void node_array_free(NodeArray *array) {
     array->data = NULL;
     array->size = 0;
     array->capacity = 0;
-}
-
-// Add a node to the dynamic array
-void node_array_add(NodeArray *array, Node *node) {
-    if (array->size == array->capacity) {
-        // Resize the array if it's full
-        array->capacity *= 2;
-        array->data = realloc(array->data, array->capacity * sizeof(Node *));
-        if (!array->data) {
-            perror("Failed to resize NodeArray");
-            exit(EXIT_FAILURE);
-        }
-    }
-    array->data[array->size++] = node;
 }
 
 Node *load_tree_from_shared_memory(const char *name) {
@@ -226,13 +251,23 @@ int matches_pattern(const char *str, char **names, const int names_count) {
     return match;
 }
 
-void search_tree_by_filename_and_type(Node *root, const Arguments arguments, NodeArray *results) {
+void search_tree_by_filename_and_type(Node *root, const Arguments arguments, MapResults *results) {
     if (root == NULL) {
         return;
     }
     // Check if the current node matches the filename pattern and type
     if (matches_pattern(root->key.name, arguments.names, arguments.names_count) && strcmp(root->key.type, arguments.type) == 0) {
-        node_array_add(results, root);
+        for (int i = 0; i < arguments.names_count; ++i) {
+            char **patterns = malloc(2 * sizeof(char *));
+            patterns[0] = strdup(arguments.names[i]); // Copy the string into the first slot
+            patterns[1] = NULL;
+            if (matches_pattern(root->key.name, patterns, 1)) { // Check for a match
+                if (strcmp(root->key.type, arguments.type) == 0) {
+                    map_results_add_node(results, root, arguments.names[i]);
+                }
+                break;
+            }
+        }
     }
     // Prepare threading arguments
     pthread_t leftThread, rightThread;
@@ -297,4 +332,19 @@ void initialize_threads() {
         MAX_THREADS = 6; // Otherwise, use up to 8 threads
     }
     printf("Number of cores available: %ld, MAX_THREADS set to: %d\n", cores, MAX_THREADS);
+}
+
+void print_results(const MapResults *results) {
+    NodeHashmapEntry *entry, *tmp;
+    printf("\nResults (%zu keys):\n", results->size);
+    // Traverse each entry in the hashmap
+    HASH_ITER(hh, results->entry, entry, tmp) {
+        printf("\nKey: %s\n\n", entry->key); // Print the key of the current entry
+        // Loop through the data array of Nodes in the current entry
+        for (size_t i = 0; i < entry->data_count; i++) {
+            Node *node = entry->data[i]; // Access each Node pointer
+            printf("  File: %s | Type: %s | Size: %zu | Path: %s\n",
+                node->key.name, node->key.type, node->key.size, node->key.path);
+        }
+    }
 }

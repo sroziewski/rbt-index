@@ -2,6 +2,7 @@
 CC = gcc
 CFLAGS = -Wextra -g -fopenmp -pedantic
 LDFLAGS_RBT_CREATE = -lcrypto -lssl  # Linker flags for OpenSSL (only for rbt_create)
+LDFLAGS_RBT_SEARCH = -lcrypto -lssl -Iinclude
 LDFLAGS_LIST_FILES = -lmagic  # Linker flags for list_files (libmagic)
 
 # Target executables
@@ -33,7 +34,7 @@ $(LIST_FILES_TARGET): $(LIST_FILES_OBJ)
 
 # Rule to build the 'rbt_search' target
 $(RBT_SEARCH_TARGET): $(RBT_SEARCH_OBJS)
-	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS_RBT_CREATE)
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS_RBT_SEARCH)
 
 # Rules to build shared object files
 $(SHARED_DIR)/shared.o: $(SHARED_DIR)/shared.c

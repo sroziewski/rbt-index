@@ -45,7 +45,7 @@ void parse_arguments(const int argc, char *argv[], Arguments *args) {
                 fprintf(stderr, "Invalid value for -s (size): %s\n", argv[i]);
                 exit(EXIT_FAILURE);
             }
-            args->size = (int)value; // Safely assign to integer (after validation)
+            args->size = (int) value; // Safely assign to integer (after validation)
         } else if (!strcmp(argv[i], "-p") && i + 1 < argc) {
             args->path = argv[++i];
         } else if (!strcmp(argv[i], "-t") && i + 1 < argc) {
@@ -84,17 +84,10 @@ int main(const int argc, char *argv[]) {
     if (arguments.type) printf("Type: %s\n", arguments.type);
 
     Node *root = load_tree_from_shared_memory(arguments.mem_filename);
-    NodeArray results;
-    node_array_init(&results, 10);
+    MapResults results = {NULL, 0};
     search_tree_by_filename_and_type(root, arguments, &results);
-
-    printf("Found %zu matching nodes:\n", results.size);
-    for (size_t i = 0; i < results.size; i++) {
-        Node *node = results.data[i];
-        printf("  File: %s | Type: %s | Size: %zu | Path: %s\n",
-               node->key.name, node->key.type, node->key.size, node->key.path);
-    }
-    node_array_free(&results);
+    print_results(&results);
+    cleanup_map_results(&results);
 
     return 0;
 }
