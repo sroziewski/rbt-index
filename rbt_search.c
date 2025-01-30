@@ -16,6 +16,8 @@ void parse_arguments(const int argc, char *argv[], Arguments *args) {
     args->names = NULL;
     args->names_count = 0;
     args->size = 0;
+    args->size_lower_bound = 0;
+    args->size_upper_bound = 0;
     args->paths = NULL;
     args->paths_count = 0;
     args->type = NULL;
@@ -48,6 +50,46 @@ void parse_arguments(const int argc, char *argv[], Arguments *args) {
             }
             args->size = (int) value; // Safely assign to integer (after validation)
         }
+
+        else if (!strcmp(argv[i], "--size") && i + 1 < argc) {
+            const char *size_arg = argv[++i];
+
+            if (strchr(size_arg, '-')) {
+                // Handle lower-bound size (e.g., "100k-", "10M-")
+                if (size_arg[strlen(size_arg) - 1] == '-') {
+                    char size_str[256];
+                    strncpy(size_str, size_arg, strlen(size_arg) - 1);
+                    size_str[strlen(size_arg) - 1] = '\0'; // Remove trailing '-'
+                    args->size_upper_bound = parse_size(size_str);
+                }
+                // Handle size ranges (e.g., "10M-100M")
+                else {
+                    char *dash = strchr(size_arg, '-');
+                    if (!dash || dash == size_arg || dash == size_arg + strlen(size_arg) - 1) {
+                        fprintf(stderr, "Invalid range for --size: %s\n", size_arg);
+                        exit(EXIT_FAILURE);
+                    }
+                    // Extract lower and upper bounds
+                    char lower_str[256], upper_str[256];
+                    strncpy(lower_str, size_arg, dash - size_arg);
+                    lower_str[dash - size_arg] = '\0';
+                    strcpy(upper_str, dash + 1);
+
+                    args->size_lower_bound = parse_size(upper_str);
+                    args->size_upper_bound = parse_size(lower_str);
+
+                    // Validate sizes
+                    if (args->size_lower_bound > args->size_upper_bound) {
+                        fprintf(stderr, "Invalid size range: lower bound is larger than upper bound.\n");
+                        exit(EXIT_FAILURE);
+                    }
+                }
+            } else {
+                // Handle upper-bound size (e.g., "100k", "10M", "1G")
+                args->size_lower_bound = parse_size(size_arg);
+            }
+        }
+
         else if (!strcmp(argv[i], "-p")) {
             // Handle multiple paths
             i++;
@@ -114,8 +156,6 @@ int main(const int argc, char *argv[]) {
 
     Node *root = load_tree_from_shared_memory(arguments.mem_filename);
     MapResults results = {NULL, 0};
-    // search_tree_by_filename_and_type(root, arguments, &results);
-    // search_tree_by_name(root, arguments, &results);
     long long totalCount = arguments.names_count > 1 || arguments.paths_count > 1 ? -1 : 0;
     search_tree(root, arguments, match_function, &results, &totalCount);
     if (arguments.names_count > 1 || arguments.paths_count > 1) {

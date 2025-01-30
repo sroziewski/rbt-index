@@ -10,6 +10,8 @@
 #include "rbtree.h"
 #include "search.h"
 
+#include <ctype.h>
+
 int MAX_THREADS = 1;
 
 // Global thread counter
@@ -308,7 +310,10 @@ void search_tree(Node *root, const Arguments arguments, bool (*match_function)(c
     if (root == NULL) {
         return;
     }
-    if (arguments.type == NULL || strcmp(root->key.type, arguments.type) == 0) {
+    if ((arguments.type == NULL || strcmp(root->key.type, arguments.type) == 0) &&
+        (arguments.size_lower_bound == 0 || arguments.size_lower_bound > 0 && root->key.size > arguments.size_lower_bound) &&
+        (arguments.size_upper_bound == 0 || arguments.size_upper_bound > 0 && root->key.size < arguments.size_upper_bound) ||
+        (arguments.size_lower_bound == 0 && arguments.size_upper_bound == 0 )) {
         if (arguments.names != NULL) {
             for (int i = 0; i < arguments.names_count; ++i) {
                 if (match_function(root->key.name, &arguments.names[i])) {
@@ -429,4 +434,35 @@ void print_results(const MapResults *results) {
     }
     // Print the total number of nodes found
     printf("\nTotal nodes found: %zu\n", total_nodes);
+}
+
+long parse_size(const char *size_str) {
+    char unit = '\0';
+    long multiplier = 1;
+    const size_t len = strlen(size_str);
+
+    // Check for size suffix (K, M, G)
+    if (len > 1 && !isdigit(size_str[len - 1])) {
+        unit = size_str[len - 1];
+    }
+
+    // Determine the multiplier based on the unit
+    switch (unit) {
+        case 'k': case 'K': multiplier = 1024; break;
+        case 'm': case 'M': multiplier = 1024 * 1024; break;
+        case 'g': case 'G': multiplier = 1024 * 1024 * 1024; break;
+        default: multiplier = 1; break;
+    }
+
+    // Parse the numeric part of the size
+    char *endptr = NULL;
+    long value = strtol(size_str, &endptr, 10);
+
+    if (endptr == size_str || (*endptr != '\0' && endptr != size_str + len - 1)) {
+        fprintf(stderr, "Invalid size value: %s\n", size_str);
+        exit(EXIT_FAILURE);
+    }
+
+    // Return the value multiplied by the appropriate unit
+    return value * multiplier;
 }

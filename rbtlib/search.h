@@ -14,6 +14,8 @@ typedef struct {
     char **names;
     int names_count;
     int size;
+    size_t size_lower_bound;
+    size_t size_upper_bound;
     char **paths;
     int paths_count;
     char *type;
@@ -66,5 +68,7 @@ void search_tree(Node *root, Arguments arguments, bool (*match_function)(const c
 bool match_by_name(const char *name, char **names);
 
 bool match_by_path(const char *path, char **paths);
+
+long parse_size(const char *size_str);
 
 #endif //RBTSEARCH_H
