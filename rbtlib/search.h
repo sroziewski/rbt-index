@@ -37,7 +37,8 @@ typedef struct SearchArgs {
     Node *root;                // The root of the tree to search
     Arguments arguments;       // Arguments provided to the search
     MapResults *results;      // The hashmap to store search results
-    bool (*match_function)(const FileInfo *, char **);
+    bool (*match_function)(const char *, char **);
+    long long *totalCount;
 } SearchArgs;
 
 void *search_tree_thread(void *args);
@@ -50,7 +51,7 @@ Node *load_tree_from_shared_memory(const char *name);
 
 int matches_pattern(const char *str, char **names, int names_count);
 
-char *convert_glob_to_regex(const char *namePattern);
+char *convert_glob_to_regex(char *namePattern);
 
 void map_results_add_node(MapResults *mapResults, Node *node, const char *key);
 
@@ -60,12 +61,10 @@ void cleanup_map_results(MapResults *mapResults);
 
 void print_results(const MapResults *results);
 
-void search_tree(Node *root, Arguments arguments, bool (*match_function)(const FileInfo *, char **), MapResults *results);
+void search_tree(Node *root, Arguments arguments, bool (*match_function)(const char *, char **), MapResults *results, long long *totalCount);
 
-void search_tree_by_name(Node *root, Arguments arguments, MapResults *results);
+bool match_by_name(const char *name, char **names);
 
-bool match_by_name(const FileInfo *node, char **names);
-
-bool match_by_path(const FileInfo *node, char **paths);
+bool match_by_path(const char *path, char **paths);
 
 #endif //RBTSEARCH_H

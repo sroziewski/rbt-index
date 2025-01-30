@@ -2,7 +2,7 @@
 CC = gcc
 CFLAGS = -Wextra -g -fopenmp -pedantic
 LDFLAGS_RBT_CREATE = -lcrypto -lssl  # Linker flags for OpenSSL (only for rbt_create)
-LDFLAGS_RBT_SEARCH = -lcrypto -lssl -Iinclude
+LDFLAGS_RBT_SEARCH = -lcrypto -lssl
 LDFLAGS_LIST_FILES = -lmagic  # Linker flags for list_files (libmagic)
 
 # Target executables

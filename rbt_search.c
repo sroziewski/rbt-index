@@ -84,7 +84,7 @@ int main(const int argc, char *argv[]) {
     struct timespec start, end;
     initialize_threads();
 
-    bool (*match_function)(const FileInfo *, char **) = NULL;
+    bool (*match_function)(const char *, char **) = NULL;
 
     Arguments arguments = {0};
     parse_arguments(argc, argv, &arguments);
@@ -116,8 +116,14 @@ int main(const int argc, char *argv[]) {
     MapResults results = {NULL, 0};
     // search_tree_by_filename_and_type(root, arguments, &results);
     // search_tree_by_name(root, arguments, &results);
-    search_tree(root, arguments, match_function, &results);
-    print_results(&results);
+    long long totalCount = arguments.names_count > 1 || arguments.paths_count > 1 ? -1 : 0;
+    search_tree(root, arguments, match_function, &results, &totalCount);
+    if (arguments.names_count > 1 || arguments.paths_count > 1) {
+        print_results(&results);
+    }
+    else {
+        printf("\nTotal nodes found: %lld\n", totalCount);
+    }
     cleanup_map_results(&results);
 
     return 0;

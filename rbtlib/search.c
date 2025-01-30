@@ -177,38 +177,83 @@ Node *load_tree_from_shared_memory(const char *name) {
 // }
 
 // Helper function to generate the regex string from a glob-style pattern
-char *convert_glob_to_regex(const char *namePattern) {
-    // Allocate a string for the regex (double the size for safety considering replacements)
-    const size_t len = strlen(namePattern);
-    char *regexPattern = malloc(len * 2 + 3); // Allocate for special characters + start/end anchors
+char *convert_glob_to_regex(char *namePattern) {
+    // Allocate a string for the regex (starting with double the size for safety)
+    const int len = (int) strlen(namePattern);
+    int allocated_size = len * 2 + 3; // Extra space for potential escapes, anchors
+    char *regexPattern = malloc(allocated_size);
     if (!regexPattern) {
         perror("Failed to allocate memory for regex pattern");
         exit(EXIT_FAILURE);
     }
 
-    // Start building the regex pattern
+    // Build the regex pattern
     char *p = regexPattern;
     *p++ = '^'; // Add start anchor
 
-    for (size_t i = 0; i < len; i++) {
-        if (namePattern[i] == '*') {
-            // Replace '*' with '.*' (regex for "zero or more characters")
-            *p++ = '.';
-            *p++ = '*';
-        } else {
-            // Escape special regex characters, if needed
-            if (strchr(".^$+?()[]{}|\\", namePattern[i])) {
-                *p++ = '\\'; // Add escape for special characters
+    for (int i = 0; i < len; i++) {
+        // Expand memory dynamically if needed (e.g., large input strings)
+        if ((p - regexPattern) + 2 >= allocated_size) { // Ensure space for 2 extra characters
+            allocated_size *= 2;
+            regexPattern = realloc(regexPattern, allocated_size);
+            if (!regexPattern) {
+                perror("Failed to reallocate memory for regex pattern");
+                exit(EXIT_FAILURE);
             }
-            *p++ = namePattern[i];
+            p = regexPattern + strlen(regexPattern); // Reset `p` after realloc
+        }
+
+        switch (namePattern[i]) {
+            case '*': // Convert glob `*` to regex `.*`
+                *p++ = '.';
+                *p++ = '*';
+                break;
+
+            case '?': // Convert glob `?` to regex `.`
+                *p++ = '.';
+                break;
+
+            case ' ': // Handle space explicitly (literal match)
+                *p++ = '\\';
+                *p++ = ' ';
+                break;
+
+            // Escape regex special characters
+            case '.': case '^': case '$': case '+': case '(':
+            case ')': case '[': case ']': case '{': case '}':
+            case '|': case '\\': case '!':
+                *p++ = '\\';
+                *p++ = namePattern[i];
+                break;
+
+            default: // Default case: Add the character directly
+                *p++ = namePattern[i];
+                break;
         }
     }
 
     *p++ = '$'; // Add end anchor
     *p = '\0'; // Null-terminate the string
 
-    return regexPattern;
+    return regexPattern; // Return the final regex
 }
+
+void print_node_info(const Node *node) {
+    if (!node) {
+        printf("Invalid node!\n");
+        return;
+    }
+
+    // Print details about the node
+    printf("%s: %s | Type: %s | Size: %zu | Path: %s\n",
+           (strcmp(node->key.type, "T_DIR") == 0)
+               ? "Dir"
+               : (strcmp(node->key.type, "T_LINK_DIR") == 0 || strcmp(node->key.type, "T_LINK_FILE") == 0)
+                     ? "Link"
+                     : "File",
+           node->key.name, node->key.type, node->key.size, node->key.path);
+}
+
 
 int matches_pattern(const char *str, char **names, const int names_count) {
     // Create a buffer to hold the full regex pattern for all names
@@ -247,40 +292,54 @@ int matches_pattern(const char *str, char **names, const int names_count) {
     const int match = regexec(&regex, str, 0, NULL, 0) == 0;
     // Free resources used by the regex engine
     regfree(&regex);
-
     return match;
 }
 
-bool match_by_name(const FileInfo *node, char **names) {
-    return matches_pattern(node->name, names, 1);
+bool match_by_name(const char *name, char **names) {
+    return matches_pattern(name, names, 1);
 }
 
-bool match_by_path(const FileInfo *node, char **paths) {
-    return matches_pattern(node->path, paths, 1);
+bool match_by_path(const char *path, char **paths) {
+    return matches_pattern(path, paths, 1);
 }
 
-void search_tree_by_name(Node *root, const Arguments arguments, MapResults *results) {
-    search_tree(root, arguments, match_by_name, results);
-}
-
-void search_tree(Node *root, const Arguments arguments, bool (*match_function)(const FileInfo *, char **),
-                 MapResults *results) {
+void search_tree(Node *root, const Arguments arguments, bool (*match_function)(const char *, char **),
+                 MapResults *results, long long *totalCount) {
     if (root == NULL) {
         return;
     }
     if (arguments.type == NULL || strcmp(root->key.type, arguments.type) == 0) {
-        for (int i = 0; i < arguments.names_count; ++i) {
-            // if (matches_pattern(root->key.name, &arguments.names[i], 1)) {
-            if (match_function(&root->key, &arguments.names[i])) {
-                map_results_add_node(results, root, arguments.names[i]);
+        if (arguments.names != NULL) {
+            for (int i = 0; i < arguments.names_count; ++i) {
+                if (match_function(root->key.name, &arguments.names[i])) {
+                    map_results_add_node(results, root, arguments.names[i]);
+                }
+                else {
+                    print_node_info(root);
+                    (*totalCount)++;
+                }
                 break;
+            }
+        }
+        else if (arguments.paths != NULL)  {
+            for (int i = 0; i < arguments.paths_count; ++i) {
+                if (match_function(root->key.path, &arguments.paths[i])) {
+                    if (arguments.names_count > 1 || arguments.paths_count > 1) {
+                        map_results_add_node(results, root, arguments.paths[i]);
+                    }
+                    else {
+                        print_node_info(root);
+                        (*totalCount)++;
+                    }
+                    break;
+                }
             }
         }
     }
     // Prepare threading arguments
     pthread_t leftThread, rightThread;
-    SearchArgs leftArgs = {root->left, arguments, results, match_function};
-    SearchArgs rightArgs = {root->right, arguments, results, match_function};
+    SearchArgs leftArgs = {root->left, arguments, results, match_function, totalCount};
+    SearchArgs rightArgs = {root->right, arguments, results, match_function, totalCount};
 
     int create_left_thread = 0, create_right_thread = 0;
 
@@ -300,13 +359,13 @@ void search_tree(Node *root, const Arguments arguments, bool (*match_function)(c
     if (create_left_thread) {
         pthread_create(&leftThread, NULL, search_tree_thread, &leftArgs);
     } else {
-        search_tree(root->left, arguments, match_function, results);
+        search_tree(root->left, arguments, match_function, results, totalCount);
     }
     // Create or execute the right subtree search
     if (create_right_thread) {
         pthread_create(&rightThread, NULL, search_tree_thread, &rightArgs);
     } else {
-        search_tree(root->right, arguments, match_function, results);
+        search_tree(root->right, arguments, match_function, results, totalCount);
     }
     // Join threads if they were created
     if (create_left_thread) {
@@ -325,7 +384,7 @@ void search_tree(Node *root, const Arguments arguments, bool (*match_function)(c
 
 void *search_tree_thread(void *args) {
     const SearchArgs *searchArgs = (SearchArgs *) (args);
-    search_tree(searchArgs->root, searchArgs->arguments, searchArgs->match_function, searchArgs->results);
+    search_tree(searchArgs->root, searchArgs->arguments, searchArgs->match_function, searchArgs->results, searchArgs->totalCount);
     return NULL;
 }
 
@@ -344,11 +403,15 @@ void initialize_threads() {
 
 void print_results(const MapResults *results) {
     NodeHashmapEntry *entry, *tmp;
+    size_t total_nodes = 0; // To count the total number of nodes across all entries
+
     printf("\nResults (%zu keys):\n", results->size);
     // Traverse each entry in the hashmap
     HASH_ITER(hh, results->entry, entry, tmp) {
-        printf("\nKey: %s\n\n", entry->key); // Print the key of the current entry
+        printf("\nKey: %s\n", entry->key); // Print the key of the current entry
+
         // Loop through the data array of Nodes in the current entry
+        size_t key_node_count = 0; // Counter for the current key's nodes
         for (size_t i = 0; i < entry->data_count; i++) {
             Node *node = entry->data[i]; // Access each Node pointer
             printf("%s: %s | Type: %s | Size: %zu | Path: %s\n",
@@ -358,6 +421,12 @@ void print_results(const MapResults *results) {
                              ? "Link"
                              : "File",
                    node->key.name, node->key.type, node->key.size, node->key.path);
+
+            key_node_count++; // Increment the count for this key
         }
+        printf("Summary for key '%s': %zu nodes\n", entry->key, key_node_count);
+        total_nodes += key_node_count; // Add the count for this key to the total
     }
+    // Print the total number of nodes found
+    printf("\nTotal nodes found: %zu\n", total_nodes);
 }
