@@ -344,7 +344,8 @@ void search_tree(Node *root, const Arguments arguments, bool (*match_function)(c
     if (root == NULL) {
         return;
     }
-    if ((arguments.type == NULL || strcmp(root->key.type, arguments.type) == 0) &&
+
+    if ((arguments.type == NULL || strcmp(root->key.type, arguments.type) == 0 || strcmp(arguments.type, "T_FILE") == 0 && strcmp(root->key.type, "T_DIR") != 0) &&
         ((arguments.size_lower_bound == 0 || arguments.size_lower_bound > 0 && root->key.size >= arguments.size_lower_bound) &&
         (arguments.size_upper_bound == 0 || arguments.size_upper_bound > 0 && root->key.size <= arguments.size_upper_bound) ||
         (arguments.size_lower_bound <= root->key.size && root->key.size <= arguments.size_upper_bound))) {
@@ -391,6 +392,10 @@ void search_tree(Node *root, const Arguments arguments, bool (*match_function)(c
                 print_node_info(root);
                 (*totalCount)++;
             }
+        }
+        else if (arguments.size == -2) {
+            print_node_info(root);
+            (*totalCount)++;
         }
     }
     // Prepare threading arguments

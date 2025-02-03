@@ -41,14 +41,20 @@ void parse_arguments(const int argc, char *argv[], Arguments *args) {
                 i++;
             }
             i--; // Step back to process next argument correctly
-        } else if (!strcmp(argv[i], "-s") && i + 1 < argc) {
+        }
+        else if (!strcmp(argv[i], "-s") && i + 1 < argc) {
+            // Check if the next argument is "--size", and skip processing if it is
+            if (!strcmp(argv[i + 1], "--size")) {
+                args->size = -2;
+                continue;
+            }
             char *endptr = NULL;
-            const long value = strtol(argv[++i], &endptr, 10);
+            const long value = strtol(argv[++i], &endptr, 10); // Increment `i` to process the next argument
             if (*endptr != '\0' || value < 0 || value > INT_MAX) {
                 fprintf(stderr, "Invalid value for -s (size): %s\n", argv[i]);
                 exit(EXIT_FAILURE);
             }
-            args->size = (int) value; // Safely assign to integer (after validation)
+            args->size = (int)value; // Safely assign to integer (after validation)
             char size_str[20];
             size_to_string(args->size, size_str, sizeof(size_str));
             args->size_str = malloc(strlen(size_str) + 1); // Allocate memory for size_str
@@ -194,6 +200,9 @@ int main(const int argc, char *argv[]) {
         match_function = match_by_size;
         printf("Looking for size %d\n", arguments.size);
         printf("----------------------------------\n");
+    }
+    if (arguments.names == NULL && arguments.paths == NULL && arguments.hash == NULL && arguments.size == 0 && (arguments.size_lower_bound > 0 || arguments.size_upper_bound > 0)) {
+        match_function = match_by_size;
     }
     if (arguments.type) printf("Type: %s\n", arguments.type);
 
