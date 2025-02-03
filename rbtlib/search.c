@@ -536,3 +536,12 @@ long parse_size(const char *size_str) {
     // Return the value multiplied by the appropriate unit
     return value * multiplier;
 }
+
+bool is_valid_type(const char *type, const char *valid_types[]) {
+    for (int i = 0; valid_types[i] != NULL; i++) {
+        if (strcmp(type, valid_types[i]) == 0) {
+            return true;
+        }
+    }
+    return false;
+}

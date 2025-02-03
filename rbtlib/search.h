@@ -78,4 +78,6 @@ void size_to_string(size_t size, char *buffer, size_t buffer_size);
 
 bool match_by_size(const char *size, char **sizes);
 
+bool is_valid_type(const char *type, const char *valid_types[]);
+
 #endif //RBTSEARCH_H

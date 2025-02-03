@@ -22,8 +22,36 @@ void parse_arguments(const int argc, char *argv[], Arguments *args) {
     args->paths_count = 0;
     args->type = NULL;
     args->hash = NULL;
+    const char *valid_types[] = {
+        "T_DIR", "T_TEXT", "T_BINARY", "T_IMAGE", "T_JSON", "T_AUDIO", "T_FILM",
+        "T_COMPRESSED", "T_YAML", "T_EXE", "T_C", "T_PYTHON", "T_JS", "T_JAVA",
+        "T_LOG", "T_PACKAGE", "T_CLASS", "T_TEMPLATE", "T_PDF", "T_JAR",
+        "T_HTML", "T_XML", "T_XHTML", "T_TS", "T_DOC", "T_CALC", "T_LATEX",
+        "T_SQL", "T_CSV", "T_CSS", "T_LINK_DIR", "T_LINK_FILE", "T_FILE",
+        NULL // Sentinel value to signal the end of the array
+    };
     // Iterate through the arguments
     for (int i = 1; i < argc; i++) {
+        if (!strcmp(argv[i], "--help")) {
+            printf("Usage: [options]\n\n");
+            printf("Options:\n");
+            printf("  -f <file>          Specify the memory filename (required argument).\n");
+            printf("  -n <names>         Multiple names to be provided (space-separated, stop with the next argument starting with '-').\n");
+            printf("  -s <size>          Specify size in bytes or size with suffix (e.g., 100, 10k, 5M). Skips processing if the next argument is '--size'.\n");
+            printf("  --size <range>     Specify size range or boundary. Examples:\n");
+            printf("                     - Lower bound: '10M-'\n");
+            printf("                     - Upper bound: '10M'\n");
+            printf("                     - Range: '10M-100M'.\n");
+            printf("  -p <paths>         Multiple paths to be provided (space-separated, stop with the next argument starting with '-').\n");
+            printf("  -t <type>          Specify the type. Allowed values are:\n");
+            printf("                     T_DIR, T_TEXT, T_BINARY, T_IMAGE, T_JSON, T_AUDIO, T_FILM, T_COMPRESSED, T_YAML, T_EXE, T_C, T_PYTHON,\n");
+            printf("                     T_JS, T_JAVA, T_LOG, T_PACKAGE, T_CLASS, T_TEMPLATE, T_PDF, T_JAR, T_HTML, T_XML, T_XHTML, T_TS, T_DOC,\n");
+            printf("                     T_CALC, T_LATEX, T_SQL, T_CSV, T_CSS, T_LINK_DIR, T_LINK_FILE, T_FILE\n");
+            printf("  -h <hash> <file> <filesize>\n");
+            printf("                     Compute the hash of the specified file. Requires filename and filesize.\n");
+            printf("  --help             Display this help message and exit.\n");
+            exit(EXIT_SUCCESS); // Terminate the program after displaying the help message
+        }
         if (!strcmp(argv[i], "-f") && i + 1 < argc) {
             args->mem_filename = argv[++i]; // Required argument
         } else if (!strcmp(argv[i], "-n")) {
@@ -120,6 +148,24 @@ void parse_arguments(const int argc, char *argv[], Arguments *args) {
         }
         else if (!strcmp(argv[i], "-t") && i + 1 < argc) {
             args->type = argv[++i];
+            // Check if args->type belongs to valid types
+            if (!is_valid_type(args->type, valid_types)) {
+                fprintf(stderr, "Invalid type specified: %s\n", args->type);
+                fprintf(stderr, "Allowed types are:\n");
+
+                // Display valid types
+                for (int i1 = 0; valid_types[i1] != NULL; i1++) {
+                    if (i1 > 0 && i1 % 10 == 0) { // Format into multiple lines for readability
+                        fprintf(stderr, "\n                 ");
+                    }
+                    fprintf(stderr, "%s", valid_types[i1]);
+                    if (valid_types[i1 + 1] != NULL) { // No comma on the last item
+                        fprintf(stderr, ", ");
+                    }
+                }
+                fprintf(stderr, "\n");
+                exit(EXIT_FAILURE); // Exit on invalid type
+            }
         }
         else if (!strcmp(argv[i], "-h") && i + 2 < argc) {
             // args->hash = argv[++i]; // Store the hash argument (string)
