@@ -207,7 +207,6 @@ char *convert_glob_to_regex(const char *namePattern) {
             }
             p = regexPattern + strlen(regexPattern); // Reset `p` after realloc
         }
-
         switch (namePattern[i]) {
             case '*': // Convert glob `*` to regex `.*`
                 *p++ = '.';
@@ -246,7 +245,6 @@ char *convert_glob_to_regex(const char *namePattern) {
                 break;
         }
     }
-
     *p++ = '$'; // Add end anchor
     *p = '\0'; // Null-terminate the string
 
@@ -258,7 +256,6 @@ void print_node_info(const Node *node) {
         printf("Invalid node!\n");
         return;
     }
-
     // Print details about the node
     printf("%s: %s | Type: %s | Size: %s (%zu) | Path: %s\n",
                    (strcmp(node->key.type, "T_DIR") == 0)
@@ -269,7 +266,6 @@ void print_node_info(const Node *node) {
                    node->key.name, node->key.type, getFileSizeAsString((long long) node->key.size), node->key.size,
                    node->key.path);
 }
-
 
 int matches_pattern(const char *str, char **names, const int names_count) {
     // Create a buffer to hold the full regex pattern for all names

@@ -13,6 +13,7 @@
 void parse_arguments(const int argc, char *argv[], Arguments *args) {
     // Initialize all struct members to default values
     args->mem_filename = NULL;
+    args->filename = NULL;
     args->names = NULL;
     args->names_count = 0;
     args->size = -1;
@@ -146,6 +147,20 @@ void parse_arguments(const int argc, char *argv[], Arguments *args) {
             }
             i--; // Step back to process the next argument correctly
         }
+        else if (!strcmp(argv[i], "--file")) {
+            if (i + 1 < argc) { // Ensure there's a filename after --file
+                args->filename = malloc(strlen(argv[i + 1]) + 1); // Allocate memory
+                if (args->filename == NULL) {
+                    fprintf(stderr, "Error: Memory allocation failed for filename.\n");
+                    exit(EXIT_FAILURE);
+                }
+                strcpy(args->filename, argv[i + 1]); // Copy the filename into args.filename
+                i++; // Skip the filename argument
+            } else {
+                fprintf(stderr, "Error: No filename provided after --file.\n");
+                exit(EXIT_FAILURE);
+            }
+        }
         else if (!strcmp(argv[i], "-t") && i + 1 < argc) {
             args->type = argv[++i];
             // Check if args->type belongs to valid types
@@ -254,6 +269,47 @@ int main(const int argc, char *argv[]) {
     Node *root = load_tree_from_shared_memory(arguments.mem_filename);
     MapResults results = {NULL, 0};
     long long totalCount = arguments.names_count > 1 || arguments.paths_count > 1 ? -1 : 0;
+
+    if (arguments.filename != NULL) {
+        match_function = match_by_hash;
+        char **lines = NULL;
+        size_t numLines = 0;
+        // Call the function to read the file lines
+        if (read_file_lines(arguments.filename, &lines, &numLines) != 0) {
+            fprintf(stderr, "Failed to read lines from '%s'.\n", arguments.filename);
+            exit(EXIT_FAILURE);
+        }
+        EVP_MD_CTX *ctx = EVP_MD_CTX_new();
+        if (ctx == NULL) {
+            fprintf(stderr, "Error: Unable to create hashing context\n");
+            exit(EXIT_FAILURE);
+        }
+        for (size_t i = 0; i < numLines; i++) {
+            FileInfo key = {0};
+            if (lines != NULL && lines[i] != NULL) {
+                parseFileData(lines[i], &key, ctx);
+            } else {
+                fprintf(stderr, "Error: lines[%ld] is NULL\n", i);
+                continue;
+            }
+            // Ensure `FileInfo` contains valid data
+            if (key.name && key.path && key.type && key.hash) {
+                const size_t length = strlen(key.hash);
+                arguments.hash = (char *)malloc(length + 1); // +1 for null terminator
+                if (arguments.hash == NULL) {
+                    perror("Failed to allocate memory for args->hash");
+                    exit(EXIT_FAILURE);
+                }
+                memcpy(arguments.hash, key.hash, length);
+                arguments.hash[length] = '\0';
+                search_tree(root, arguments, match_function, &results, &totalCount);
+                int k=1;
+            }
+        }
+        printf("Processed %ld\n", totalCount);
+        exit(1);
+        EVP_MD_CTX_free(ctx);
+    }
     search_tree(root, arguments, match_function, &results, &totalCount);
     if (arguments.names_count > 1 || arguments.paths_count > 1) {
         print_results(&results);

@@ -209,4 +209,6 @@ void sha256_first_64bits_to_hex(const char *input, char *output_hex, EVP_MD_CTX 
 
 void concatenate_strings(const char *string1, const char *string2, char *output);
 
+int read_file_lines(const char *filename, char ***lines, size_t *numLines);
+
 #endif // RBTREE_H

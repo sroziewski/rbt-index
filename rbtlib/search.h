@@ -11,6 +11,7 @@ typedef struct {
 
 typedef struct {
     char *mem_filename;
+    char *filename;
     char **names;
     int names_count;
     int size;

@@ -813,6 +813,52 @@ void listSharedMemoryEntities(const char *prefix) {
 }
 
 /**
+ * Reads lines from a given file and stores them in a dynamically allocated array.
+ *
+ * @param filename The name of the file to read.
+ * @param lines A pointer to a dynamically allocated array of strings.
+ * @param numLines A pointer to a variable where the number of lines will be stored.
+ * @return 0 on success, -1 on failure.
+ */
+int read_file_lines(const char *filename, char ***lines, size_t *numLines) {
+    FILE *file = fopen(filename, "r");
+    if (!file) {
+        perror("Error opening file");
+        exit(EXIT_FAILURE);
+    }
+
+    char buffer[8 * MAX_LINE_LENGTH];
+    *lines = NULL; // Ensure lines starts as NULL
+    *numLines = 0; // Initialize the line count to 0
+
+    // Reading lines from the file
+    while (fgets(buffer, sizeof(buffer), file)) {
+        remove_trailing_newline(buffer);
+        if (*buffer) { // Ignore empty lines
+            char **temp = realloc(*lines, sizeof(char *) * (*numLines + 1));
+            if (!temp) {
+                perror("Failed to allocate memory for lines");
+                fclose(file);
+                return -1; // Indicate failure
+            }
+            *lines = temp;
+
+            (*lines)[*numLines] = strdup(buffer);
+            if (!(*lines)[*numLines]) {
+                perror("Failed to duplicate buffer");
+                fclose(file);
+                return -1; // Indicate failure
+            }
+            (*numLines)++;
+        }
+    }
+    printf("Read %zu lines from file %s \n", *numLines, filename);
+
+    fclose(file);
+    return 0; // Indicate success
+}
+
+/**
  * Create and manage a Red-Black Tree (RBT) based on input commands and filename arguments.
  * This function handles various operations such as loading, cleaning, removing shared memory objects,
  * and storing data to files or shared memory, depending on provided command-line arguments.
@@ -867,45 +913,21 @@ void createRbt(const int argc, char *argv[], void (*insertFunc)(Node **, FileInf
     filenames[0] = filename; // First element is argv[2]
     filenames[1] = NULL; // Second element is NULL
 
-    // Handle the normal processing and storing workflow
-    FILE *file = fopen(filename, "r");
-    if (!file) {
-        perror("Error opening file");
-        return;
-    }
     char **lines = NULL;
     size_t numLines = 0;
-    char buffer[8 * MAX_LINE_LENGTH];
-    Node *finalRoot = NULL; // Red-Black Tree node
-
-    // Reading lines from the file
-    while (fgets(buffer, sizeof(buffer), file)) {
-        remove_trailing_newline(buffer);
-        if (*buffer) {
-            lines = realloc(lines, sizeof(char *) * ++numLines);
-            if (!lines) {
-                perror("Failed to allocate memory for lines");
-                fclose(file);
-                return;
-            }
-            lines[numLines - 1] = strdup(buffer);
-            if (!lines[numLines - 1]) {
-                perror("Failed to duplicate buffer");
-                fclose(file);
-                return;
-            }
-        }
+    // Call the function to read the file lines
+    if (read_file_lines(filename, &lines, &numLines) != 0) {
+        fprintf(stderr, "Failed to read lines from '%s'.\n", filename);
+        exit(EXIT_FAILURE);
     }
-    fclose(file); // Close file after use
-
-    int totalProcessedCount = 0;
-
     EVP_MD_CTX *ctx = EVP_MD_CTX_new();
     if (ctx == NULL) {
         fprintf(stderr, "Error: Unable to create hashing context\n");
         exit(EXIT_FAILURE);
     }
 
+    Node *finalRoot = NULL; // Red-Black Tree node
+    int totalProcessedCount = 0;
     // Processing the lines to insert into the Red-Black Tree
     for (size_t i = 0; i < numLines; i++) {
         FileInfo key = {0};
