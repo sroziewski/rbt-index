@@ -152,7 +152,6 @@ void parse_arguments(const int argc, char *argv[], Arguments *args) {
             if (!is_valid_type(args->type, valid_types)) {
                 fprintf(stderr, "Invalid type specified: %s\n", args->type);
                 fprintf(stderr, "Allowed types are:\n");
-
                 // Display valid types
                 for (int i1 = 0; valid_types[i1] != NULL; i1++) {
                     if (i1 > 0 && i1 % 10 == 0) { // Format into multiple lines for readability

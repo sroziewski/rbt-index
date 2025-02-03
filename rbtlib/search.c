@@ -12,6 +12,7 @@
 
 #include <ctype.h>
 #include <errno.h>
+#include "../shared/shared.h"
 
 int MAX_THREADS = 1;
 
@@ -187,7 +188,7 @@ char *convert_glob_to_regex(const char *namePattern) {
     char *regexPattern = malloc(allocated_size);
     if (!regexPattern) {
         perror("Failed to allocate memory for regex pattern");
-            exit(EXIT_FAILURE);
+        exit(EXIT_FAILURE);
     }
 
     // Build the regex pattern
@@ -196,7 +197,8 @@ char *convert_glob_to_regex(const char *namePattern) {
 
     for (int i = 0; i < len; i++) {
         // Expand memory dynamically if needed (e.g., large input strings)
-        if ((p - regexPattern) + 2 >= allocated_size) { // Ensure space for 2 extra characters
+        if ((p - regexPattern) + 2 >= allocated_size) {
+            // Ensure space for 2 extra characters
             allocated_size *= 2;
             regexPattern = realloc(regexPattern, allocated_size);
             if (!regexPattern) {
@@ -222,9 +224,19 @@ char *convert_glob_to_regex(const char *namePattern) {
                 break;
 
             // Escape regex special characters
-            case '.': case '^': case '$': case '+': case '(':
-            case ')': case '[': case ']': case '{': case '}':
-            case '|': case '\\': case '!':
+            case '.':
+            case '^':
+            case '$':
+            case '+':
+            case '(':
+            case ')':
+            case '[':
+            case ']':
+            case '{':
+            case '}':
+            case '|':
+            case '\\':
+            case '!':
                 *p++ = '\\';
                 *p++ = namePattern[i];
                 break;
@@ -248,13 +260,14 @@ void print_node_info(const Node *node) {
     }
 
     // Print details about the node
-    printf("%s: %s | Type: %s | Size: %zu | Path: %s\n",
-           (strcmp(node->key.type, "T_DIR") == 0)
-               ? "Dir"
-               : (strcmp(node->key.type, "T_LINK_DIR") == 0 || strcmp(node->key.type, "T_LINK_FILE") == 0)
-                     ? "Link"
-                     : "File",
-           node->key.name, node->key.type, node->key.size, node->key.path);
+    printf("%s: %s | Type: %s | Size: %s (%zu) | Path: %s\n",
+                   (strcmp(node->key.type, "T_DIR") == 0)
+                       ? "Dir"
+                       : (strcmp(node->key.type, "T_LINK_DIR") == 0 || strcmp(node->key.type, "T_LINK_FILE") == 0)
+                             ? "Link"
+                             : "File",
+                   node->key.name, node->key.type, getFileSizeAsString((long long) node->key.size), node->key.size,
+                   node->key.path);
 }
 
 
@@ -345,46 +358,44 @@ void search_tree(Node *root, const Arguments arguments, bool (*match_function)(c
         return;
     }
 
-    if ((arguments.type == NULL || strcmp(root->key.type, arguments.type) == 0 || strcmp(arguments.type, "T_FILE") == 0 && strcmp(root->key.type, "T_DIR") != 0) &&
-        ((arguments.size_lower_bound == 0 || arguments.size_lower_bound > 0 && root->key.size >= arguments.size_lower_bound) &&
-        (arguments.size_upper_bound == 0 || arguments.size_upper_bound > 0 && root->key.size <= arguments.size_upper_bound) ||
-        (arguments.size_lower_bound <= root->key.size && root->key.size <= arguments.size_upper_bound))) {
+    if ((arguments.type == NULL || strcmp(root->key.type, arguments.type) == 0 || strcmp(arguments.type, "T_FILE") == 0
+         && strcmp(root->key.type, "T_DIR") != 0) &&
+        ((arguments.size_lower_bound == 0 || arguments.size_lower_bound > 0 && root->key.size >= arguments.
+          size_lower_bound) &&
+         (arguments.size_upper_bound == 0 || arguments.size_upper_bound > 0 && root->key.size <= arguments.
+          size_upper_bound) ||
+         (arguments.size_lower_bound <= root->key.size && root->key.size <= arguments.size_upper_bound))) {
         if (arguments.names != NULL) {
             for (int i = 0; i < arguments.names_count; ++i) {
                 if (match_function(root->key.name, &arguments.names[i])) {
                     if (arguments.names_count > 1) {
                         map_results_add_node(results, root, arguments.names[i]);
-                    }
-                    else {
+                    } else {
                         print_node_info(root);
                         (*totalCount)++;
                     }
                     break;
                 }
             }
-        }
-        else if (arguments.paths != NULL)  {
+        } else if (arguments.paths != NULL) {
             for (int i = 0; i < arguments.paths_count; ++i) {
                 if (match_function(root->key.path, &arguments.paths[i])) {
                     if (arguments.paths_count > 1) {
                         map_results_add_node(results, root, arguments.paths[i]);
-                    }
-                    else {
+                    } else {
                         print_node_info(root);
                         (*totalCount)++;
                     }
                     break;
                 }
             }
-        }
-        else if (arguments.hash != NULL) {
+        } else if (arguments.hash != NULL) {
             char *temp_array[] = {arguments.hash, NULL};
             if (match_function(root->key.hash, temp_array)) {
                 print_node_info(root);
                 (*totalCount)++;
             }
-        }
-        else if (arguments.size >= 0) {
+        } else if (arguments.size >= 0) {
             char current_node_size_str[20];
             size_to_string(root->key.size, current_node_size_str, sizeof(current_node_size_str));
             char *temp_array[] = {arguments.size_str, NULL};
@@ -392,8 +403,7 @@ void search_tree(Node *root, const Arguments arguments, bool (*match_function)(c
                 print_node_info(root);
                 (*totalCount)++;
             }
-        }
-        else if (arguments.size == -2) {
+        } else if (arguments.size == -2) {
             print_node_info(root);
             (*totalCount)++;
         }
@@ -446,7 +456,8 @@ void search_tree(Node *root, const Arguments arguments, bool (*match_function)(c
 
 void *search_tree_thread(void *args) {
     const SearchArgs *searchArgs = (SearchArgs *) (args);
-    search_tree(searchArgs->root, searchArgs->arguments, searchArgs->match_function, searchArgs->results, searchArgs->totalCount);
+    search_tree(searchArgs->root, searchArgs->arguments, searchArgs->match_function, searchArgs->results,
+                searchArgs->totalCount);
     return NULL;
 }
 
@@ -477,13 +488,14 @@ void print_results(const MapResults *results) {
         size_t key_node_count = 0; // Counter for the current key's nodes
         for (size_t i = 0; i < entry->data_count; i++) {
             Node *node = entry->data[i]; // Access each Node pointer
-            printf("%s: %s | Type: %s | Size: %zu | Path: %s\n",
+            printf("%s: %s | Type: %s | Size: %s (%zu) | Path: %s\n",
                    (strcmp(node->key.type, "T_DIR") == 0)
                        ? "Dir"
                        : (strcmp(node->key.type, "T_LINK_DIR") == 0 || strcmp(node->key.type, "T_LINK_FILE") == 0)
                              ? "Link"
                              : "File",
-                   node->key.name, node->key.type, node->key.size, node->key.path);
+                   node->key.name, node->key.type, getFileSizeAsString((long long) node->key.size), node->key.size,
+                   node->key.path);
 
             key_node_count++; // Increment the count for this key
         }
@@ -513,10 +525,17 @@ long parse_size(const char *size_str) {
 
     // Determine the multiplier based on the unit
     switch (unit) {
-        case 'k': case 'K': multiplier = 1024; break;
-        case 'm': case 'M': multiplier = 1024 * 1024; break;
-        case 'g': case 'G': multiplier = 1024 * 1024 * 1024; break;
-        default: multiplier = 1; break;
+        case 'k':
+        case 'K': multiplier = 1024;
+            break;
+        case 'm':
+        case 'M': multiplier = 1024 * 1024;
+            break;
+        case 'g':
+        case 'G': multiplier = 1024 * 1024 * 1024;
+            break;
+        default: multiplier = 1;
+            break;
     }
 
     // Create a temporary string that contains only the numeric part
