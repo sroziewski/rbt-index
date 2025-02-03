@@ -14,6 +14,7 @@ typedef struct {
     char **names;
     int names_count;
     int size;
+    char *size_str;
     size_t size_lower_bound;
     size_t size_upper_bound;
     char **paths;
@@ -53,7 +54,7 @@ Node *load_tree_from_shared_memory(const char *name);
 
 int matches_pattern(const char *str, char **names, int names_count);
 
-char *convert_glob_to_regex(char *namePattern);
+char *convert_glob_to_regex(const char *namePattern);
 
 void map_results_add_node(MapResults *mapResults, Node *node, const char *key);
 
@@ -72,5 +73,9 @@ bool match_by_path(const char *path, char **paths);
 long parse_size(const char *size_str);
 
 bool match_by_hash(const char *hash, char **hashes);
+
+void size_to_string(size_t size, char *buffer, size_t buffer_size);
+
+bool match_by_size(const char *size, char **sizes);
 
 #endif //RBTSEARCH_H

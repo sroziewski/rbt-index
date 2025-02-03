@@ -11,6 +11,7 @@
 #include "search.h"
 
 #include <ctype.h>
+#include <errno.h>
 
 int MAX_THREADS = 1;
 
@@ -179,14 +180,14 @@ Node *load_tree_from_shared_memory(const char *name) {
 // }
 
 // Helper function to generate the regex string from a glob-style pattern
-char *convert_glob_to_regex(char *namePattern) {
+char *convert_glob_to_regex(const char *namePattern) {
     // Allocate a string for the regex (starting with double the size for safety)
     const int len = (int) strlen(namePattern);
     int allocated_size = len * 2 + 3; // Extra space for potential escapes, anchors
     char *regexPattern = malloc(allocated_size);
     if (!regexPattern) {
         perror("Failed to allocate memory for regex pattern");
-        exit(EXIT_FAILURE);
+            exit(EXIT_FAILURE);
     }
 
     // Build the regex pattern
@@ -306,7 +307,36 @@ bool match_by_path(const char *path, char **paths) {
 }
 
 bool match_by_hash(const char *hash, char **hashes) {
-    return matches_pattern(hash, hashes, 1);
+    if (hash == NULL || hashes == NULL || hashes[0] == NULL) {
+        return false;
+    }
+    if (strcmp(hash, hashes[0]) == 0) {
+        return true;
+    }
+    return false;
+}
+
+bool match_by_size(const char *size, char **sizes) {
+    if (size == NULL || sizes == NULL || sizes[0] == NULL) {
+        return false;
+    }
+    char *endptr1;
+    errno = 0;
+    const size_t size_value = strtoul(size, &endptr1, 10);
+    if (errno != 0 || *endptr1 != '\0') {
+        return false;
+    }
+    char *endptr2;
+    errno = 0;
+    const size_t sizes_value = strtoul(sizes[0], &endptr2, 10);
+    if (errno != 0 || *endptr2 != '\0') {
+        return false;
+    }
+    return size_value == sizes_value;
+}
+
+void size_to_string(const size_t size, char *buffer, const size_t buffer_size) {
+    snprintf(buffer, buffer_size, "%zu", size);
 }
 
 void search_tree(Node *root, const Arguments arguments, bool (*match_function)(const char *, char **),
@@ -315,10 +345,9 @@ void search_tree(Node *root, const Arguments arguments, bool (*match_function)(c
         return;
     }
     if ((arguments.type == NULL || strcmp(root->key.type, arguments.type) == 0) &&
-        (arguments.size_lower_bound == 0 || arguments.size_lower_bound > 0 && root->key.size >= arguments.size_lower_bound) &&
+        ((arguments.size_lower_bound == 0 || arguments.size_lower_bound > 0 && root->key.size >= arguments.size_lower_bound) &&
         (arguments.size_upper_bound == 0 || arguments.size_upper_bound > 0 && root->key.size <= arguments.size_upper_bound) ||
-        (arguments.size_lower_bound <= root->key.size && root->key.size <= arguments.size_upper_bound) ||
-        (arguments.size_lower_bound == 0 && arguments.size_upper_bound == 0 )) {
+        (arguments.size_lower_bound <= root->key.size && root->key.size <= arguments.size_upper_bound))) {
         if (arguments.names != NULL) {
             for (int i = 0; i < arguments.names_count; ++i) {
                 if (match_function(root->key.name, &arguments.names[i])) {
@@ -350,6 +379,15 @@ void search_tree(Node *root, const Arguments arguments, bool (*match_function)(c
         else if (arguments.hash != NULL) {
             char *temp_array[] = {arguments.hash, NULL};
             if (match_function(root->key.hash, temp_array)) {
+                print_node_info(root);
+                (*totalCount)++;
+            }
+        }
+        else if (arguments.size >= 0) {
+            char current_node_size_str[20];
+            size_to_string(root->key.size, current_node_size_str, sizeof(current_node_size_str));
+            char *temp_array[] = {arguments.size_str, NULL};
+            if (match_function(current_node_size_str, temp_array)) {
                 print_node_info(root);
                 (*totalCount)++;
             }
@@ -457,9 +495,15 @@ long parse_size(const char *size_str) {
     long multiplier = 1;
     const size_t len = strlen(size_str);
 
-    // Check for size suffix (K, M, G)
-    if (len > 1 && !isdigit(size_str[len - 1])) {
-        unit = size_str[len - 1];
+    // Check for size suffix, ignore trailing '+' or non-numeric characters
+    size_t last_digit_index = len - 1;
+    while (last_digit_index > 0 && !isdigit(size_str[last_digit_index])) {
+        last_digit_index--; // Find the last digit in the string
+    }
+
+    // Determine the unit if it exists (e.g., 'K', 'M', 'G')
+    if (last_digit_index < len - 1) {
+        unit = size_str[last_digit_index + 1];
     }
 
     // Determine the multiplier based on the unit
@@ -470,11 +514,16 @@ long parse_size(const char *size_str) {
         default: multiplier = 1; break;
     }
 
+    // Create a temporary string that contains only the numeric part
+    char numeric_part[20] = {0};
+    strncpy(numeric_part, size_str, last_digit_index + 1);
+
     // Parse the numeric part of the size
     char *endptr = NULL;
-    long value = strtol(size_str, &endptr, 10);
+    const long value = strtol(numeric_part, &endptr, 10);
 
-    if (endptr == size_str || (*endptr != '\0' && endptr != size_str + len - 1)) {
+    // Validate the numeric part
+    if (endptr == numeric_part || *endptr != '\0') {
         fprintf(stderr, "Invalid size value: %s\n", size_str);
         exit(EXIT_FAILURE);
     }

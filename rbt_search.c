@@ -15,7 +15,7 @@ void parse_arguments(const int argc, char *argv[], Arguments *args) {
     args->mem_filename = NULL;
     args->names = NULL;
     args->names_count = 0;
-    args->size = 0;
+    args->size = -1;
     args->size_lower_bound = 0;
     args->size_upper_bound = 0;
     args->paths = NULL;
@@ -49,11 +49,17 @@ void parse_arguments(const int argc, char *argv[], Arguments *args) {
                 exit(EXIT_FAILURE);
             }
             args->size = (int) value; // Safely assign to integer (after validation)
+            char size_str[20];
+            size_to_string(args->size, size_str, sizeof(size_str));
+            args->size_str = malloc(strlen(size_str) + 1); // Allocate memory for size_str
+            if (args->size_str == NULL) {
+                perror("Failed to allocate memory");
+                exit(EXIT_FAILURE);
+            }
+            strcpy(args->size_str, size_str);
         }
-
         else if (!strcmp(argv[i], "--size") && i + 1 < argc) {
             const char *size_arg = argv[++i];
-
             if (strchr(size_arg, '-')) {
                 // Handle lower-bound size (e.g., "100k-", "10M-")
                 if (size_arg[strlen(size_arg) - 1] == '-') {
@@ -184,7 +190,11 @@ int main(const int argc, char *argv[]) {
         printf("Looking for hash %s\n", arguments.hash);
         printf("----------------------------------\n");
     }
-    if (arguments.size) printf("Size: %d\n", arguments.size);
+    if (arguments.size >= 0) {
+        match_function = match_by_size;
+        printf("Looking for size %d\n", arguments.size);
+        printf("----------------------------------\n");
+    }
     if (arguments.type) printf("Type: %s\n", arguments.type);
 
     Node *root = load_tree_from_shared_memory(arguments.mem_filename);
