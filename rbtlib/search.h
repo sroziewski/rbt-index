@@ -71,4 +71,6 @@ bool match_by_path(const char *path, char **paths);
 
 long parse_size(const char *size_str);
 
+bool match_by_hash(const char *hash, char **hashes);
+
 #endif //RBTSEARCH_H

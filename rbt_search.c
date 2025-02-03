@@ -108,9 +108,37 @@ void parse_arguments(const int argc, char *argv[], Arguments *args) {
         }
         else if (!strcmp(argv[i], "-t") && i + 1 < argc) {
             args->type = argv[++i];
-        } else if (!strcmp(argv[i], "-h") && i + 1 < argc) {
-            args->hash = argv[++i];
-        } else {
+        }
+        else if (!strcmp(argv[i], "-h") && i + 2 < argc) {
+            // args->hash = argv[++i]; // Store the hash argument (string)
+            const char *filename = argv[++i];
+            char *endptr = NULL;
+            const size_t filesize = strtoull(argv[++i], &endptr, 10);
+            if (*endptr != '\0' || filesize == 0) {
+                fprintf(stderr, "Invalid filesize value after -h: %s\n", argv[i]);
+                exit(EXIT_FAILURE);
+            }
+            FileInfo file_info = {0};
+            file_info.size = filesize;
+            strncpy(file_info.name, filename, sizeof(file_info.name) - 1);
+            file_info.name[sizeof(file_info.name) - 1] = '\0'; // Null-terminate the string
+            EVP_MD_CTX *ctx = EVP_MD_CTX_new();
+            if (ctx == NULL) {
+                fprintf(stderr, "Error: Unable to create hashing context\n");
+                exit(EXIT_FAILURE);
+            }
+            compute_and_store_hash(&file_info, ctx);
+            const size_t length = strlen(file_info.hash);
+            args->hash = (char *)malloc(length + 1); // +1 for null terminator
+            if (args->hash == NULL) {
+                perror("Failed to allocate memory for args->hash");
+               exit(EXIT_FAILURE);
+            }
+            memcpy(args->hash, file_info.hash, length);
+            args->hash[length] = '\0';
+            EVP_MD_CTX_free(ctx);
+        }
+        else {
             fprintf(stderr, "Unknown or improperly formatted argument: %s\n", argv[i]);
             exit(EXIT_FAILURE);
         }
@@ -151,6 +179,11 @@ int main(const int argc, char *argv[]) {
             match_function = match_by_path;
         }
     }
+    if (arguments.hash != NULL) {
+        match_function = match_by_hash;
+        printf("Looking for hash %s\n", arguments.hash);
+        printf("----------------------------------\n");
+    }
     if (arguments.size) printf("Size: %d\n", arguments.size);
     if (arguments.type) printf("Type: %s\n", arguments.type);
 
@@ -162,6 +195,7 @@ int main(const int argc, char *argv[]) {
         print_results(&results);
     }
     else {
+        printf("----------------------------------\n");
         printf("\nTotal nodes found: %lld\n", totalCount);
     }
     cleanup_map_results(&results);

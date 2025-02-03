@@ -161,6 +161,8 @@ long long calc_tree_size(const Node *node);
 
 size_t serialize_file_info(const FileInfo *fileInfo, char *buffer);
 
+void compute_and_store_hash(FileInfo *result, EVP_MD_CTX *ctx);
+
 // File Operations
 void store_rbt_to_file(Node *root, const char *filename);
 

@@ -19,6 +19,7 @@ char *get_filename_from_path(const char *path) {
     const char *slash = strrchr(path, '/'); // Find the last '/' in the path
     return slash ? strdup(slash + 1) : strdup(path); // Duplicate the file name
 }
+
 void compute_and_store_hash(FileInfo *result, EVP_MD_CTX *ctx) {
     char hash[17];
     char hash_input[LINK_LENGTH];
@@ -241,6 +242,12 @@ size_t serialize_file_info(const FileInfo *fileInfo, char *buffer) {
     memcpy(buffer + offset, fileInfo->type, length);
     offset += length;
 
+    length = strlen(fileInfo->hash) + 1; // Include null terminator
+    memcpy(buffer + offset, &length, sizeof(size_t));
+    offset += sizeof(size_t);
+    memcpy(buffer + offset, fileInfo->hash, length);
+    offset += length;
+
     return offset;
 }
 
@@ -285,6 +292,12 @@ size_t deserialize_file_info(FileInfo *fileInfo, const char *buffer) {
     }
     memcpy(fileInfo->type, buffer + offset, length);
     fileInfo->type[length] = '\0'; // Ensure null-terminated
+    offset += length;
+
+    memcpy(&length, buffer + offset, sizeof(size_t));
+    offset += sizeof(size_t);
+    memcpy(fileInfo->hash, buffer + offset, length);
+    fileInfo->hash[length] = '\0'; // Ensure null-termination
     offset += length;
 
     return offset;
@@ -389,7 +402,8 @@ size_t calc_file_info_size(const FileInfo *fileInfo) {
     return sizeof(size_t) + (strlen(fileInfo->name) + 1) +
            sizeof(size_t) +
            sizeof(size_t) + (strlen(fileInfo->path) + 1) +
-           sizeof(size_t) + (strlen(fileInfo->type) + 1);
+           sizeof(size_t) + (strlen(fileInfo->type) + 1) +
+           sizeof(size_t) + (strlen(fileInfo->hash) + 1);
 }
 
 // Function to calculate serialized size of the whole tree

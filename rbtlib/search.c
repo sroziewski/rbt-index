@@ -305,6 +305,10 @@ bool match_by_path(const char *path, char **paths) {
     return matches_pattern(path, paths, 1);
 }
 
+bool match_by_hash(const char *hash, char **hashes) {
+    return matches_pattern(hash, hashes, 1);
+}
+
 void search_tree(Node *root, const Arguments arguments, bool (*match_function)(const char *, char **),
                  MapResults *results, long long *totalCount) {
     if (root == NULL) {
@@ -318,19 +322,21 @@ void search_tree(Node *root, const Arguments arguments, bool (*match_function)(c
         if (arguments.names != NULL) {
             for (int i = 0; i < arguments.names_count; ++i) {
                 if (match_function(root->key.name, &arguments.names[i])) {
-                    map_results_add_node(results, root, arguments.names[i]);
+                    if (arguments.names_count > 1) {
+                        map_results_add_node(results, root, arguments.names[i]);
+                    }
+                    else {
+                        print_node_info(root);
+                        (*totalCount)++;
+                    }
+                    break;
                 }
-                else {
-                    print_node_info(root);
-                    (*totalCount)++;
-                }
-                break;
             }
         }
         else if (arguments.paths != NULL)  {
             for (int i = 0; i < arguments.paths_count; ++i) {
                 if (match_function(root->key.path, &arguments.paths[i])) {
-                    if (arguments.names_count > 1 || arguments.paths_count > 1) {
+                    if (arguments.paths_count > 1) {
                         map_results_add_node(results, root, arguments.paths[i]);
                     }
                     else {
@@ -339,6 +345,13 @@ void search_tree(Node *root, const Arguments arguments, bool (*match_function)(c
                     }
                     break;
                 }
+            }
+        }
+        else if (arguments.hash != NULL) {
+            char *temp_array[] = {arguments.hash, NULL};
+            if (match_function(root->key.hash, temp_array)) {
+                print_node_info(root);
+                (*totalCount)++;
             }
         }
     }
@@ -415,6 +428,7 @@ void print_results(const MapResults *results) {
     // Traverse each entry in the hashmap
     HASH_ITER(hh, results->entry, entry, tmp) {
         printf("\nKey: %s\n", entry->key); // Print the key of the current entry
+        printf("----------------------------------\n");
 
         // Loop through the data array of Nodes in the current entry
         size_t key_node_count = 0; // Counter for the current key's nodes
@@ -430,11 +444,12 @@ void print_results(const MapResults *results) {
 
             key_node_count++; // Increment the count for this key
         }
+        printf("----------------------------------\n");
         printf("Summary for key '%s': %zu nodes\n", entry->key, key_node_count);
         total_nodes += key_node_count; // Add the count for this key to the total
     }
-    // Print the total number of nodes found
-    printf("\nTotal nodes found: %zu\n", total_nodes);
+    printf("----------------------------------\n");
+    printf("Total nodes found: %zu\n", total_nodes);
 }
 
 long parse_size(const char *size_str) {
