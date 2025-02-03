@@ -12,6 +12,8 @@
 
 #include <ctype.h>
 #include <errno.h>
+#include <sys/time.h>
+
 #include "../shared/shared.h"
 
 int MAX_THREADS = 1;
@@ -457,7 +459,7 @@ void *search_tree_thread(void *args) {
     return NULL;
 }
 
-void initialize_threads() {
+int initialize_threads() {
     const long cores = sysconf(_SC_NPROCESSORS_ONLN); // Get the number of cores
     if (cores <= 0) {
         perror("Failed to determine the number of processors");
@@ -468,6 +470,7 @@ void initialize_threads() {
         MAX_THREADS = 6; // Otherwise, use up to 8 threads
     }
     printf("Number of cores available: %ld, MAX_THREADS set to: %d\n", cores, MAX_THREADS);
+    return MAX_THREADS;
 }
 
 void print_results(const MapResults *results) {
@@ -559,4 +562,129 @@ bool is_valid_type(const char *type, const char *valid_types[]) {
         }
     }
     return false;
+}
+
+void *process_lines(void *arg) {
+    const ThreadSearchData *data = (ThreadSearchData *)arg;
+    Arguments arguments = {0};
+    long long localCount = 0;
+
+    for (size_t i = data->start; i < data->end; i++) {
+        FileInfo key = {0};
+        if (data->lines != NULL && data->lines[i] != NULL) {
+            parseFileData(data->lines[i], &key, data->ctx);
+        } else {
+            fprintf(stderr, "Error: lines[%ld] is NULL\n", i);
+            continue;
+        }
+
+        // Ensure `FileInfo` contains valid data
+        if (key.name && key.path && key.type && key.hash) {
+            const size_t length = strlen(key.hash);
+
+            arguments.hash = (char *)malloc(length + 1); // +1 for null terminator
+            if (arguments.hash == NULL) {
+                perror("Failed to allocate memory for arguments.hash");
+                exit(EXIT_FAILURE);
+            }
+            memcpy(arguments.hash, key.hash, length);
+            arguments.hash[length] = '\0';
+
+            // Call the search tree (assuming root and results are thread-safe)
+            search_tree(data->root, arguments, match_by_hash, NULL, &localCount);
+            free(arguments.hash);
+        }
+    }
+
+    // Update the total count (atomic operation)
+    pthread_mutex_lock(data->result_lock);
+    *(data->totalCount) += (int)localCount;
+    pthread_mutex_unlock(data->result_lock);
+    printf("Thread %d: Processed chunk [%zu - %zu)\n", data->thread_id, data->start, data->end);
+
+
+    return NULL;
+}
+
+void parallel_file_processing(const char *filename, void *root, const int maxThreads) {
+    struct timeval start, end;
+    gettimeofday(&start, NULL);
+    int totalCount;
+    // Determine number of cores and calculate threads
+    const size_t numCores = sysconf(_SC_NPROCESSORS_ONLN);
+    const int numThreads = (int)(numCores / maxThreads) + 1;
+    printf("Number of threads: %d\n", numThreads);
+
+    char **lines = NULL;
+    size_t numLines = 0;
+
+    // Read lines from the file
+    if (read_file_lines(filename, &lines, &numLines) != 0) {
+        fprintf(stderr, "Failed to read lines from '%s'.\n", filename);
+        exit(EXIT_FAILURE);
+    }
+
+    // Allocate space for threads and thread data
+    pthread_t *threads = (pthread_t *)malloc(sizeof(pthread_t) * numThreads);
+    if (!threads) {
+        perror("Failed to allocate memory for threads");
+        exit(EXIT_FAILURE);
+    }
+
+    ThreadSearchData *threadData = (ThreadSearchData *)malloc(sizeof(ThreadSearchData) * numThreads);
+    if (!threadData) {
+        perror("Failed to allocate memory for thread data");
+        free(threads);
+        exit(EXIT_FAILURE);
+    }
+
+    // Create a mutex for synchronizing totalCount updates
+    pthread_mutex_t result_lock;
+    pthread_mutex_init(&result_lock, NULL);
+
+    // Calculate workload distribution
+    const size_t chunkSize = (numLines + numThreads - 1) / numThreads;
+
+    // Create an OpenSSL hashing context
+    EVP_MD_CTX *ctx = EVP_MD_CTX_new();
+    if (ctx == NULL) {
+        fprintf(stderr, "Error: Unable to create hashing context\n");
+        exit(EXIT_FAILURE);
+    }
+
+    // Create threads and assign data to each thread
+    for (int i = 0; i < numThreads; i++) {
+        threadData[i].start = i * chunkSize;
+        threadData[i].end = (i + 1) * chunkSize < numLines ? (i + 1) * chunkSize : numLines;
+        threadData[i].lines = lines;
+        threadData[i].totalCount = &totalCount;
+        threadData[i].root = root;
+        threadData[i].result_lock = &result_lock;
+        threadData[i].ctx = ctx;
+        threadData[i].thread_id = i;
+
+        if (pthread_create(&threads[i], NULL, process_lines, &threadData[i]) != 0) {
+            fprintf(stderr, "Failed to create thread: %s\n", strerror(errno));
+            free(threads);
+            free(threadData);
+            pthread_mutex_destroy(&result_lock);
+            exit(EXIT_FAILURE);
+        }
+    }
+
+    // Wait for all threads to finish
+    for (int i = 0; i < numThreads; i++) {
+        pthread_join(threads[i], NULL);
+    }
+    gettimeofday(&end, NULL);
+    const double elapsed = get_time_difference(start, end);
+
+    // Output total count and execution time
+    printf("Total count of processed items: %d\n", totalCount);
+    printf("Execution time: %.0f seconds\n", elapsed);
+    // Clean up
+    pthread_mutex_destroy(&result_lock);
+    free(threads);
+    free(threadData);
+    EVP_MD_CTX_free(ctx);
 }

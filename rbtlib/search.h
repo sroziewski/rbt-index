@@ -45,11 +45,22 @@ typedef struct SearchArgs {
     long long *totalCount;
 } SearchArgs;
 
+typedef struct {
+    size_t start;
+    size_t end;
+    char **lines;
+    int *totalCount;
+    void *root;
+    pthread_mutex_t *result_lock;
+    void *ctx;
+    int thread_id;
+} ThreadSearchData;
+
 void *search_tree_thread(void *args);
 
 void search_tree_by_filename_and_type(Node *root, Arguments arguments, MapResults *results);
 
-void initialize_threads();
+int initialize_threads();
 
 Node *load_tree_from_shared_memory(const char *name);
 
@@ -80,5 +91,9 @@ void size_to_string(size_t size, char *buffer, size_t buffer_size);
 bool match_by_size(const char *size, char **sizes);
 
 bool is_valid_type(const char *type, const char *valid_types[]);
+
+void *process_lines(void *arg);
+
+void parallel_file_processing(const char *filename, void *root, int maxThreads);
 
 #endif //RBTSEARCH_H

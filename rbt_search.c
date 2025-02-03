@@ -1,3 +1,4 @@
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -7,6 +8,8 @@
 #include <sys/stat.h>
 #include <regex.h>
 #include <unistd.h>
+#include <sys/time.h>
+
 #include "rbtlib/rbtree.h"
 #include "rbtlib/search.h"
 
@@ -223,8 +226,8 @@ void parse_arguments(const int argc, char *argv[], Arguments *args) {
 }
 
 int main(const int argc, char *argv[]) {
-    struct timespec start, end;
-    initialize_threads();
+    struct timeval start, end;
+    const int maxThreads = initialize_threads();
 
     bool (*match_function)(const char *, char **) = NULL;
 
@@ -271,44 +274,8 @@ int main(const int argc, char *argv[]) {
     long long totalCount = arguments.names_count > 1 || arguments.paths_count > 1 ? -1 : 0;
 
     if (arguments.filename != NULL) {
-        match_function = match_by_hash;
-        char **lines = NULL;
-        size_t numLines = 0;
-        // Call the function to read the file lines
-        if (read_file_lines(arguments.filename, &lines, &numLines) != 0) {
-            fprintf(stderr, "Failed to read lines from '%s'.\n", arguments.filename);
-            exit(EXIT_FAILURE);
-        }
-        EVP_MD_CTX *ctx = EVP_MD_CTX_new();
-        if (ctx == NULL) {
-            fprintf(stderr, "Error: Unable to create hashing context\n");
-            exit(EXIT_FAILURE);
-        }
-        for (size_t i = 0; i < numLines; i++) {
-            FileInfo key = {0};
-            if (lines != NULL && lines[i] != NULL) {
-                parseFileData(lines[i], &key, ctx);
-            } else {
-                fprintf(stderr, "Error: lines[%ld] is NULL\n", i);
-                continue;
-            }
-            // Ensure `FileInfo` contains valid data
-            if (key.name && key.path && key.type && key.hash) {
-                const size_t length = strlen(key.hash);
-                arguments.hash = (char *)malloc(length + 1); // +1 for null terminator
-                if (arguments.hash == NULL) {
-                    perror("Failed to allocate memory for args->hash");
-                    exit(EXIT_FAILURE);
-                }
-                memcpy(arguments.hash, key.hash, length);
-                arguments.hash[length] = '\0';
-                search_tree(root, arguments, match_function, &results, &totalCount);
-                int k=1;
-            }
-        }
-        printf("Processed %ld\n", totalCount);
-        exit(1);
-        EVP_MD_CTX_free(ctx);
+        parallel_file_processing(arguments.filename, root, maxThreads);
+        exit(EXIT_SUCCESS);
     }
     search_tree(root, arguments, match_function, &results, &totalCount);
     if (arguments.names_count > 1 || arguments.paths_count > 1) {
