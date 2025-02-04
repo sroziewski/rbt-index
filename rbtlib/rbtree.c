@@ -6,6 +6,8 @@
 #include "../shared/shared.h"
 #include "../shared/lconsts.h"
 
+pthread_mutex_t lock;
+
 // Utility Functions
 void remove_trailing_newline(char *str) {
     const size_t len = strlen(str);
@@ -25,7 +27,9 @@ void compute_and_store_hash(FileInfo *result, EVP_MD_CTX *ctx) {
     char hash_input[LINK_LENGTH];
 
     concatenate_name_and_size(result, hash_input);
+    pthread_mutex_lock(&lock);
     sha256_first_64bits_to_hex(hash_input, hash, ctx);
+    pthread_mutex_unlock(&lock);
 
     memcpy(result->hash, hash, 17);
 }
