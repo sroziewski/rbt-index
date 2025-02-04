@@ -554,7 +554,7 @@ void parallel_file_processing(const char *filename, void *root, const int maxThr
     int totalCount;
     // Determine number of cores and calculate threads
     const size_t numCores = sysconf(_SC_NPROCESSORS_ONLN);
-    const int numThreads = 48;//(int)(numCores / maxThreads) + 1;
+    const int numThreads = 96;//(int)(numCores / maxThreads) + 1;
     printf("Number of threads: %d\n", numThreads);
 
     char **lines = NULL;

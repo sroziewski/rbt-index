@@ -34,6 +34,35 @@ void compute_and_store_hash(FileInfo *result, EVP_MD_CTX *ctx) {
     memcpy(result->hash, hash, 17);
 }
 
+size_t extract_column_value(const char *input, const int column) {
+    if (column < 1) {
+        // Invalid column index
+        return -1;
+    }
+    regex_t regex;
+    regmatch_t match[2];
+    size_t result = 0; // Default return value if no match is found
+    // Build the regex pattern dynamically to match the requested column
+    char pattern[100];
+    snprintf(pattern, sizeof(pattern), "^[^|]*\\|([^|]*)");
+    if (regcomp(&regex, pattern, REG_EXTENDED) != 0) {
+        fprintf(stderr, "Regex compilation failed\n");
+        return result; // Handle error appropriately
+    }
+    // Execute regex to find matches
+    if (!regexec(&regex, input, 2, match, 0)) {
+        char extracted[50];
+        snprintf(extracted, match[1].rm_eo - match[1].rm_so + 1, "%s", input + match[1].rm_so);
+        char *endptr_tmp;
+        result = strtoll(extracted, &endptr_tmp, 10);
+        if (endptr_tmp == extracted) {
+            fprintf(stderr, "Conversion error %s: No digits were found.\n", extracted);
+        }
+    }
+    regfree(&regex); // Free up regex resources
+    return result;
+}
+
 // File parsing into FileInfo
 void parseFileData(const char *inputLine, FileInfo *result, EVP_MD_CTX *ctx) {
     char *lineCopy = strdup(inputLine);
@@ -64,7 +93,6 @@ void parseFileData(const char *inputLine, FileInfo *result, EVP_MD_CTX *ctx) {
         fprintf(stderr, "Invalid numeric format for token: %s size in line: %s\n", token, inputLine);
         exit(EXIT_FAILURE);
     }
-
     token = strtok(NULL, SEP);
     if (!token) {
         fprintf(stderr, "Error parsing type in line: %s\n", lineCopy);
