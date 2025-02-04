@@ -59,7 +59,7 @@ void parseFileData(const char *inputLine, FileInfo *result, EVP_MD_CTX *ctx) {
     char *endptr;
     result->size = strtol(token, &endptr, 10);
     if (*endptr != '\0') {
-        fprintf(stderr, "Invalid numeric format for token: %s size in line: %s\n", result->name, lineCopy);
+        // fprintf(stderr, "Invalid numeric format for token: %s size in line: %s\n", token, lineCopy);
         exit(EXIT_FAILURE);
     }
 
