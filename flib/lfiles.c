@@ -1563,40 +1563,48 @@ int is_file(const char *path) {
 
 
 /**
- * Processes command-line arguments, configures various parameters, and validates argument constraints.
- * This function interprets different flags and associated file names, storing the results in the provided
- * parameters. It enforces mutual exclusions and ensures essential arguments are provided.
+ * Processes command-line arguments for a file and directory handling application.
  *
- * @param argc              The count of command-line arguments.
- * @param argv              The array of command-line argument strings.
- * @param skipDirs          A pointer to an integer flag indicating whether to skip directories.
- * @param sizeThreshold     A pointer to a long long defining the size threshold for filtering files.
- * @param outputFileName    A pointer to a char pointer where the output file name specified with '-o'
- *                          will be stored.
- * @param outputTmpFileName A pointer to a char pointer for storing a temporary output file name.
+ * This function parses and validates the provided command-line arguments to configure
+ * the application's behavior. It handles options for output file specification,
+ * merging files, accumulating data, generating file statistics, and more. The function
+ * ensures that conflicting options are not used simultaneously and initializes related
+ * data structures accordingly. Memory management for dynamically allocated arrays is
+ * handled internally, and errors are reported if improper arguments are detected.
+ *
+ * @param argc              The count of command-line arguments provided by the user.
+ * @param argv              An array of character pointers representing the command-line arguments.
+ * @param skipDirs          A pointer to an integer flag (0 or 1) indicating whether directories
+ *                           should be skipped during processing.
+ * @param sizeThreshold     A pointer to a long long integer representing the minimum file size in
+ *                           bytes for processing.
+ * @param outputFileName    A pointer to a string that stores the name of the output file.
+ * @param outputTmpFileName A pointer to a string that stores the name of a temporary output file.
  * @param tmpFileNames      A pointer to an array of strings for temporary file names.
- * @param directories       A pointer to an array of strings for storing directory paths.
- * @param mergeFileNames    A pointer to an array of strings for file names used with the '-m' option.
- * @param statFileNames     A pointer to an array of strings for file names used with the '--stats' option.
- * @param directoryCount    A pointer to an integer where the count of processed directories will be stored.
- * @param mergeFileName     A pointer to a char pointer where the file name specified with '--merge' will be stored.
- * @param accFileName       A pointer to a char pointer where the file name specified with '--acc' will be stored.
- * @param mergeFileCount    A pointer to an integer representing the count of files specified with '-m'.
- * @param statFileCount     A pointer to an integer representing the count of files specified with '--stats'.
- * @param printStd          A pointer to a boolean flag indicating whether '--print' was specified.
- * @param parentDirectory   A pointer to a char pointer for storing the path to the parent directory.
- * @param stepCount         A pointer to an integer determining step-related processing options.
- * @param accFileCount      A pointer to an integer containing the count of rows in the '--acc' file.
+ * @param directories       A pointer to an array of strings representing directory paths to process.
+ * @param mergeFileNames    A pointer to an array of strings containing file names to be merged.
+ * @param statFileNames     A pointer to an array of strings for file names to use in generating statistics.
+ * @param directoryCount    A pointer to an integer tracking the number of directories parsed from arguments.
+ * @param mergeFileName     A pointer to a string storing the name of a single file used for a merge operation.
+ * @param accFileName       A pointer to a string storing the name of a file used for data accumulation.
+ * @param mergeFileCount    A pointer to an integer tracking the number of files specified for merging.
+ * @param statFileCount     A pointer to an integer tracking the number of files specified for statistics generation.
+ * @param printStd          A pointer to a boolean flag indicating whether to print results to stdout.
+ * @param listOnly          A pointer to a boolean flag indicating whether to list files and directories without processing them.
+ * @param parentDirectory   A pointer to a string storing the path of the parent directory to process.
+ * @param stepCount         A pointer to an integer tracking the number of processing steps to execute.
+ * @param accFileCount      A pointer to an integer tracking the number of records read from the accumulated file.
  *
- * @return An integer value. Returns EXIT_SUCCESS (typically 0) if the arguments are
- *         processed successfully, otherwise EXIT_FAILURE (typically non-zero) on error.
+ * @return An integer representing the success or failure of the argument processing:
+ *         - `EXIT_SUCCESS` (typically 0) on successful processing of arguments.
+ *         - `EXIT_FAILURE` (typically non-zero) if errors are encountered or invalid arguments are provided.
  */
 int process_arguments(const int argc, char **argv, int *skipDirs, long long *sizeThreshold, char **outputFileName,
                       char **outputTmpFileName,
                       char ***tmpFileNames, char ***directories, char ***mergeFileNames, char ***statFileNames,
                       int *directoryCount,
                       char **mergeFileName, char **accFileName, int *mergeFileCount, int *statFileCount, bool *printStd,
-                      char **parentDirectory,
+                      bool *listOnly, char **parentDirectory,
                       int *stepCount, int *accFileCount) {
     *skipDirs = 0; // Default: don't skip directories
     *sizeThreshold = 0; // Default: no size threshold
@@ -1623,7 +1631,38 @@ int process_arguments(const int argc, char **argv, int *skipDirs, long long *siz
                 free_multiple_arrays(directories, tmpFileNames, mergeFileNames, statFileNames, NULL);
                 return EXIT_FAILURE;
             }
-        } else if (strcmp(argv[i], "--merge") == 0) {
+        }
+        else if (strcmp(argv[i], "--listOnly") == 0) {
+            *listOnly = true;
+        }
+        else if (argc == 2 && strcmp(argv[1], "--help") == 0) {
+            printf("Usage: %s [options] <directory_path(s)>\n", argv[0]);
+            printf("Options:\n");
+            printf("  -o <outputfile>          Specify the output file name.\n");
+            printf("  --merge <filename>       Merge operation with the specified file name.\n");
+            printf("  -m <filename(s)>         Merge multiple files (specify one or more filenames).\n");
+            printf("  --stats <filename(s)>    Generate statistics for one or more specified files.\n");
+            printf("  --acc <filename>         Accumulate data from the specified file.\n");
+            printf("  --print                  Print the output to stdout.\n");
+            printf("  -M <maxSizeInMB>         Specify the maximum file size (in MB).\n");
+            printf("  --skip-dirs              Skip processing directories.\n");
+            printf("  --help                   Show this help message and exit.\n\n");
+            printf("Constraints:\n");
+            printf("  - `--merge` cannot be used with `-m` or `--stats`.\n");
+            printf("  - `--acc` cannot be used with `-m`, `--merge`, or `--stats`.\n");
+            printf("  - `-o` cannot be used with `--merge`.\n");
+            printf("  - At least one of `-o`, `--merge`, `--stats`, or `--acc` must be specified.\n\n");
+            printf("Examples:\n");
+            printf("  %s -o output.txt dir1 dir2\n", argv[0]);
+            printf("  %s --merge merged.txt -o output.txt dir1\n", argv[0]);
+            printf("  %s --stats stats1.txt stats2.txt\n", argv[0]);
+            printf("  %s -m file1.txt file2.txt -o output.txt\n\n", argv[0]);
+            printf("Description:\n");
+            printf("  This tool processes files and directories based on the specified options.\n");
+            printf("  Use it to merge, analyze, and store files with various operational flags.\n");
+            exit(EXIT_SUCCESS);
+        }
+        else if (strcmp(argv[i], "--merge") == 0) {
             if (*statFileNames != NULL) {
                 fprintf(stderr, "Error: --stats cannot be used with --merge.\n");
                 free_multiple_arrays(directories, tmpFileNames, mergeFileNames, statFileNames, NULL);
@@ -1770,7 +1809,7 @@ int process_arguments(const int argc, char **argv, int *skipDirs, long long *siz
     if (*outputFileName == NULL && *mergeFileName == NULL && *statFileNames == NULL) {
         fprintf(
             stderr,
-            "Error: The -o <outputfile> option is required otherwise use --merge <filename> or --stats <filename(s)> or --acc <filename>.\n");
+            "Error: The -o <outputfile> option is required otherwise use --merge <filename> or --stats <filename(s)> or --acc <filename>.\nTry with --help\n");
         fprintf(
             stderr,
             "Usage: %s [1. 4. <directory_path(s)>] [2. -m <filename(s)>] [-M maxSizeInMB] [--skip-dirs] [1. 2. -o <outputfile>] [4. --merge <filename>] [5. --stats <filename(s)>] [6. --acc <filename>]\n",
@@ -1886,7 +1925,6 @@ int process_arguments(const int argc, char **argv, int *skipDirs, long long *siz
                 release_temporary_resources(outputTmpFileName, NULL);
                 return EXIT_FAILURE;
             }
-
             // Generate a temporary file name
             char tmpFileNameBuffer[MAX_LINE_LENGTH]; // Assumes a max temporary filename size
             snprintf(tmpFileNameBuffer, sizeof(tmpFileNameBuffer), "%s_tmp%d",
@@ -1915,7 +1953,11 @@ int process_arguments(const int argc, char **argv, int *skipDirs, long long *siz
             // do nothing here
         } else if (strcmp(argv[i], "--acc") == 0) {
             // do nothing here
-        } else {
+        }
+        else if (strcmp(argv[i], "--listOnly") == 0) {
+            // do nothing here
+        }
+        else {
             if (!belongs_to_array(argv[i], *mergeFileNames, mergeFileCountTmp) && !belongs_to_array(
                     argv[i], *statFileNames,
                     statFileCountTmp) && (*mergeFileName == NULL || *mergeFileName != NULL && strcmp(
@@ -2242,35 +2284,37 @@ void compute_file_statistics(const FileEntry *entries, const int count, FileStat
 }
 
 /**
- * Processes a directory and its contents while generating file statistics and managing output files.
+ * Processes directory tasks, handling directory traversal, file filtering, and
+ * outputting results to specified files.
  *
- * This function initializes and manages a dynamic task queue to handle directories and their contents.
- * It dynamically allocates memory for file entry structures, processes directories to collect files and subdirectories,
- * sorts the file entries, writes the results to output files, and computes statistical data for files.
+ * This function initializes a task queue for managing directories to be processed and
+ * dynamically allocates memory for file entries. It processes directory paths using
+ * the `processDirectory` function, updates file statistics, and writes the sorted
+ * results to the specified output and temporary files.
  *
- * Tasks include:
- * - Creating and initializing a task queue for directory processing.
- * - Dynamically allocating an array of FileEntry structures to store processed directory and file information.
- * - Adding the given directory to the task queue and removing trailing slashes for consistency.
- * - Processing all directories from the queue while dynamically resizing the FileEntry array as needed.
- * - Sorting and writing the collected file entries to output files using the specified temporary and final file names.
- * - Computing file statistics based on processed entries and updating provided statistics structures.
- * - Freeing allocated resources, including task queues and memory for file entries, to avoid memory leaks.
+ * The task queue ensures that directories are handled sequentially. Memory allocation
+ * failures or critical errors during processing are managed by cleaning up resources
+ * and returning failure status.
  *
- * The function ensures thread safety and handles critical errors, such as memory allocation failures or directory processing issues,
- * gracefully by freeing resources and returning an error code.
+ * @param directory      A string representing the path of the directory to be processed.
+ *                       The function ensures that the path does not include a trailing slash.
+ * @param outputFileName A string specifying the name of the file where the results
+ *                       should be written after processing and sorting.
+ * @param tmpFileName    A string specifying the name of the temporary file used during
+ *                       intermediate stages of result processing.
+ * @param sizeThreshold  A long long integer representing the minimum file size (in bytes)
+ *                       that should be considered when processing files.
+ * @param skipDirs       An integer flag (0 or 1) indicating whether directories should
+ *                       be included in the final output and file statistics.
+ * @param totalCount     A pointer to an integer tracking the total number of entries
+ *                       processed across all directories.
+ * @param listOnly       A pointer to a boolean flag indicating whether the function
+ *                       should only list file names without additional processing.
  *
- * @param directory     A string representing the directory path to be processed.
- * @param outputFileName A string representing the name of the output file to store sorted results.
- * @param tmpFileName   A string representing the temporary file name used during sorting and writing.
- * @param sizeThreshold A long long integer defining the minimum file size (in bytes) to be considered during processing.
- * @param skipDirs      An integer flag (0 or 1) to specify whether to include directories in results and statistics.
- * @param totalCount    A pointer to an integer where the total count of processed entries will be updated.
- *
- * @return Returns EXIT_SUCCESS on successful completion, or EXIT_FAILURE in case of an error.
+ * @return An integer indicating the success (EXIT_SUCCESS) or failure (EXIT_FAILURE) of the function.
  */
 int processDirectoryTask(const char *directory, char *outputFileName, char *tmpFileName,
-                         const long long sizeThreshold, const int skipDirs, int *totalCount) {
+                         const long long sizeThreshold, const int skipDirs, int *totalCount, const bool *listOnly) {
     // Initialize task queue
     TaskQueue taskQueue;
     initQueue(&taskQueue, INITIAL_CAPACITY);
@@ -2286,6 +2330,14 @@ int processDirectoryTask(const char *directory, char *outputFileName, char *tmpF
     }
     // Process all directories in the queue
     processDirectory(&taskQueue, &entries, &count, &capacity, sizeThreshold, skipDirs);
+    if (*listOnly) {
+        printToFile(entries, count, outputFileName, NEW);
+        free(entries);
+        freeQueue(&taskQueue);
+        printf("------------------------------------\n");
+        printf("Results written to file: %s\n", outputFileName);
+        exit(EXIT_SUCCESS);
+    }
     sort_and_write_results_to_file(outputFileName, tmpFileName, totalCount, count, entries, true);
     freeQueue(&taskQueue);
     // free(entries);
@@ -2325,7 +2377,9 @@ int append_file(const char *tmpFileName, const char *outputFileName, int *totalC
     }
     FILE *tmpFile = fopen(tmpFileName, "r");
     if (!tmpFile) {
-        perror("Error opening temporary file");
+        char errorMessage[256];
+        snprintf(errorMessage, sizeof(errorMessage), "Error opening temporary file: %s", tmpFileName);
+        perror(errorMessage);
         fclose(outputFile); // Close output file before returning
         return EXIT_FAILURE;
     }

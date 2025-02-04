@@ -54,13 +54,14 @@ int main(const int argc, char *argv[]) {
     int totalCount = 0;
     int stepCount = 0;
     bool printStd = false;
+    bool listOnly = false;
 
     FileEntry *entries;
     FileStatistics fileStats;
 
     if (process_arguments(argc, argv, &skipDirs, &sizeThreshold, &outputFileName, &outputTmpFileName, &tmpFileNames,
                           &directories, &mergeFileNames, &statFileNames, &directoryCount, &mergeFileName, &accFileName,
-                          &mergeFileCount, &statFileCount, &printStd, &parentDirectory, &stepCount, &accFileCount) != EXIT_SUCCESS) {
+                          &mergeFileCount, &statFileCount, &printStd, &listOnly, &parentDirectory, &stepCount, &accFileCount) != EXIT_SUCCESS) {
         printf("Error processing arguments\n");
         free_multiple_arrays(&directories, &tmpFileNames, &mergeFileNames, NULL);
         return EXIT_FAILURE;
@@ -119,7 +120,7 @@ int main(const int argc, char *argv[]) {
 
             int currentCount = 0;
             if (processDirectoryTask(directories[i], outputFileName, tmpFileNames[i], sizeThreshold,
-                                     skipDirs, &currentCount) != EXIT_SUCCESS) {
+                                     skipDirs, &currentCount, &listOnly) != EXIT_SUCCESS) {
                 fprintf(stderr, "An error occurred while processing directory: %s\n", directories[i]);
             }
             totalCount += currentCount;
