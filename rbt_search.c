@@ -28,10 +28,11 @@ void parse_arguments(const int argc, char *argv[], Arguments *args) {
     args->hash = NULL;
     const char *valid_types[] = {
         "T_DIR", "T_TEXT", "T_BINARY", "T_IMAGE", "T_JSON", "T_AUDIO", "T_FILM",
-        "T_COMPRESSED", "T_YAML", "T_EXE", "T_C", "T_PYTHON", "T_JS", "T_JAVA",
-        "T_LOG", "T_PACKAGE", "T_CLASS", "T_TEMPLATE", "T_PDF", "T_JAR",
-        "T_HTML", "T_XML", "T_XHTML", "T_TS", "T_DOC", "T_CALC", "T_LATEX",
-        "T_SQL", "T_CSV", "T_CSS", "T_LINK_DIR", "T_LINK_FILE", "T_FILE",
+        "T_COMPRESSED", "T_YAML", "T_EXE", "T_C", "T_PYTHON", "T_JS",
+        "T_JAVA", "T_LOG", "T_PACKAGE", "T_CLASS", "T_TEMPLATE", "T_PHP", "T_MATHEMATICA",
+        "T_PDF", "T_JAR", "T_HTML", "T_XML", "T_XHTML", "T_MATLAB", "T_FORTRAN", "T_SCIENCE", "T_CPP",
+        "T_TS", "T_DOC", "T_CALC", "T_LATEX", "T_SQL", "T_PRESENTATION", "T_DATA", "T_LIBRARY", "T_OBJECT",
+        "T_CSV", "T_CSS", "T_LINK_DIR", "T_LINK_FILE",
         NULL // Sentinel value to signal the end of the array
     };
     // Iterate through the arguments

@@ -470,7 +470,7 @@ int initialize_threads() {
         MAX_THREADS = 6; // Otherwise, use up to 8 threads
     }
     printf("Number of cores available: %ld, MAX_THREADS set to: %d\n", cores, MAX_THREADS);
-    return MAX_THREADS;
+    return 2;
 }
 
 void print_results(const MapResults *results) {
