@@ -35,31 +35,22 @@ void parse_arguments(const int argc, char *argv[], Arguments *args) {
         "T_CSV", "T_CSS", "T_LINK_DIR", "T_LINK_FILE",
         NULL // Sentinel value to signal the end of the array
     };
+    if (argc == 1) {
+        printf("No arguments provided.\n\n");
+        print_help();
+    }
     // Iterate through the arguments
     for (int i = 1; i < argc; i++) {
         if (!strcmp(argv[i], "--help")) {
-            printf("Usage: [options]\n\n");
-            printf("Options:\n");
-            printf("  -f <file>          Specify the memory filename (required argument).\n");
-            printf("  -n <names>         Multiple names to be provided (space-separated, stop with the next argument starting with '-').\n");
-            printf("  -s <size>          Specify size in bytes or size with suffix (e.g., 100, 10k, 5M). Skips processing if the next argument is '--size'.\n");
-            printf("  --size <range>     Specify size range or boundary. Examples:\n");
-            printf("                     - Lower bound: '10M-'\n");
-            printf("                     - Upper bound: '10M'\n");
-            printf("                     - Range: '10M-100M'.\n");
-            printf("  -p <paths>         Multiple paths to be provided (space-separated, stop with the next argument starting with '-').\n");
-            printf("  -t <type>          Specify the type. Allowed values are:\n");
-            printf("                     T_DIR, T_TEXT, T_BINARY, T_IMAGE, T_JSON, T_AUDIO, T_FILM, T_COMPRESSED, T_YAML, T_EXE, T_C, T_PYTHON,\n");
-            printf("                     T_JS, T_JAVA, T_LOG, T_PACKAGE, T_CLASS, T_TEMPLATE, T_PDF, T_JAR, T_HTML, T_XML, T_XHTML, T_TS, T_DOC,\n");
-            printf("                     T_CALC, T_LATEX, T_SQL, T_CSV, T_CSS, T_LINK_DIR, T_LINK_FILE, T_FILE\n");
-            printf("  -h <hash> <file> <filesize>\n");
-            printf("                     Compute the hash of the specified file. Requires filename and filesize.\n");
-            printf("  --help             Display this help message and exit.\n");
-            exit(EXIT_SUCCESS); // Terminate the program after displaying the help message
+            print_help();
         }
         if (!strcmp(argv[i], "-f") && i + 1 < argc) {
             args->mem_filename = argv[++i]; // Required argument
-        } else if (!strcmp(argv[i], "-n")) {
+        }
+        else if (!strcmp(argv[i], "--duplicates")) {
+            args->duplicates = true;
+        }
+        else if (!strcmp(argv[i], "-n")) {
             // Handle multiple names
             i++;
             // Allocate memory for names array (initially NULL)
@@ -134,7 +125,6 @@ void parse_arguments(const int argc, char *argv[], Arguments *args) {
                 args->size_lower_bound = parse_size(size_arg);
             }
         }
-
         else if (!strcmp(argv[i], "-p")) {
             // Handle multiple paths
             i++;
@@ -269,8 +259,11 @@ int main(const int argc, char *argv[]) {
         match_function = match_by_size;
     }
     if (arguments.type) printf("Type: %s\n", arguments.type);
-
     Node *root = load_tree_from_shared_memory(arguments.mem_filename);
+    if (arguments.duplicates){
+        detect_duplicates(root);
+        exit(EXIT_SUCCESS);
+    }
     MapResults results = {NULL, 0};
     long long totalCount = arguments.names_count > 1 || arguments.paths_count > 1 ? -1 : 0;
 

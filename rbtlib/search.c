@@ -20,7 +20,9 @@ int MAX_THREADS = 1;
 
 // Global thread counter
 int active_threads = 0;
+pthread_mutex_t thread_lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t thread_counter_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t thread_cond = PTHREAD_COND_INITIALIZER;
 
 void map_results_add_node(MapResults *mapResults, Node *node, const char *key) {
     NodeHashmapEntry *entry;
@@ -109,78 +111,6 @@ Node *load_tree_from_shared_memory(const char *name) {
 
     return root; // Return the deserialized root node
 }
-
-// void search_tree(Node *root, const Arguments *args) {
-//     if (root == NULL) {
-//         return;
-//     }
-//     // printf("Active threads: %d\n", active_threads);
-//     // Compile the regular expression for the name pattern
-//     regex_t regex;
-//     const int ret = regcomp(&regex, namePattern, REG_EXTENDED | REG_NOSUB);
-//     if (ret != 0) {
-//         char errbuf[128];
-//         regerror(ret, &regex, errbuf, sizeof(errbuf));
-//         fprintf(stderr, "Regex compilation error: %s\n", errbuf);
-//         return;
-//     }
-//
-//     // Check if the current node matches the name regex and file type
-//     if (regexec(&regex, root->key.name, 0, NULL, 0) == 0 && strcmp(root->key.type, targetType) == 0) {
-//         printf("Found file: %s (Type: %s, Size: %zu, Path: %s)\n",
-//                root->key.name, root->key.type, root->key.size, root->key.path);
-//     }
-//
-//     // Free the regex memory after usage
-//     regfree(&regex);
-//
-//     // Initiate thread creation or run sequentially if max threads are reached
-//     pthread_t leftThread, rightThread;
-//     SearchArgs leftArgs = {root->left, namePattern, targetType};
-//     SearchArgs rightArgs = {root->right, namePattern, targetType};
-//
-//     int create_left_thread = 0, create_right_thread = 0;
-//
-//     // Check and increment the global thread counter
-//     pthread_mutex_lock(&thread_counter_mutex);
-//     if (active_threads < MAX_THREADS) {
-//         active_threads++;
-//         create_left_thread = 1;
-//     }
-//     if (active_threads < MAX_THREADS) {
-//         active_threads++;
-//         create_right_thread = 1;
-//     }
-//     pthread_mutex_unlock(&thread_counter_mutex);
-//
-//     // Create or execute the left subtree search
-//     if (create_left_thread) {
-//         pthread_create(&leftThread, NULL, search_tree_thread, &leftArgs);
-//     } else {
-//         search_tree_by_filename_and_type(root->left, namePattern, targetType);
-//     }
-//
-//     // Create or execute the right subtree search
-//     if (create_right_thread) {
-//         pthread_create(&rightThread, NULL, search_tree_thread, &rightArgs);
-//     } else {
-//         search_tree_by_filename_and_type(root->right, namePattern, targetType);
-//     }
-//
-//     // Join threads if they were created
-//     if (create_left_thread) {
-//         pthread_join(leftThread, NULL);
-//         pthread_mutex_lock(&thread_counter_mutex);
-//         active_threads--;
-//         pthread_mutex_unlock(&thread_counter_mutex);
-//     }
-//     if (create_right_thread) {
-//         pthread_join(rightThread, NULL);
-//         pthread_mutex_lock(&thread_counter_mutex);
-//         active_threads--;
-//         pthread_mutex_unlock(&thread_counter_mutex);
-//     }
-// }
 
 // Helper function to generate the regex string from a glob-style pattern
 char *convert_glob_to_regex(const char *namePattern) {
@@ -687,4 +617,257 @@ void parallel_file_processing(const char *filename, void *root, const int maxThr
     free(threads);
     free(threadData);
     EVP_MD_CTX_free(ctx);
+}
+
+// Function to create a hash table
+HashTable *create_hash_table(size_t size) {
+    HashTable *hashTable = malloc(sizeof(HashTable));
+    if (!hashTable) {
+        perror("Failed to allocate memory for hash table");
+        exit(EXIT_FAILURE);
+    }
+
+    hashTable->size = size;
+    hashTable->table = calloc(size, sizeof(HashTableEntry *));
+    if (!hashTable->table) {
+        perror("Failed to allocate memory for hash table entries");
+        free(hashTable);
+        exit(EXIT_FAILURE);
+    }
+
+    if (pthread_mutex_init(&hashTable->lock, NULL) != 0) {
+        perror("Failed to initialize mutex");
+        free(hashTable->table);
+        free(hashTable);
+        exit(EXIT_FAILURE);
+    }
+
+    return hashTable;
+}
+
+// djb2 hash function
+unsigned long hash_function(const char *key, size_t size) {
+    unsigned long hash = 5381;
+    int c;
+    while ((c = *key++)) {
+        hash = ((hash << 5) + hash) + c; // hash * 33 + c
+    }
+    return hash % size;
+}
+
+FileInfo *copyFileInfo(const FileInfo *source) {
+    if (source == NULL) return NULL;
+
+    FileInfo *copy = malloc(sizeof(FileInfo));
+    if (!copy) {
+        perror("Failed to allocate memory for FileInfo");
+        return NULL;
+    }
+    strncpy(copy->name, source->name, sizeof(copy->name) - 1);
+    copy->name[sizeof(copy->name) - 1] = '\0';
+    strncpy(copy->path, source->path, sizeof(copy->path) - 1);
+    copy->path[sizeof(copy->path) - 1] = '\0';
+    strncpy(copy->type, source->type, sizeof(copy->type) - 1);
+    copy->type[sizeof(copy->type) - 1] = '\0';
+    copy->size = source->size;
+
+    return copy;
+}
+
+// Insert into the hash table (thread-safe)
+void insert_into_hash_table(HashTable *hashTable, const FileInfo *entry) {
+    const unsigned long index = hash_function(entry->hash, hashTable->size);
+
+    // Lock the table for thread safety
+    pthread_mutex_lock(&hashTable->lock);
+
+    HashTableEntry *current = hashTable->table[index];
+    while (current) {
+        if (strcmp(current->key, entry->hash) == 0) {
+            current->count++;
+            current->fileInfo = copyFileInfo(entry);
+            pthread_mutex_unlock(&hashTable->lock); // Unlock before returning
+            return;
+        }
+        current = current->next;
+    }
+
+    // If the key doesn't exist, create a new entry
+    HashTableEntry *newEntry = malloc(sizeof(HashTableEntry));
+    if (!newEntry) {
+        perror("Failed to allocate memory for hash table entry");
+        pthread_mutex_unlock(&hashTable->lock);
+        exit(EXIT_FAILURE);
+    }
+    newEntry->key = strdup(entry->hash);
+    newEntry->count = 1;
+    newEntry->fileInfo = copyFileInfo(entry);
+    newEntry->next = hashTable->table[index];
+    hashTable->table[index] = newEntry;
+
+    pthread_mutex_unlock(&hashTable->lock); // Unlock after inserting
+}
+
+// Free hash table resources
+void free_hash_table(HashTable *hashTable) {
+    for (size_t i = 0; i < hashTable->size; i++) {
+        HashTableEntry *current = hashTable->table[i];
+        while (current) {
+            HashTableEntry *toFree = current;
+            current = current->next;
+            free(toFree->key);
+            free(toFree->fileInfo);
+            free(toFree);
+        }
+    }
+    free(hashTable->table);
+    pthread_mutex_destroy(&hashTable->lock);
+    free(hashTable);
+}
+
+// Struct to pass arguments to threads
+typedef struct ThreadArgs {
+    Node *root;
+    HashTable *hashTable;
+} ThreadArgs;
+
+// Recursive function to traverse the tree and insert hashes (with thread limiting)
+void *parallel_traverse_and_insert(void *args) {
+    const ThreadDuplicatesArgs *threadArgs = (ThreadDuplicatesArgs *)args;
+    const Node *root = threadArgs->root;
+    HashTable *hashTable = threadArgs->hashTable;
+
+    if (root == NULL) return NULL; // Base case: empty tree/subtree
+
+    // Insert current node's hash into the hash table
+    insert_into_hash_table(hashTable, &root->key);
+
+    // Prepare arguments for left and right subtree threads
+    pthread_t leftThread, rightThread;
+    ThreadDuplicatesArgs leftArgs = {root->left, hashTable};
+    ThreadDuplicatesArgs rightArgs = {root->right, hashTable};
+
+    // Track whether threads are spawned
+    bool leftThreadSpawned = false, rightThreadSpawned = false;
+
+    // Attempt to spawn threads for left and right subtrees
+    pthread_mutex_lock(&thread_lock);
+    if (active_threads < MAX_THREADS) {
+        active_threads++;
+        pthread_mutex_unlock(&thread_lock);
+        pthread_create(&leftThread, NULL, parallel_traverse_and_insert, &leftArgs);
+        leftThreadSpawned = true;
+    } else {
+        pthread_mutex_unlock(&thread_lock);
+        parallel_traverse_and_insert(&leftArgs); // Run in the current thread
+    }
+
+    pthread_mutex_lock(&thread_lock);
+    if (active_threads < MAX_THREADS) {
+        active_threads++;
+        pthread_mutex_unlock(&thread_lock);
+        pthread_create(&rightThread, NULL, parallel_traverse_and_insert, &rightArgs);
+        rightThreadSpawned = true;
+    } else {
+        pthread_mutex_unlock(&thread_lock);
+        parallel_traverse_and_insert(&rightArgs); // Run in the current thread
+    }
+
+    // Wait for the spawned threads to finish
+    if (leftThreadSpawned) {
+        pthread_join(leftThread, NULL);
+        pthread_mutex_lock(&thread_lock);
+        active_threads--;
+        pthread_cond_signal(&thread_cond);
+        pthread_mutex_unlock(&thread_lock);
+    }
+    if (rightThreadSpawned) {
+        pthread_join(rightThread, NULL);
+        pthread_mutex_lock(&thread_lock);
+        active_threads--;
+        pthread_cond_signal(&thread_cond);
+        pthread_mutex_unlock(&thread_lock);
+    }
+
+    return NULL;
+}
+
+// Traverse tree in parallel and insert hash values (entry point)
+void traverse_tree_in_parallel(Node *root, HashTable *hashTable) {
+    if (root == NULL) return; // If the tree is empty, there's nothing to process
+
+    ThreadDuplicatesArgs args = {root, hashTable};
+    parallel_traverse_and_insert(&args); // Start parallel traversal
+}
+
+void print_help() {
+    printf("Usage: [options]\n\n");
+    printf("Options:\n");
+    printf("  -f <file>          Specify the memory filename (required argument).\n");
+    printf("  -n <names>         Multiple names to be provided (space-separated, stop with the next argument starting with '-').\n");
+    printf("  -s <size>          Specify size in bytes or size with suffix (e.g., 100, 10k, 5M). Skips processing if the next argument is '--size'.\n");
+    printf("  --size <range>     Specify size range or boundary. Examples:\n");
+    printf("                     - Lower bound: '10M-'\n");
+    printf("                     - Upper bound: '10M'\n");
+    printf("                     - Range: '10M-100M'.\n");
+    printf("  -p <paths>         Multiple paths to be provided (space-separated, stop with the next argument starting with '-').\n");
+    printf("  -t <type>          Specify the type. Allowed values are:\n");
+    printf("                     T_DIR, T_TEXT, T_BINARY, T_IMAGE, T_JSON, T_AUDIO, T_FILM, T_COMPRESSED, T_YAML, T_EXE,\n");
+    printf("                     T_C, T_PYTHON, T_JS, T_JAVA, T_LOG, T_PACKAGE, T_CLASS, T_TEMPLATE, T_PHP, T_MATHEMATICA,\n");
+    printf("                     T_PDF, T_JAR, T_HTML, T_XML, T_XHTML, T_MATLAB, T_FORTRAN, T_SCIENCE, T_CPP, T_TS, T_DOC,\n");
+    printf("                     T_CALC, T_LATEX, T_SQL, T_PRESENTATION, T_DATA, T_LIBRARY, T_OBJECT, T_CSV, T_CSS, T_LINK_DIR,\n");
+    printf("                     T_LINK_FILE\n");
+    printf("  -h <hash> <file> <filesize>\n");
+    printf("                     Compute the hash of the specified file. Requires filename and filesize.\n");
+    printf("  --help             Display this help message and exit.\n");
+    exit(EXIT_SUCCESS); // Terminate the program after displaying the help message
+}
+
+void detect_duplicates(Node *root) {
+    // Create the hash table
+    HashTable *hashTable = create_hash_table(INITIAL_HASH_TABLE_SIZE);
+    // Traverse the tree and populate the hash table
+    traverse_tree_in_parallel(root, hashTable);
+    // Print the results
+    printf("----------------------------------\n");
+    printf("Duplicates:\n");
+    for (size_t i = 0; i < hashTable->size; i++) {
+        const HashTableEntry *current = hashTable->table[i];
+        while (current) {
+            if (current->count > 1) {
+                printf("Hash: %s, Count: %d |%s|%s %ld\n", current->key, current->count, current->fileInfo->name, current->fileInfo->path, current->fileInfo->size);
+            }
+            current = current->next;
+        }
+    }
+    compute_duplicates_summary(hashTable);
+    // Free the hash table
+    free_hash_table(hashTable);
+}
+
+// Function to compute the number of duplicated hashes and their sum
+void compute_duplicates_summary(HashTable *hashTable) {
+    if (!hashTable) {
+        return;
+    }
+    int numDuplicates = 0; // Initialize number of duplicates
+    int sumCounts = 0;     // Initialize sum of duplicate counts
+    // Lock the hash table for thread-safe traversal (if multi-threading is used)
+    pthread_mutex_lock(&hashTable->lock);
+    // Iterate through each bucket in the hash table
+    for (size_t i = 0; i < hashTable->size; i++) {
+        const HashTableEntry *entry = hashTable->table[i];
+        // Traverse the linked list (for chains caused by collisions)
+        while (entry) {
+            if (entry->count > 1) {
+                numDuplicates++;        // Increment the number of duplicated hashes
+                sumCounts += entry->count; // Add the count to the total sum
+            }
+            entry = entry->next;
+        }
+    }
+    printf("----------------------------------\n");
+    printf("Found duplicated elements: %d\nSum of all duplicated element counts: %d\n", numDuplicates, sumCounts);
+    // Unlock the hash table after traversal
+    pthread_mutex_unlock(&hashTable->lock);
 }

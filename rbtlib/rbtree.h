@@ -28,7 +28,7 @@ typedef struct FileInfo {
     char path[MAX_LINE_LENGTH];
     char type[MAX_TYPE_LENGTH];
     char linkTarget[LINK_LENGTH];
-    char hash[33];
+    char hash[17];
     size_t childrenCount;
     bool isHidden;
     bool isDir;

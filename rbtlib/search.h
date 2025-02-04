@@ -22,6 +22,7 @@ typedef struct {
     int paths_count;
     char *type;
     char *hash;
+    bool duplicates;
 } Arguments;
 
 typedef struct NodeHashmapEntry {
@@ -55,6 +56,28 @@ typedef struct {
     void *ctx;
     int thread_id;
 } ThreadSearchData;
+
+#define INITIAL_HASH_TABLE_SIZE 4096
+#define LOAD_FACTOR_THRESHOLD 0.75
+
+typedef struct HashTableEntry {
+    char *key; // The hash string (e.g., from FileInfo)
+    int count;
+    FileInfo *fileInfo;
+    struct HashTableEntry *next;
+} HashTableEntry;
+
+typedef struct HashTable {
+    size_t size;
+    HashTableEntry **table;
+    pthread_mutex_t lock;     // Mutex for thread-safe insertion
+} HashTable;
+
+// Struct to pass arguments to threads
+typedef struct ThreadDuplicatesArgs {
+    Node *root;
+    HashTable *hashTable;
+} ThreadDuplicatesArgs;
 
 void *search_tree_thread(void *args);
 
@@ -95,5 +118,17 @@ bool is_valid_type(const char *type, const char *valid_types[]);
 void *process_lines(void *arg);
 
 void parallel_file_processing(const char *filename, void *root, int maxThreads);
+
+HashTable *create_hash_table(size_t size);
+
+void traverse_tree_in_parallel(Node *root, HashTable *hashTable);
+
+void free_hash_table(HashTable *hashTable);
+
+void print_help();
+
+void detect_duplicates(Node *root);
+
+void compute_duplicates_summary(HashTable *hashTable);
 
 #endif //RBTSEARCH_H
