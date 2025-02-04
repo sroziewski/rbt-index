@@ -189,13 +189,13 @@ void print_node_info(const Node *node) {
         return;
     }
     // Print details about the node
-    printf("%s: %s | Type: %s | Size: %s (%zu) | Path: %s\n",
+    printf("%s: %s | %s (%zu) | %s | %s\n",
                    (strcmp(node->key.type, "T_DIR") == 0)
                        ? "Dir"
                        : (strcmp(node->key.type, "T_LINK_DIR") == 0 || strcmp(node->key.type, "T_LINK_FILE") == 0)
                              ? "Link"
                              : "File",
-                   node->key.name, node->key.type, getFileSizeAsString((long long) node->key.size), node->key.size,
+                   node->key.type, getFileSizeAsString((long long) node->key.size), node->key.size, node->key.name,
                    node->key.path);
 }
 
@@ -286,8 +286,7 @@ void search_tree(Node *root, const Arguments arguments, bool (*match_function)(c
         return;
     }
 
-    if ((arguments.type == NULL || strcmp(root->key.type, arguments.type) == 0 || strcmp(arguments.type, "T_FILE") == 0
-         && strcmp(root->key.type, "T_DIR") != 0) &&
+    if (should_insert(&arguments, root->key.type) &&
         ((arguments.size_lower_bound == 0 || arguments.size_lower_bound > 0 && root->key.size >= arguments.
           size_lower_bound) &&
          (arguments.size_upper_bound == 0 || arguments.size_upper_bound > 0 && root->key.size <= arguments.
@@ -431,15 +430,14 @@ void print_results(const MapResults *results) {
         size_t key_node_count = 0; // Counter for the current key's nodes
         for (size_t i = 0; i < entry->data_count; i++) {
             Node *node = entry->data[i]; // Access each Node pointer
-            printf("%s: %s | Type: %s | Size: %s (%zu) | Path: %s\n",
+            printf("%s: %s | %s (%zu) | %s | %s\n",
                    (strcmp(node->key.type, "T_DIR") == 0)
                        ? "Dir"
                        : (strcmp(node->key.type, "T_LINK_DIR") == 0 || strcmp(node->key.type, "T_LINK_FILE") == 0)
                              ? "Link"
                              : "File",
-                   node->key.name, node->key.type, getFileSizeAsString((long long) node->key.size), node->key.size,
+                   node->key.type, getFileSizeAsString((long long) node->key.size), node->key.size, node->key.name,
                    node->key.path);
-
             key_node_count++; // Increment the count for this key
         }
         printf("----------------------------------\n");
@@ -851,7 +849,7 @@ void detect_duplicates(Node *root, Arguments *arguments) {
         const HashTableEntry *current = hashTable->table[i];
         while (current) {
             if (current->count > 1) {
-                printf("Hash: %s, Count: %d |%s|%s|%s %ld\n", current->key, current->count, current->fileInfo->type, current->fileInfo->name, current->fileInfo->path, current->fileInfo->size);
+                printf("Hash: %s, Count: %d %s|%s|%s|%ld\n", current->key, current->count, current->fileInfo->type, current->fileInfo->name, current->fileInfo->path, current->fileInfo->size);
             }
             current = current->next;
         }
