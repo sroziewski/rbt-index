@@ -413,7 +413,7 @@ int initialize_threads() {
         MAX_THREADS = 6; // Otherwise, use up to 8 threads
     }
     printf("Number of cores available: %ld, MAX_THREADS set to: %d\n", cores, MAX_THREADS);
-    return 2;
+    return MAX_THREADS;
 }
 
 void print_results(const MapResults *results) {
@@ -554,7 +554,7 @@ void parallel_file_processing(const char *filename, void *root, const int maxThr
     int totalCount;
     // Determine number of cores and calculate threads
     const size_t numCores = sysconf(_SC_NPROCESSORS_ONLN);
-    const int numThreads = (int)(numCores / maxThreads) + 1;
+    const int numThreads = 48;//(int)(numCores / maxThreads) + 1;
     printf("Number of threads: %d\n", numThreads);
 
     char **lines = NULL;

@@ -823,7 +823,7 @@ void listSharedMemoryEntities(const char *prefix) {
 int read_file_lines(const char *filename, char ***lines, size_t *numLines) {
     FILE *file = fopen(filename, "r");
     if (!file) {
-        perror("Error opening file");
+        fprintf(stderr, "Error opening file: %s\n", filename);
         exit(EXIT_FAILURE);
     }
 
@@ -852,7 +852,7 @@ int read_file_lines(const char *filename, char ***lines, size_t *numLines) {
             (*numLines)++;
         }
     }
-    printf("Read %zu lines from file %s \n", *numLines, filename);
+    printf("Read %zu lines from file: %s \n", *numLines, filename);
 
     fclose(file);
     return 0; // Indicate success
