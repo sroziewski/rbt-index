@@ -206,6 +206,23 @@ void parse_arguments(const int argc, char *argv[], Arguments *args) {
             args->hash[length] = '\0';
             EVP_MD_CTX_free(ctx);
         }
+        else if (!strcmp(argv[i], "--h")) {
+            // Handle multiple hashes
+            i++;
+            // Allocate memory for hashes array (initially NULL)
+            args->hashes = malloc((argc - i) * sizeof(char *));
+            if (args->hashes == NULL) {
+                fprintf(stderr, "Memory allocation failed for hashes.\n");
+                exit(EXIT_FAILURE);
+            }
+
+            while (i < argc && argv[i][0] != '-') {
+                args->hashes[args->hashes_count] = argv[i];
+                args->hashes_count++;
+                i++;
+            }
+            i--; // Step back to process the next argument correctly
+        }
         else {
             fprintf(stderr, "Unknown or improperly formatted argument: %s\n", argv[i]);
             exit(EXIT_FAILURE);
@@ -247,6 +264,15 @@ int main(const int argc, char *argv[]) {
             match_function = match_by_path;
         }
     }
+    if (arguments.hashes != NULL) {
+        if (arguments.hashes_count > 0) {
+            printf("Hashes (%d):\n", arguments.hashes_count);
+            for (int i = 0; i < arguments.hashes_count; i++) {
+                printf("  - %s\n", arguments.hashes[i]);
+            }
+            match_function = match_by_hash;
+        }
+    }
     if (arguments.hash != NULL) {
         match_function = match_by_hash;
         printf("Looking for hash %s\n", arguments.hash);
@@ -276,7 +302,7 @@ int main(const int argc, char *argv[]) {
         exit(EXIT_SUCCESS);
     }
     search_tree(root, arguments, match_function, &results, &totalCount);
-    if (arguments.names_count > 1 || arguments.paths_count > 1) {
+    if (arguments.names_count > 1 || arguments.paths_count > 1 || arguments.hashes_count > 1) {
         print_results(&results);
     }
     else {

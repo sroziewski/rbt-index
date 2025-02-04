@@ -317,7 +317,21 @@ void search_tree(Node *root, const Arguments arguments, bool (*match_function)(c
                     break;
                 }
             }
-        } else if (arguments.hash != NULL) {
+        }
+        else if (arguments.hashes != NULL) {
+            for (int i = 0; i < arguments.hashes_count; ++i) {
+                if (match_function(root->key.hash, &arguments.hashes[i])) {
+                    if (arguments.hashes_count > 1) {
+                        map_results_add_node(results, root, arguments.hashes[i]);
+                    } else {
+                        print_node_info(root);
+                        (*totalCount)++;
+                    }
+                    break;
+                }
+            }
+        }
+        else if (arguments.hash != NULL) {
             char *temp_array[] = {arguments.hash, NULL};
             if (match_function(root->key.hash, temp_array)) {
                 print_node_info(root);
