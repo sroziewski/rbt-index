@@ -19,6 +19,8 @@ void parse_arguments(const int argc, char *argv[], Arguments *args) {
     args->filename = NULL;
     args->names = NULL;
     args->names_count = 0;
+    args->hashes = NULL;
+    args->hashes_count = 0;
     args->size = -1;
     args->size_lower_bound = 0;
     args->size_upper_bound = 0;
@@ -45,7 +47,7 @@ void parse_arguments(const int argc, char *argv[], Arguments *args) {
             print_help();
         }
         if (!strcmp(argv[i], "-f") && i + 1 < argc) {
-            args->mem_filename = argv[++i]; // Required argument
+            args->mem_filename = strdup(argv[++i]); // Required argument
         }
         else if (!strcmp(argv[i], "--duplicates")) {
             args->duplicates = true;
@@ -60,7 +62,7 @@ void parse_arguments(const int argc, char *argv[], Arguments *args) {
                 exit(EXIT_FAILURE);
             }
             while (i < argc && argv[i][0] != '-') {
-                args->names[args->names_count] = argv[i];
+                args->names[args->names_count] = strdup(argv[i]);
                 args->names_count++;
                 i++;
             }
@@ -262,6 +264,7 @@ int main(const int argc, char *argv[]) {
     Node *root = load_tree_from_shared_memory(arguments.mem_filename);
     if (arguments.duplicates){
         detect_duplicates(root);
+        free_arguments(&arguments);
         exit(EXIT_SUCCESS);
     }
     MapResults results = {NULL, 0};
@@ -269,6 +272,7 @@ int main(const int argc, char *argv[]) {
 
     if (arguments.filename != NULL) {
         parallel_file_processing(arguments.filename, root, maxThreads);
+        free_arguments(&arguments);
         exit(EXIT_SUCCESS);
     }
     search_tree(root, arguments, match_function, &results, &totalCount);
@@ -280,6 +284,7 @@ int main(const int argc, char *argv[]) {
         printf("\nTotal nodes found: %lld\n", totalCount);
     }
     cleanup_map_results(&results);
+    free_arguments(&arguments);
 
     return 0;
 }

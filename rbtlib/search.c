@@ -871,3 +871,27 @@ void compute_duplicates_summary(HashTable *hashTable) {
     // Unlock the hash table after traversal
     pthread_mutex_unlock(&hashTable->lock);
 }
+
+void free_arguments(const Arguments *args) {
+    if (args->names) {
+        free(args->names);
+    }
+    if (args->paths) {
+        free(args->paths);
+    }
+    if (args->hashes) {
+        free(args->hashes);
+    }
+    if (args->filename) {
+        free(args->filename);
+    }
+    if (args->mem_filename) {
+        free(args->mem_filename);
+    }
+    if (args->hash) {
+        free(args->hash);
+    }
+    if (args->type) {
+        free(args->type);
+    }
+}

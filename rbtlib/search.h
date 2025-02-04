@@ -14,6 +14,8 @@ typedef struct {
     char *filename;
     char **names;
     int names_count;
+    char **hashes;
+    int hashes_count;
     int size;
     char *size_str;
     size_t size_lower_bound;
@@ -130,5 +132,7 @@ void print_help();
 void detect_duplicates(Node *root);
 
 void compute_duplicates_summary(HashTable *hashTable);
+
+void free_arguments(const Arguments *args);
 
 #endif //RBTSEARCH_H
