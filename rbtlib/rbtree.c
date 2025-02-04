@@ -751,7 +751,7 @@ void search_tree_for_size_and_type(Node *root, size_t targetSize, const char *ta
     }
 
     if (root->key.size == targetSize && strcmp(root->key.type, targetType) == 0) {
-        printf("Found file: %s (Size: %zu, Type: %s)\n", root->key.name, root->key.size, root->key.type);
+        printf("Found file: %s (Size: %s (%zu), Type: %s)\n", root->key.name, getFileSizeAsString((long long)root->key.size), root->key.size, root->key.type);
     }
 
     search_tree_for_size_and_type(root->left, targetSize, targetType);

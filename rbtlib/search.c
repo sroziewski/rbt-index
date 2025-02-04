@@ -753,7 +753,12 @@ void *parallel_traverse_and_insert(void *args) {
     if (root == NULL) return NULL; // Base case: empty tree/subtree
 
     // Insert current node's hash into the hash table
-    if (should_insert(arguments, root->key.type)) {
+    if (should_insert(arguments, root->key.type) &&
+        ((arguments->size_lower_bound == 0 || arguments->size_lower_bound > 0 && root->key.size >= arguments->
+          size_lower_bound) &&
+         (arguments->size_upper_bound == 0 || arguments->size_upper_bound > 0 && root->key.size <= arguments->
+          size_upper_bound) ||
+         (arguments->size_lower_bound <= root->key.size && root->key.size <= arguments->size_upper_bound))) {
         insert_into_hash_table(hashTable, &root->key);
     }
     // Prepare arguments for left and right subtree threads
@@ -849,7 +854,7 @@ void detect_duplicates(Node *root, Arguments *arguments) {
         const HashTableEntry *current = hashTable->table[i];
         while (current) {
             if (current->count > 1) {
-                printf("Hash: %s, Count: %d %s|%s|%s|%ld\n", current->key, current->count, current->fileInfo->type, current->fileInfo->name, current->fileInfo->path, current->fileInfo->size);
+                printf("Hash: %s Count: %d %s|%s|%s|%s (%ld)\n", current->key, current->count, current->fileInfo->type, current->fileInfo->name, current->fileInfo->path, getFileSizeAsString((long long)current->fileInfo->size), current->fileInfo->size);
             }
             current = current->next;
         }
