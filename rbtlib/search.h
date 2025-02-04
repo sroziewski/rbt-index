@@ -16,6 +16,8 @@ typedef struct {
     int names_count;
     char **hashes;
     int hashes_count;
+    char **types;
+    int types_count;
     int size;
     char *size_str;
     size_t size_lower_bound;
@@ -79,6 +81,7 @@ typedef struct HashTable {
 typedef struct ThreadDuplicatesArgs {
     Node *root;
     HashTable *hashTable;
+    Arguments *arguments;
 } ThreadDuplicatesArgs;
 
 void *search_tree_thread(void *args);
@@ -123,16 +126,18 @@ void parallel_file_processing(const char *filename, void *root, int maxThreads);
 
 HashTable *create_hash_table(size_t size);
 
-void traverse_tree_in_parallel(Node *root, HashTable *hashTable);
+void traverse_tree_in_parallel(Node *root, HashTable *hashTable, Arguments *arguments);
 
 void free_hash_table(HashTable *hashTable);
 
 void print_help();
 
-void detect_duplicates(Node *root);
+void detect_duplicates(Node *root, Arguments *arguments);
 
 void compute_duplicates_summary(HashTable *hashTable);
 
-void free_arguments(const Arguments *args);
+void free_arguments(Arguments *args);
+
+bool should_insert(const Arguments *args, const char *type);
 
 #endif //RBTSEARCH_H

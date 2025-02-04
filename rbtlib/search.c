@@ -750,16 +750,18 @@ void *parallel_traverse_and_insert(void *args) {
     const ThreadDuplicatesArgs *threadArgs = (ThreadDuplicatesArgs *)args;
     const Node *root = threadArgs->root;
     HashTable *hashTable = threadArgs->hashTable;
+    Arguments *arguments = threadArgs->arguments;
 
     if (root == NULL) return NULL; // Base case: empty tree/subtree
 
     // Insert current node's hash into the hash table
-    insert_into_hash_table(hashTable, &root->key);
-
+    if (should_insert(arguments, root->key.type)) {
+        insert_into_hash_table(hashTable, &root->key);
+    }
     // Prepare arguments for left and right subtree threads
     pthread_t leftThread, rightThread;
-    ThreadDuplicatesArgs leftArgs = {root->left, hashTable};
-    ThreadDuplicatesArgs rightArgs = {root->right, hashTable};
+    ThreadDuplicatesArgs leftArgs = {root->left, hashTable, arguments};
+    ThreadDuplicatesArgs rightArgs = {root->right, hashTable, arguments};
 
     // Track whether threads are spawned
     bool leftThreadSpawned = false, rightThreadSpawned = false;
@@ -807,10 +809,10 @@ void *parallel_traverse_and_insert(void *args) {
 }
 
 // Traverse tree in parallel and insert hash values (entry point)
-void traverse_tree_in_parallel(Node *root, HashTable *hashTable) {
+void traverse_tree_in_parallel(Node *root, HashTable *hashTable, Arguments *arguments) {
     if (root == NULL) return; // If the tree is empty, there's nothing to process
 
-    ThreadDuplicatesArgs args = {root, hashTable};
+    ThreadDuplicatesArgs args = {root, hashTable, arguments};
     parallel_traverse_and_insert(&args); // Start parallel traversal
 }
 
@@ -830,18 +832,18 @@ void print_help() {
     printf("                     T_C, T_PYTHON, T_JS, T_JAVA, T_LOG, T_PACKAGE, T_CLASS, T_TEMPLATE, T_PHP, T_MATHEMATICA,\n");
     printf("                     T_PDF, T_JAR, T_HTML, T_XML, T_XHTML, T_MATLAB, T_FORTRAN, T_SCIENCE, T_CPP, T_TS, T_DOC,\n");
     printf("                     T_CALC, T_LATEX, T_SQL, T_PRESENTATION, T_DATA, T_LIBRARY, T_OBJECT, T_CSV, T_CSS, T_LINK_DIR,\n");
-    printf("                     T_LINK_FILE\n");
+    printf("                     T_LINK_FILE, T_FILE\n");
     printf("  -h <hash> <file> <filesize>\n");
     printf("                     Compute the hash of the specified file. Requires filename and filesize.\n");
     printf("  --help             Display this help message and exit.\n");
     exit(EXIT_SUCCESS); // Terminate the program after displaying the help message
 }
 
-void detect_duplicates(Node *root) {
+void detect_duplicates(Node *root, Arguments *arguments) {
     // Create the hash table
     HashTable *hashTable = create_hash_table(INITIAL_HASH_TABLE_SIZE);
     // Traverse the tree and populate the hash table
-    traverse_tree_in_parallel(root, hashTable);
+    traverse_tree_in_parallel(root, hashTable, arguments);
     // Print the results
     printf("----------------------------------\n");
     printf("Duplicates:\n");
@@ -849,7 +851,7 @@ void detect_duplicates(Node *root) {
         const HashTableEntry *current = hashTable->table[i];
         while (current) {
             if (current->count > 1) {
-                printf("Hash: %s, Count: %d |%s|%s %ld\n", current->key, current->count, current->fileInfo->name, current->fileInfo->path, current->fileInfo->size);
+                printf("Hash: %s, Count: %d |%s|%s|%s %ld\n", current->key, current->count, current->fileInfo->type, current->fileInfo->name, current->fileInfo->path, current->fileInfo->size);
             }
             current = current->next;
         }
@@ -886,26 +888,58 @@ void compute_duplicates_summary(HashTable *hashTable) {
     pthread_mutex_unlock(&hashTable->lock);
 }
 
-void free_arguments(const Arguments *args) {
+void free_arguments(Arguments *args) {
     if (args->names) {
         free(args->names);
+        *args->names = NULL;
     }
     if (args->paths) {
         free(args->paths);
+        *args->paths = NULL;
     }
     if (args->hashes) {
         free(args->hashes);
+        *args->hashes = NULL;
+    }
+    if (args->types) {
+        free(args->types);
+        *args->types = NULL;
     }
     if (args->filename) {
         free(args->filename);
+        args->filename = NULL;
     }
     if (args->mem_filename) {
         free(args->mem_filename);
+        args->mem_filename = NULL;
     }
     if (args->hash) {
         free(args->hash);
+        args->hash = NULL;
     }
     if (args->type) {
         free(args->type);
+        args->type = NULL;
     }
+}
+
+bool should_insert(const Arguments *args, const char *type) {
+    // 1. Insert if root.type is in args.types
+    if (args->types != NULL) {
+        for (int i = 0; i < args->types_count; i++) {
+            if (strcmp(args->types[i], type) == 0) {
+                return true; // Type is allowed
+            }
+        }
+    }
+    // 2. Insert if args.types is NULL (no restrictions)
+    if (args->types == NULL) {
+        return true;
+    }
+    // 3. Insert if there is only one element in args.types, and it equals T_FILE
+    if (args->types_count == 1 && strcmp(args->types[0], "T_FILE") == 0 && strcmp(type, "T_DIR") != 0) {
+        return true;
+    }
+
+    return false; // All conditions failed
 }

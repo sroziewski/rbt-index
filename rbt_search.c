@@ -26,7 +26,8 @@ void parse_arguments(const int argc, char *argv[], Arguments *args) {
     args->size_upper_bound = 0;
     args->paths = NULL;
     args->paths_count = 0;
-    args->type = NULL;
+    args->types = NULL;
+    args->types_count = 0;
     args->hash = NULL;
     const char *valid_types[] = {
         "T_DIR", "T_TEXT", "T_BINARY", "T_IMAGE", "T_JSON", "T_AUDIO", "T_FILM",
@@ -34,7 +35,7 @@ void parse_arguments(const int argc, char *argv[], Arguments *args) {
         "T_JAVA", "T_LOG", "T_PACKAGE", "T_CLASS", "T_TEMPLATE", "T_PHP", "T_MATHEMATICA",
         "T_PDF", "T_JAR", "T_HTML", "T_XML", "T_XHTML", "T_MATLAB", "T_FORTRAN", "T_SCIENCE", "T_CPP",
         "T_TS", "T_DOC", "T_CALC", "T_LATEX", "T_SQL", "T_PRESENTATION", "T_DATA", "T_LIBRARY", "T_OBJECT",
-        "T_CSV", "T_CSS", "T_LINK_DIR", "T_LINK_FILE",
+        "T_CSV", "T_CSS", "T_LINK_DIR", "T_LINK_FILE", "T_FILE",
         NULL // Sentinel value to signal the end of the array
     };
     if (argc == 1) {
@@ -157,25 +158,39 @@ void parse_arguments(const int argc, char *argv[], Arguments *args) {
                 exit(EXIT_FAILURE);
             }
         }
-        else if (!strcmp(argv[i], "-t") && i + 1 < argc) {
-            args->type = argv[++i];
-            // Check if args->type belongs to valid types
-            if (!is_valid_type(args->type, valid_types)) {
-                fprintf(stderr, "Invalid type specified: %s\n", args->type);
-                fprintf(stderr, "Allowed types are:\n");
-                // Display valid types
-                for (int i1 = 0; valid_types[i1] != NULL; i1++) {
-                    if (i1 > 0 && i1 % 10 == 0) { // Format into multiple lines for readability
-                        fprintf(stderr, "\n                 ");
-                    }
-                    fprintf(stderr, "%s", valid_types[i1]);
-                    if (valid_types[i1 + 1] != NULL) { // No comma on the last item
-                        fprintf(stderr, ", ");
-                    }
-                }
-                fprintf(stderr, "\n");
-                exit(EXIT_FAILURE); // Exit on invalid type
+        else if (!strcmp(argv[i], "-t")) { // If -t is encountered
+            i++;
+            // Allocate space for storing types (assuming no more than `argc - i` types)
+            args->types = malloc((argc - i) * sizeof(char *));
+            if (args->types == NULL) {
+                fprintf(stderr, "Memory allocation failed for types.\n");
+                exit(EXIT_FAILURE);
             }
+            // Collect multiple types until another flag is reached or end of arguments
+            while (i < argc && argv[i][0] != '-') {
+                // Check if the current type is valid
+                if (!is_valid_type(argv[i], valid_types)) {
+                    fprintf(stderr, "Invalid type specified: %s\n", argv[i]);
+                    fprintf(stderr, "Allowed types are:\n");
+                    // Display valid types in a formatted way
+                    for (int j = 0; valid_types[j] != NULL; j++) {
+                        if (j > 0 && j % 10 == 0) { // Format into multiple lines for readability
+                            fprintf(stderr, "\n                 ");
+                        }
+                        fprintf(stderr, "%s", valid_types[j]);
+                        if (valid_types[j + 1] != NULL) { // Add commas except for the last item
+                            fprintf(stderr, ", ");
+                        }
+                    }
+                    fprintf(stderr, "\n");
+                    exit(EXIT_FAILURE); // Exit on invalid type
+                }
+                // Add the valid type to the types array
+                args->types[args->types_count] = argv[i];
+                args->types_count++;
+                i++;
+            }
+            i--; // Step back to correctly process the next argument
         }
         else if (!strcmp(argv[i], "-h") && i + 2 < argc) {
             // args->hash = argv[++i]; // Store the hash argument (string)
@@ -289,7 +304,7 @@ int main(const int argc, char *argv[]) {
     if (arguments.type) printf("Type: %s\n", arguments.type);
     Node *root = load_tree_from_shared_memory(arguments.mem_filename);
     if (arguments.duplicates){
-        detect_duplicates(root);
+        detect_duplicates(root, &arguments);
         free_arguments(&arguments);
         exit(EXIT_SUCCESS);
     }
